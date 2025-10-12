@@ -263,7 +263,7 @@ const NewTemplate = () => {
           {/* Basic Information */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Basic Information</h2>
-            <div className="space-y-4 pl-4 border-l-2 border-border">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="promptName">
                   Prompt Name <span className="text-destructive">*</span>
@@ -323,7 +323,7 @@ const NewTemplate = () => {
           {/* Organization */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Organization</h2>
-            <div className="space-y-4 pl-4 border-l-2 border-border">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="promptTeam">
                   Prompt Team <span className="text-destructive">*</span>
@@ -363,7 +363,7 @@ const NewTemplate = () => {
           {/* Prompt Configuration */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Prompt Configuration</h2>
-            <div className="space-y-4 pl-4 border-l-2 border-border">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="promptOutcome">
                   Prompt Outcome <span className="text-destructive">*</span>
@@ -408,7 +408,7 @@ const NewTemplate = () => {
           {/* System Prompt Configuration */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">System Prompt Configuration</h2>
-            <div className="space-y-4 pl-4 border-l-2 border-border">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="systemOutcome">
                   System Outcome <span className="text-destructive">*</span>
