@@ -11,7 +11,6 @@ import { FloatingControls } from "@/components/FloatingControls";
 
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const { enabled, toggleEnabled } = useAdvancedStore();
 
   const advancedButton = (
     <button
@@ -35,14 +34,16 @@ const Chat = () => {
           description="Get learnings and outcomes from your research."
         />
 
-        <div className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-32">
-          <Card className="border-0 shadow-md h-full">
-            <div className="p-4 sm:p-6 h-full overflow-y-auto">
-              <p className="text-muted-foreground text-center py-20 sm:py-32 text-base sm:text-lg">
-                Your conversation will appear here...
-              </p>
+        <div className="flex-1 overflow-hidden">
+          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-full pb-[120px]">
+            <div className="h-full border-l border-r border-border">
+              <div className="p-4 sm:p-6 h-full overflow-y-auto">
+                <p className="text-muted-foreground text-center py-20 sm:py-32 text-base sm:text-lg">
+                  Your conversation will appear here...
+                </p>
+              </div>
             </div>
-          </Card>
+          </div>
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
