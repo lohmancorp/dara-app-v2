@@ -13,9 +13,9 @@ const Chat = () => {
               <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground">Ask a Question</h1>
+              <h1 className="font-bold text-foreground">Research</h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                Get instant answers from your research documents
+                Get learnings and outcomes from your research.
               </p>
             </div>
           </div>
