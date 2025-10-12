@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { MessageSquare, FileText, Activity, Library } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -17,10 +18,10 @@ const Index = () => {
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <Card className="hover:shadow-md transition-all border-l-4 border-l-primary">
+          <Card className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 rounded-lg bg-primary/10">
+              <CardTitle className="flex items-center gap-3 text-lg group-hover:text-primary transition-colors">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
                   <MessageSquare className="h-5 w-5 text-primary" />
                 </div>
                 Ask Question
@@ -36,10 +37,10 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all border-l-4 border-l-accent">
+          <Card className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 rounded-lg bg-accent/10">
+              <CardTitle className="flex items-center gap-3 text-lg group-hover:text-primary transition-colors">
+                <div className="p-2 rounded-lg bg-accent/10 group-hover:bg-accent/20 transition-colors">
                   <FileText className="h-5 w-5 text-accent" />
                 </div>
                 Use Template
@@ -55,11 +56,11 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all">
+          <Card className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 rounded-lg bg-muted">
-                  <Library className="h-5 w-5 text-foreground" />
+              <CardTitle className="flex items-center gap-3 text-lg group-hover:text-primary transition-colors">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Library className="h-5 w-5 text-primary" />
                 </div>
                 My Library
               </CardTitle>
@@ -74,11 +75,11 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all">
+          <Card className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 rounded-lg bg-muted">
-                  <Activity className="h-5 w-5 text-foreground" />
+              <CardTitle className="flex items-center gap-3 text-lg group-hover:text-primary transition-colors">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Activity className="h-5 w-5 text-primary" />
                 </div>
                 Active Jobs
               </CardTitle>
@@ -98,22 +99,28 @@ const Index = () => {
           <h2 className="font-semibold text-foreground">Recent Results</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="hover:shadow-md transition-all cursor-pointer group">
-                <CardContent className="p-5">
+              <Card 
+                key={i} 
+                className="hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
+              >
+                <div className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        Research Report {i}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Completed {i} day{i > 1 ? "s" : ""} ago
-                      </p>
+                    <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <FileText className="h-7 w-7 text-primary" />
                     </div>
-                    <Button size="sm" variant="ghost" className="group-hover:bg-primary/10 group-hover:text-primary">
-                      View
-                    </Button>
+                    <Badge variant="secondary" className="bg-muted">
+                      Completed
+                    </Badge>
                   </div>
-                </CardContent>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                      Research Report {i}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Completed {i} day{i > 1 ? "s" : ""} ago
+                    </p>
+                  </div>
+                </div>
               </Card>
             ))}
           </div>
