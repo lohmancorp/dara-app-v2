@@ -64,17 +64,12 @@ const Chat = () => {
               </div>
               
               <Button
-                variant={enabled ? "default" : "outline"}
+                variant={showAdvanced ? "default" : "outline"}
                 size="icon"
-                onClick={() => {
-                  toggleEnabled();
-                  if (!enabled) {
-                    setShowAdvanced(true);
-                  }
-                }}
+                onClick={() => setShowAdvanced(!showAdvanced)}
                 className="rounded-full relative"
                 aria-label="Advanced settings"
-                aria-pressed={enabled}
+                aria-pressed={showAdvanced}
               >
                 <Settings2 className="h-4 w-4" />
                 {enabled && (
