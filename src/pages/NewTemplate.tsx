@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FilePlus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { WysiwygEditor } from "@/components/WysiwygEditor";
+import { TagInput } from "@/components/TagInput";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Separator } from "@/components/ui/separator";
 
 const AVAILABLE_MODELS = [
   "google/gemini-2.5-pro",
@@ -35,9 +37,35 @@ const NewTemplate = () => {
     systemOutcome: "",
     systemPrompt: "",
     promptModel: "google/gemini-2.5-flash",
+    promptTeam: [] as string[],
+    promptTags: [] as string[],
     totalTokens: 0,
     totalPromptCost: 0,
   });
+
+  const [existingTeams, setExistingTeams] = useState<string[]>([]);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      const { data } = await supabase.from("prompt_templates").select("prompt_team, prompt_tags");
+      
+      if (data) {
+        const teams = new Set<string>();
+        const tags = new Set<string>();
+        
+        data.forEach((item) => {
+          item.prompt_team?.forEach((team: string) => teams.add(team));
+          item.prompt_tags?.forEach((tag: string) => tags.add(tag));
+        });
+        
+        setExistingTeams(Array.from(teams));
+        setExistingTags(Array.from(tags));
+      }
+    };
+
+    fetchExistingData();
+  }, []);
 
   const handleGeneratePrompt = async () => {
     if (!formData.promptOutcome) {
@@ -130,6 +158,24 @@ const NewTemplate = () => {
       return;
     }
 
+    if (formData.promptTeam.length === 0) {
+      toast({
+        title: "Missing Team",
+        description: "Please assign at least one team.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.promptTags.length === 0) {
+      toast({
+        title: "Missing Tags",
+        description: "Please add at least one tag.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.promptDescription.length > 255) {
       toast({
         title: "Description Too Long",
@@ -144,6 +190,22 @@ const NewTemplate = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("User not authenticated");
 
+      // Calculate tokens and cost
+      const { data: tokenData, error: tokenError } = await supabase.functions.invoke("calculate-tokens", {
+        body: {
+          prompt: formData.prompt,
+          systemPrompt: formData.systemPrompt,
+          model: formData.promptModel,
+        },
+      });
+
+      if (tokenError) {
+        console.error("Error calculating tokens:", tokenError);
+      }
+
+      const totalTokens = tokenData?.totalTokens || 0;
+      const totalPromptCost = tokenData?.totalCost || 0;
+
       const { error } = await supabase.from("prompt_templates").insert({
         user_id: userData.user.id,
         prompt_name: formData.promptName,
@@ -153,8 +215,10 @@ const NewTemplate = () => {
         system_outcome: formData.systemOutcome,
         system_prompt: formData.systemPrompt,
         prompt_model: formData.promptModel,
-        total_tokens: formData.totalTokens,
-        total_prompt_cost: formData.totalPromptCost,
+        prompt_team: formData.promptTeam,
+        prompt_tags: formData.promptTags,
+        total_tokens: totalTokens,
+        total_prompt_cost: totalPromptCost,
       });
 
       if (error) {
@@ -171,7 +235,7 @@ const NewTemplate = () => {
 
       toast({
         title: "Template Created",
-        description: "Your prompt template has been created successfully.",
+        description: `Template created with ${totalTokens} tokens (Cost: $${totalPromptCost.toFixed(4)})`,
       });
       navigate("/templates");
     } catch (error) {
@@ -195,134 +259,198 @@ const NewTemplate = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="promptName">
-              Prompt Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="promptName"
-              value={formData.promptName}
-              onChange={(e) => setFormData((prev) => ({ ...prev, promptName: e.target.value }))}
-              placeholder="Enter a unique prompt name"
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Basic Information</h2>
+            <div className="space-y-4 pl-4 border-l-2 border-border">
+              <div className="space-y-2">
+                <Label htmlFor="promptName">
+                  Prompt Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="promptName"
+                  value={formData.promptName}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, promptName: e.target.value }))}
+                  placeholder="Enter a unique prompt name"
+                  required
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="promptDescription">
-              Prompt Description <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="promptDescription"
-              value={formData.promptDescription}
-              onChange={(e) => setFormData((prev) => ({ ...prev, promptDescription: e.target.value }))}
-              placeholder="Enter a helpful description (max 255 characters)"
-              maxLength={255}
-              rows={2}
-              required
-            />
-            <p className="text-sm text-muted-foreground">
-              {formData.promptDescription.length}/255 characters
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="promptDescription">
+                  Prompt Description <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="promptDescription"
+                  value={formData.promptDescription}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, promptDescription: e.target.value }))}
+                  placeholder="Enter a helpful description (max 255 characters)"
+                  maxLength={255}
+                  rows={2}
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  {formData.promptDescription.length}/255 characters
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="promptModel">
-              Prompt Model <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={formData.promptModel}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, promptModel: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {AVAILABLE_MODELS.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="promptOutcome">
-              Prompt Outcome <span className="text-destructive">*</span>
-            </Label>
-            <WysiwygEditor
-              value={formData.promptOutcome}
-              onChange={(value) => setFormData((prev) => ({ ...prev, promptOutcome: value }))}
-              placeholder="Describe what you want the prompt to achieve..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="prompt">
-                Prompt <span className="text-destructive">*</span>
-              </Label>
-              <Button
-                type="button"
-                size="icon"
-                variant="default"
-                onClick={handleGeneratePrompt}
-                disabled={isGeneratingPrompt || !formData.promptOutcome}
-                className="rounded-full h-10 w-10"
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
+              <div className="space-y-2">
+                <Label htmlFor="promptModel">
+                  Prompt Model <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.promptModel}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, promptModel: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_MODELS.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Textarea
-              id="prompt"
-              value={formData.prompt}
-              onChange={(e) => setFormData((prev) => ({ ...prev, prompt: e.target.value }))}
-              placeholder="The final prompt text..."
-              className="min-h-[200px] resize-y"
-              required
-            />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="systemOutcome">
-              System Outcome <span className="text-destructive">*</span>
-            </Label>
-            <WysiwygEditor
-              value={formData.systemOutcome}
-              onChange={(value) => setFormData((prev) => ({ ...prev, systemOutcome: value }))}
-              placeholder="Describe the desired system prompt behavior..."
-            />
-          </div>
+          <Separator />
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="systemPrompt">
-                System Prompt <span className="text-destructive">*</span>
-              </Label>
-              <Button
-                type="button"
-                size="icon"
-                variant="default"
-                onClick={handleGenerateSystemPrompt}
-                disabled={isGeneratingSystemPrompt || !formData.systemOutcome}
-                className="rounded-full h-10 w-10"
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
+          {/* Organization */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Organization</h2>
+            <div className="space-y-4 pl-4 border-l-2 border-border">
+              <div className="space-y-2">
+                <Label htmlFor="promptTeam">
+                  Prompt Team <span className="text-destructive">*</span>
+                </Label>
+                <TagInput
+                  id="promptTeam"
+                  value={formData.promptTeam}
+                  onChange={(tags) => setFormData((prev) => ({ ...prev, promptTeam: tags }))}
+                  placeholder="Type to search or create teams..."
+                  suggestions={existingTeams}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Assign teams that can benefit from this prompt
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="promptTags">
+                  Prompt Tags <span className="text-destructive">*</span>
+                </Label>
+                <TagInput
+                  id="promptTags"
+                  value={formData.promptTags}
+                  onChange={(tags) => setFormData((prev) => ({ ...prev, promptTags: tags }))}
+                  placeholder="Type to search or create tags..."
+                  suggestions={existingTags}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Add tags for searching and organizing prompts
+                </p>
+              </div>
             </div>
-            <Textarea
-              id="systemPrompt"
-              value={formData.systemPrompt}
-              onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-              placeholder="The final system prompt text..."
-              className="min-h-[200px] resize-y"
-              required
-            />
           </div>
 
-          <div className="flex gap-4 justify-end pt-4 border-t">
+          <Separator />
+
+          {/* Prompt Configuration */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Prompt Configuration</h2>
+            <div className="space-y-4 pl-4 border-l-2 border-border">
+              <div className="space-y-2">
+                <Label htmlFor="promptOutcome">
+                  Prompt Outcome <span className="text-destructive">*</span>
+                </Label>
+                <WysiwygEditor
+                  value={formData.promptOutcome}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, promptOutcome: value }))}
+                  placeholder="Describe what you want the prompt to achieve..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="prompt">
+                    Prompt <span className="text-destructive">*</span>
+                  </Label>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="default"
+                    onClick={handleGeneratePrompt}
+                    disabled={isGeneratingPrompt || !formData.promptOutcome}
+                    className="rounded-full h-10 w-10"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  id="prompt"
+                  value={formData.prompt}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, prompt: e.target.value }))}
+                  placeholder="The final prompt text..."
+                  className="min-h-[200px] resize-y"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* System Prompt Configuration */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">System Prompt Configuration</h2>
+            <div className="space-y-4 pl-4 border-l-2 border-border">
+              <div className="space-y-2">
+                <Label htmlFor="systemOutcome">
+                  System Outcome <span className="text-destructive">*</span>
+                </Label>
+                <WysiwygEditor
+                  value={formData.systemOutcome}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, systemOutcome: value }))}
+                  placeholder="Describe the desired system prompt behavior..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="systemPrompt">
+                    System Prompt <span className="text-destructive">*</span>
+                  </Label>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="default"
+                    onClick={handleGenerateSystemPrompt}
+                    disabled={isGeneratingSystemPrompt || !formData.systemOutcome}
+                    className="rounded-full h-10 w-10"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  id="systemPrompt"
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+                  placeholder="The final system prompt text..."
+                  className="min-h-[200px] resize-y"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex gap-4 justify-end pt-4">
             <Button
               type="button"
               variant="outline"

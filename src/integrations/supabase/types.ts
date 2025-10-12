@@ -23,6 +23,8 @@ export type Database = {
           prompt_model: string
           prompt_name: string
           prompt_outcome: string
+          prompt_tags: string[] | null
+          prompt_team: string[] | null
           system_outcome: string
           system_prompt: string
           total_prompt_cost: number | null
@@ -38,6 +40,8 @@ export type Database = {
           prompt_model: string
           prompt_name: string
           prompt_outcome: string
+          prompt_tags?: string[] | null
+          prompt_team?: string[] | null
           system_outcome: string
           system_prompt: string
           total_prompt_cost?: number | null
@@ -53,6 +57,8 @@ export type Database = {
           prompt_model?: string
           prompt_name?: string
           prompt_outcome?: string
+          prompt_tags?: string[] | null
+          prompt_team?: string[] | null
           system_outcome?: string
           system_prompt?: string
           total_prompt_cost?: number | null
