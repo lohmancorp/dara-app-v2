@@ -267,9 +267,10 @@ const NewTemplate = () => {
               <Button
                 type="button"
                 size="icon"
-                variant="ghost"
+                variant="default"
                 onClick={handleGeneratePrompt}
                 disabled={isGeneratingPrompt || !formData.promptOutcome}
+                className="rounded-full h-10 w-10"
               >
                 <Sparkles className="h-4 w-4" />
               </Button>
@@ -303,9 +304,10 @@ const NewTemplate = () => {
               <Button
                 type="button"
                 size="icon"
-                variant="ghost"
+                variant="default"
                 onClick={handleGenerateSystemPrompt}
                 disabled={isGeneratingSystemPrompt || !formData.systemOutcome}
+                className="rounded-full h-10 w-10"
               >
                 <Sparkles className="h-4 w-4" />
               </Button>
