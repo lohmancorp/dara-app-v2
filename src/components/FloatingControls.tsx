@@ -14,7 +14,6 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
   const [profileOpen, setProfileOpen] = useState(false);
 
   const handleAdvancedClick = () => {
-    console.log('FloatingControls: Advanced button clicked');
     onAdvancedClick?.();
   };
 
@@ -23,7 +22,7 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-3 pointer-events-auto">
           {actionButton && <div>{actionButton}</div>}
-          
+
           {onAdvancedClick && (
             <button
               onClick={handleAdvancedClick}
@@ -34,7 +33,7 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
               <Settings2 className="h-5 w-5" />
             </button>
           )}
-          
+
           <div className="relative">
             <button
               onClick={() => {
@@ -51,9 +50,7 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
                 3
               </span>
             </button>
-            {notificationOpen && (
-              <NotificationDropdown onClose={() => setNotificationOpen(false)} />
-            )}
+            {notificationOpen && <NotificationDropdown onClose={() => setNotificationOpen(false)} />}
           </div>
 
           <div className="relative">
