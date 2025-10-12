@@ -5,9 +5,10 @@ import { ProfileDropdown } from "./ProfileDropdown";
 
 interface FloatingControlsProps {
   actionButton?: React.ReactNode;
+  advancedButton?: React.ReactNode;
 }
 
-export function FloatingControls({ actionButton }: FloatingControlsProps) {
+export function FloatingControls({ actionButton, advancedButton }: FloatingControlsProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -16,6 +17,7 @@ export function FloatingControls({ actionButton }: FloatingControlsProps) {
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-3 pointer-events-auto">
           {actionButton && <div>{actionButton}</div>}
+          {advancedButton && <div>{advancedButton}</div>}
           <div className="relative">
         <button
           onClick={() => {
