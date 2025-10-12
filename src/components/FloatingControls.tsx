@@ -12,9 +12,7 @@ export function FloatingControls({ actionButton }: FloatingControlsProps) {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="fixed top-6 right-0 z-50 w-full pointer-events-none">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-end gap-3 pointer-events-auto">
+    <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
       {actionButton && <div className="mr-auto">{actionButton}</div>}
       <div className="relative">
         <button
@@ -51,8 +49,6 @@ export function FloatingControls({ actionButton }: FloatingControlsProps) {
           <User className="h-5 w-5" />
         </button>
         {profileOpen && <ProfileDropdown onClose={() => setProfileOpen(false)} />}
-      </div>
-        </div>
       </div>
     </div>
   );
