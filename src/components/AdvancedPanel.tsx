@@ -156,24 +156,11 @@ export function AdvancedPanel({ open, onClose }: AdvancedPanelProps) {
         aria-labelledby="advanced-panel-title"
         aria-describedby="advanced-panel-description"
       >
-        <SheetHeader className="px-6 py-4 border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <SheetTitle id="advanced-panel-title">Advanced Settings</SheetTitle>
-              <SheetDescription id="advanced-panel-description">
-                Fine-tune AI behavior and generation parameters
-              </SheetDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="rounded-full h-10 w-10 flex items-center justify-center"
-              aria-label="Close advanced panel"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+        <SheetHeader className="px-6 pt-[25px] pb-4 pr-[25px] border-b">
+          <SheetTitle id="advanced-panel-title">Advanced Settings</SheetTitle>
+          <SheetDescription id="advanced-panel-description">
+            Fine-tune AI behavior and generation parameters
+          </SheetDescription>
         </SheetHeader>
 
         <div className="px-6 py-3 border-b flex gap-2">
