@@ -4,8 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Bell, Lock, Globe, Database, Trash2 } from "lucide-react";
+import { LanguageCombobox } from "@/components/LanguageCombobox";
+import { useState } from "react";
 
 const Settings = () => {
+  const [selectedLanguage, setSelectedLanguage] = useState<{ code: string; name: string }>();
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
@@ -127,10 +130,11 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Language</Label>
-                <Button variant="outline" className="w-full justify-start">
-                  English (US)
-                </Button>
+                <Label htmlFor="language-select">Language</Label>
+                <LanguageCombobox
+                  value={selectedLanguage?.code}
+                  onSelect={setSelectedLanguage}
+                />
               </div>
 
               <Separator />
