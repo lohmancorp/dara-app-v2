@@ -22,7 +22,7 @@ export function FloatingControls({ actionButton }: FloatingControlsProps) {
             setNotificationOpen(!notificationOpen);
             setProfileOpen(false);
           }}
-          className="h-11 w-11 rounded-full bg-card border border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-foreground hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="h-11 w-11 rounded-full bg-accent text-accent-foreground border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-expanded={notificationOpen}
           aria-controls="notification-dropdown"
           aria-label="Notifications"
