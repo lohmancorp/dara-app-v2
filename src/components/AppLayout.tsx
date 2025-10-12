@@ -6,6 +6,11 @@ import { createContext, useContext, useState, ReactNode } from "react";
 interface FloatingActionContextType {
   actionButton: ReactNode | null;
   setActionButton: (button: ReactNode | null) => void;
+  advancedControls: {
+    onClick?: () => void;
+    isPressed?: boolean;
+  } | null;
+  setAdvancedControls: (controls: { onClick?: () => void; isPressed?: boolean } | null) => void;
 }
 
 const FloatingActionContext = createContext<FloatingActionContextType | undefined>(undefined);
@@ -24,9 +29,10 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [actionButton, setActionButton] = useState<ReactNode | null>(null);
+  const [advancedControls, setAdvancedControls] = useState<{ onClick?: () => void; isPressed?: boolean } | null>(null);
 
   return (
-    <FloatingActionContext.Provider value={{ actionButton, setActionButton }}>
+    <FloatingActionContext.Provider value={{ actionButton, setActionButton, advancedControls, setAdvancedControls }}>
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
@@ -37,7 +43,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             {children}
           </main>
-          <FloatingControls actionButton={actionButton} />
+          <FloatingControls
+            actionButton={actionButton}
+            onAdvancedClick={advancedControls?.onClick}
+            advancedPressed={advancedControls?.isPressed}
+          />
         </div>
       </SidebarProvider>
     </FloatingActionContext.Provider>
