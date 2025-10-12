@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Research Assistant design system - Light, modern purple-blue theme */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary: Purple-blue gradient base */
+    --primary: 250 95% 63%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Very light gray */
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted elements */
+    --muted: 240 5% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent: Purple accent */
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 250 95% 63%;
+
+    --radius: 0.5rem;
+
+    /* Accessibility: Focus ring tokens */
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    --focus-ring-color: 250 95% 63%;
+
+    /* Sidebar: Light theme */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 250 95% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 250 95% 63%;
+
+    /* Profile menu hover (light mode) */
+    --menu-item-hover-light: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 250 95% 63%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 250 95% 63%;
+
+    /* Accessibility: Focus ring tokens (dark mode) */
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    --focus-ring-color: 250 95% 63%;
+    
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 250 95% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 250 95% 63%;
+
+    /* Dark mode toggle colors */
+    --toggle-inactive-dark: 0 0% 50%;
+    --toggle-thumb-dark: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-size: 16px; /* WCAG base font size */
+  }
+
+  /* Fluid typography for responsive scaling */
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    line-height: 1.4;
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.4;
+  }
+
+  h3 {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    line-height: 1.5;
+  }
+
+  p {
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    line-height: 1.6;
+    margin-bottom: 0.5em;
+  }
+
+  /* WCAG 2.2 AA Accessibility: Focus-visible utility */
+  *:focus-visible {
+    outline: var(--focus-ring-width) solid hsl(var(--focus-ring-color));
+    outline-offset: var(--focus-ring-offset);
+    border-radius: 4px;
+  }
+
+  /* Remove default focus for mouse users, preserve for keyboard */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Profile menu light mode hover - white text on accent background */
+  :root:not(.dark) [role="menu"] a:hover,
+  :root:not(.dark) [role="menu"] button:hover {
+    color: hsl(var(--menu-item-hover-light));
+  }
+
+  :root:not(.dark) [role="menu"] a:hover svg,
+  :root:not(.dark) [role="menu"] button:hover svg {
+    color: hsl(var(--menu-item-hover-light));
+  }
+
+  /* Ensure minimum touch target size: 44x44px for WCAG 2.2 */
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  [role="menuitem"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
