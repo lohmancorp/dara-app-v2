@@ -1,7 +1,8 @@
-import { Library as LibraryIcon, Upload, Search, Filter } from "lucide-react";
+import { Library as LibraryIcon, Upload, Search, Filter, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 const Library = () => {
   return (
@@ -43,20 +44,29 @@ const Library = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="hover:shadow-md transition-all cursor-pointer group">
-              <div className="p-5 space-y-3">
-                <div className="h-40 bg-gradient-to-br from-primary/5 to-accent/5 rounded-md flex items-center justify-center group-hover:from-primary/10 group-hover:to-accent/10 transition-all">
-                  <LibraryIcon className="h-16 w-16 text-muted-foreground/50" />
+            <Card
+              key={i}
+              className="hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
+            >
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <FileText className="h-7 w-7 text-primary" />
+                  </div>
+                  <Badge variant="secondary" className="bg-muted">
+                    PDF
+                  </Badge>
                 </div>
-                <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
-                  Document {i}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Sample research document placeholder
-                </p>
-                <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span className="px-2 py-1 bg-muted rounded">PDF</span>
-                  <span className="px-2 py-1 bg-muted rounded">Added recently</span>
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                    Document {i}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Sample research document placeholder
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Added recently
                 </div>
               </div>
             </Card>
