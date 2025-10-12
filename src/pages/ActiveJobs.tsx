@@ -83,7 +83,7 @@ const ActiveJobs = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="space-y-4">
           {jobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-md transition-all">
+            <Card key={job.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
               <div className="p-4 sm:p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0">
                   <div className="space-y-1 flex-1">
