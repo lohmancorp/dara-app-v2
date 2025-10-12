@@ -158,7 +158,7 @@ export function AdvancedPanel({ open, onClose }: AdvancedPanelProps) {
       >
         <SheetHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
-            <SheetTitle id="advanced-panel-title">Advanced Options</SheetTitle>
+            <SheetTitle id="advanced-panel-title">Advanced Settings</SheetTitle>
             <Button
               variant="ghost"
               size="icon"

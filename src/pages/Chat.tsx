@@ -65,20 +65,21 @@ const Chat = () => {
               
               <Button
                 variant={enabled ? "default" : "outline"}
-                size="sm"
+                size="icon"
                 onClick={() => {
                   toggleEnabled();
                   if (!enabled) {
                     setShowAdvanced(true);
                   }
                 }}
-                className="gap-2"
-                aria-label="Toggle advanced mode"
+                className="rounded-full relative"
+                aria-label="Advanced settings"
                 aria-pressed={enabled}
               >
                 <Settings2 className="h-4 w-4" />
-                Advanced
-                {enabled && <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">ON</Badge>}
+                {enabled && (
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full border-2 border-background" />
+                )}
               </Button>
             </div>
           </div>
