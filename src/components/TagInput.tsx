@@ -66,7 +66,7 @@ export const TagInput = ({ value, onChange, placeholder, suggestions = [], id }:
     <div ref={containerRef} className="relative">
       <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-background min-h-[42px] focus-within:ring-2 focus-within:ring-ring">
         {value.map((tag) => (
-          <Badge key={tag} variant="secondary" className="gap-1">
+          <Badge key={tag} variant="secondary" className="gap-1 h-6 text-xs py-0 px-2">
             {tag}
             <button
               type="button"
