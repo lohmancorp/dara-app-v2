@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { LANGUAGES } from "@/data/languages";
+import { useTranslation } from "@/contexts/TranslationContext";
 
 interface Language {
   code: string;
@@ -32,6 +34,7 @@ export function LanguageCombobox({ value, onSelect, className }: LanguageCombobo
   const [loading, setLoading] = React.useState(true);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listboxRef = React.useRef<HTMLDivElement>(null);
 
@@ -41,29 +44,29 @@ export function LanguageCombobox({ value, onSelect, className }: LanguageCombobo
       try {
         const { data, error } = await supabase.functions.invoke('get-languages');
         
-        if (error) throw error;
-        
-        if (data?.languages) {
+        if (error) {
+          console.warn('API error, using fallback languages:', error);
+          setLanguages(LANGUAGES);
+        } else if (data?.languages && data.languages.length > 0) {
           setLanguages(data.languages);
-          
-          // Load saved language from localStorage
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved && !value) {
-            try {
-              const savedLang = JSON.parse(saved);
-              onSelect(savedLang);
-            } catch (e) {
-              console.error('Failed to parse saved language:', e);
-            }
+        } else {
+          console.log('No languages from API, using fallback');
+          setLanguages(LANGUAGES);
+        }
+        
+        // Load saved language from localStorage
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && !value) {
+          try {
+            const savedLang = JSON.parse(saved);
+            onSelect(savedLang);
+          } catch (e) {
+            console.error('Failed to parse saved language:', e);
           }
         }
       } catch (error) {
-        console.error('Failed to load languages:', error);
-        toast({
-          title: "Error loading languages",
-          description: "Could not fetch language list. Please try again.",
-          variant: "destructive",
-        });
+        console.error('Failed to load languages, using fallback:', error);
+        setLanguages(LANGUAGES);
       } finally {
         setLoading(false);
       }
@@ -151,7 +154,7 @@ export function LanguageCombobox({ value, onSelect, className }: LanguageCombobo
           className={cn("w-full justify-between", className)}
         >
           <span className="truncate">
-            {loading ? "Loading..." : selectedLanguage?.name || "Select language..."}
+            {loading ? t("loading.languages") : selectedLanguage?.name || t("placeholder.selectLanguage")}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -161,12 +164,12 @@ export function LanguageCombobox({ value, onSelect, className }: LanguageCombobo
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
           <Input
             ref={inputRef}
-            placeholder="Search languages..."
+            placeholder={t("placeholder.searchLanguages")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}
             className="h-9 border-0 bg-transparent p-0 focus-visible:ring-0"
-            aria-label="Search languages"
+            aria-label={t("placeholder.searchLanguages")}
             aria-autocomplete="list"
             aria-controls="language-listbox"
             aria-activedescendant={
@@ -186,11 +189,11 @@ export function LanguageCombobox({ value, onSelect, className }: LanguageCombobo
           >
             {loading ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                Loading languages...
+                {t("loading.languages")}
               </div>
             ) : filteredLanguages.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                No languages found.
+                {t("noResults.languages")}
               </div>
             ) : (
               filteredLanguages.map((language, index) => (
