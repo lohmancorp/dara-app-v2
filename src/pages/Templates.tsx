@@ -1,26 +1,34 @@
-import { FileText } from "lucide-react";
+import { FileText, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useFloatingAction } from "@/components/AppLayout";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Templates = () => {
   const { setActionButton } = useFloatingAction();
   const navigate = useNavigate();
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
 
   useEffect(() => {
     setActionButton(
       <FloatingActionButton 
         label="New Template" 
-        onClick={() => navigate("/templates/new")} 
+        onClick={() => setShowTemplateDialog(true)} 
       />
     );
     return () => setActionButton(null);
-  }, [setActionButton, navigate]);
+  }, [setActionButton]);
   const templates = [
     {
       id: 1,
@@ -67,6 +75,62 @@ const Templates = () => {
         title="Research Templates"
         description="Start with pre-configured research workflows"
       />
+
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Template Type</DialogTitle>
+            <DialogDescription>
+              Select the type of template you want to create
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 pt-4">
+            <Card
+              className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                navigate("/templates/new-prompt");
+              }}
+            >
+              <div className="p-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Prompt Template</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Create AI prompt configurations
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card
+              className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                navigate("/templates/new-job");
+              }}
+            >
+              <div className="p-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <Briefcase className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Job Template</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Create research job workflows
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
