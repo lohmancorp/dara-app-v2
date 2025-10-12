@@ -12,9 +12,14 @@ import { FloatingControls } from "@/components/FloatingControls";
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const handleAdvancedClick = () => {
+    console.log('Advanced button clicked, current state:', showAdvanced);
+    setShowAdvanced(!showAdvanced);
+  };
+
   const advancedButton = (
     <button
-      onClick={() => setShowAdvanced(!showAdvanced)}
+      onClick={handleAdvancedClick}
       className="h-11 w-11 rounded-full bg-accent text-accent-foreground border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       aria-label="Advanced settings"
       aria-pressed={showAdvanced}
@@ -22,6 +27,8 @@ const Chat = () => {
       <Settings2 className="h-5 w-5" />
     </button>
   );
+
+  console.log('Chat render, showAdvanced:', showAdvanced);
 
   return (
     <>
