@@ -11,7 +11,7 @@ const Templates = () => {
   const { setActionButton } = useFloatingAction();
 
   useEffect(() => {
-    setActionButton(<FloatingActionButton label="Create Custom Template" />);
+    setActionButton(<FloatingActionButton label="New Template" />);
     return () => setActionButton(null);
   }, [setActionButton]);
   const templates = [
@@ -55,7 +55,7 @@ const Templates = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader 
+      <PageHeader
         icon={FileText}
         title="Research Templates"
         description="Start with pre-configured research workflows"
@@ -81,9 +81,7 @@ const Templates = () => {
                   <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                     {template.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3 min-h-[4rem]">
-                    {template.description}
-                  </p>
+                  <p className="text-sm text-muted-foreground line-clamp-3 min-h-[4rem]">{template.description}</p>
                 </div>
                 <Button className="w-full" variant="outline">
                   Use Template
