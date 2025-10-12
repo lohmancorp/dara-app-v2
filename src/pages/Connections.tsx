@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useFloatingAction } from "@/components/AppLayout";
 import { useEffect } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 const Connections = () => {
   const { setActionButton } = useFloatingAction();
@@ -46,25 +47,13 @@ const Connections = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Link2 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="font-bold text-foreground">Data Connections</h1>
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Connect to research databases and sources
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader 
+        icon={Link2}
+        title="Data Connections"
+        description="Connect to research databases and sources"
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {connections.map((connection) => (
             <Card 

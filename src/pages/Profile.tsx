@@ -5,20 +5,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Mail, Briefcase, MapPin } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 
 const Profile = () => {
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <h1 className="font-bold text-foreground mb-2">Profile</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Manage your account information and preferences
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        icon={User}
+        title="Profile"
+        description="Manage your account information and preferences"
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <Card>
             <CardHeader>

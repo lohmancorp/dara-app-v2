@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader } from "@/components/PageHeader";
 
 const ActiveJobs = () => {
   const jobs = [
@@ -64,23 +65,13 @@ const ActiveJobs = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Active Jobs</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Monitor your running research tasks
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader 
+        icon={Activity}
+        title="Active Jobs"
+        description="Monitor your running research tasks"
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="space-y-4">
           {jobs.map((job) => (
             <Card key={job.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">

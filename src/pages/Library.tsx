@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useFloatingAction } from "@/components/AppLayout";
 import { useEffect } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 const Library = () => {
   const { setActionButton } = useFloatingAction();
@@ -17,25 +18,13 @@ const Library = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <LibraryIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="font-bold text-foreground">Document Library</h1>
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Manage and search your research documents
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader 
+        icon={LibraryIcon}
+        title="Document Library"
+        description="Manage and search your research documents"
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

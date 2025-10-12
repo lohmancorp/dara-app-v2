@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AdvancedPanel } from "@/components/AdvancedPanel";
 import { useAdvancedStore } from "@/store/advancedStore";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/PageHeader";
 
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -15,23 +16,14 @@ const Chat = () => {
     <>
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Research</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Get learnings and outcomes from your research.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader 
+        icon={MessageSquare}
+        title="Research"
+        description="Get learnings and outcomes from your research."
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-5xl">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="max-w-5xl mx-auto">
         <Card className="border-0 shadow-md">
           <div className="p-4 sm:p-6 space-y-4">
             <div className="min-h-[300px] sm:min-h-[400px] p-4 sm:p-6 bg-muted/30 rounded-lg">
@@ -76,6 +68,7 @@ const Chat = () => {
             </div>
           </div>
         </Card>
+        </div>
       </div>
     </div>
     </>

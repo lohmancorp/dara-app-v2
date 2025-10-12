@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Lock, Globe, Database, Trash2 } from "lucide-react";
+import { Bell, Lock, Globe, Database, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { LanguageCombobox } from "@/components/LanguageCombobox";
 import { TimezoneCombobox } from "@/components/TimezoneCombobox";
 import { useState } from "react";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { PageHeader } from "@/components/PageHeader";
 
 const Settings = () => {
   const { t, setLanguage } = useTranslation();
@@ -21,16 +22,13 @@ const Settings = () => {
   
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <h1 className="font-bold text-foreground mb-2">{t("settings.title")}</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            {t("settings.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        icon={SettingsIcon}
+        title={t("settings.title")}
+        description={t("settings.description")}
+      />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <Card>
             <CardHeader>

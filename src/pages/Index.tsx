@@ -1,22 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, FileText, Activity, Library } from "lucide-react";
+import { MessageSquare, FileText, Activity, Library, Home } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/PageHeader";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <h1 className="font-bold text-foreground mb-2">Dashboard</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Your Digital Automated Research Assistant
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        icon={Home}
+        title="Dashboard"
+        description="Your Digital Automated Research Assistant"
+      />
       
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
             <CardHeader>
