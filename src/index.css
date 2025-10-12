@@ -61,6 +61,11 @@ All colors MUST be HSL.
 
     /* Profile menu hover (light mode) */
     --menu-item-hover-light: 0 0% 100%;
+
+    /* Switch/Toggle tokens */
+    --switch-track-off: 214 32% 91%;
+    --switch-track-on: 250 95% 63%;
+    --switch-thumb: 0 0% 100%;
   }
 
   .dark {
@@ -106,9 +111,10 @@ All colors MUST be HSL.
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 250 95% 63%;
 
-    /* Dark mode toggle colors */
-    --toggle-inactive-dark: 0 0% 50%;
-    --toggle-thumb-dark: 0 0% 100%;
+    /* Switch/Toggle tokens (dark mode) */
+    --switch-track-off: 0 0% 50%;
+    --switch-track-on: 250 95% 63%;
+    --switch-thumb: 0 0% 100%;
   }
 }
 
