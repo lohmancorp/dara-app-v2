@@ -1,10 +1,19 @@
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Settings2 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { AdvancedPanel } from "@/components/AdvancedPanel";
+import { useAdvancedStore } from "@/store/advancedStore";
+import { Badge } from "@/components/ui/badge";
 
 const Chat = () => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const { enabled, toggleEnabled } = useAdvancedStore();
+
   return (
+    <>
+      <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -41,21 +50,42 @@ const Chat = () => {
               </Button>
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" className="text-xs">
-                Summarize recent papers
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                Find contradictions
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                Compare methodologies
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" className="text-xs">
+                  Summarize recent papers
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Find contradictions
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Compare methodologies
+                </Button>
+              </div>
+              
+              <Button
+                variant={enabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  toggleEnabled();
+                  if (!enabled) {
+                    setShowAdvanced(true);
+                  }
+                }}
+                className="gap-2"
+                aria-label="Toggle advanced mode"
+                aria-pressed={enabled}
+              >
+                <Settings2 className="h-4 w-4" />
+                Advanced
+                {enabled && <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">ON</Badge>}
               </Button>
             </div>
           </div>
         </Card>
       </div>
     </div>
+    </>
   );
 };
 

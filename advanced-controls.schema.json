@@ -1,0 +1,163 @@
+[
+  {
+    "section": "Model Configuration",
+    "id": "model",
+    "label": "Model",
+    "type": "select",
+    "default": "gpt-4",
+    "options": [
+      { "value": "gpt-4", "label": "GPT-4" },
+      { "value": "gpt-4-turbo", "label": "GPT-4 Turbo" },
+      { "value": "gpt-3.5-turbo", "label": "GPT-3.5 Turbo" },
+      { "value": "claude-3-opus", "label": "Claude 3 Opus" },
+      { "value": "claude-3-sonnet", "label": "Claude 3 Sonnet" }
+    ],
+    "help": "Select the AI model to use for generation",
+    "dependsOn": null
+  },
+  {
+    "section": "Model Configuration",
+    "id": "systemPrompt",
+    "label": "System Prompt",
+    "type": "textarea",
+    "default": "You are a helpful AI assistant.",
+    "help": "Define the AI's behavior and personality",
+    "dependsOn": null
+  },
+  {
+    "section": "Generation Parameters",
+    "id": "temperature",
+    "label": "Temperature",
+    "type": "slider",
+    "min": 0,
+    "max": 2,
+    "step": 0.1,
+    "default": 0.7,
+    "help": "Controls randomness. Lower values make output more focused and deterministic, higher values more creative and random.",
+    "dependsOn": null
+  },
+  {
+    "section": "Generation Parameters",
+    "id": "maxTokens",
+    "label": "Max Tokens",
+    "type": "slider",
+    "min": 256,
+    "max": 4096,
+    "step": 256,
+    "default": 2048,
+    "help": "Maximum length of the generated response",
+    "dependsOn": null
+  },
+  {
+    "section": "Generation Parameters",
+    "id": "topP",
+    "label": "Top P",
+    "type": "slider",
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "default": 0.9,
+    "help": "Nucleus sampling: considers tokens with top_p probability mass",
+    "dependsOn": null
+  },
+  {
+    "section": "Generation Parameters",
+    "id": "frequencyPenalty",
+    "label": "Frequency Penalty",
+    "type": "slider",
+    "min": -2,
+    "max": 2,
+    "step": 0.1,
+    "default": 0,
+    "help": "Reduces repetition of token sequences. Positive values decrease likelihood of repeating the same line.",
+    "dependsOn": null
+  },
+  {
+    "section": "Generation Parameters",
+    "id": "presencePenalty",
+    "label": "Presence Penalty",
+    "type": "slider",
+    "min": -2,
+    "max": 2,
+    "step": 0.1,
+    "default": 0,
+    "help": "Encourages talking about new topics. Positive values increase likelihood of introducing new topics.",
+    "dependsOn": null
+  },
+  {
+    "section": "Features",
+    "id": "streaming",
+    "label": "Streaming",
+    "type": "switch",
+    "default": true,
+    "help": "Enable real-time streaming of responses",
+    "dependsOn": null
+  },
+  {
+    "section": "Features",
+    "id": "webSearch",
+    "label": "Web Search",
+    "type": "switch",
+    "default": false,
+    "help": "Allow the AI to search the web for up-to-date information",
+    "dependsOn": null
+  },
+  {
+    "section": "Features",
+    "id": "citations",
+    "label": "Include Citations",
+    "type": "switch",
+    "default": true,
+    "help": "Include source citations in responses",
+    "dependsOn": "webSearch"
+  },
+  {
+    "section": "Response Format",
+    "id": "responseFormat",
+    "label": "Response Format",
+    "type": "select",
+    "default": "text",
+    "options": [
+      { "value": "text", "label": "Plain Text" },
+      { "value": "markdown", "label": "Markdown" },
+      { "value": "json", "label": "JSON" }
+    ],
+    "help": "Format for AI responses",
+    "dependsOn": null
+  },
+  {
+    "section": "Memory & Context",
+    "id": "contextWindow",
+    "label": "Context Window",
+    "type": "slider",
+    "min": 1,
+    "max": 20,
+    "step": 1,
+    "default": 10,
+    "help": "Number of previous messages to include for context",
+    "dependsOn": null
+  },
+  {
+    "section": "Memory & Context",
+    "id": "persistSession",
+    "label": "Persist Session",
+    "type": "switch",
+    "default": true,
+    "help": "Save conversation history across sessions",
+    "dependsOn": null
+  },
+  {
+    "section": "Safety",
+    "id": "contentFilter",
+    "label": "Content Filter",
+    "type": "select",
+    "default": "moderate",
+    "options": [
+      { "value": "strict", "label": "Strict" },
+      { "value": "moderate", "label": "Moderate" },
+      { "value": "permissive", "label": "Permissive" }
+    ],
+    "help": "Content moderation level",
+    "dependsOn": null
+  }
+]
