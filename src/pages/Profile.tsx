@@ -17,7 +17,7 @@ const Profile = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
