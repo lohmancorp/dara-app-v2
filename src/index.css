@@ -194,4 +194,15 @@ All colors MUST be HSL.
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* WYSIWYG Editor placeholder styling */
+  [contenteditable][data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    cursor: text;
+  }
+
+  [contenteditable]:focus {
+    outline: none;
+  }
 }

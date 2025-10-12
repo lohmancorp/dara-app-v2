@@ -5,15 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useFloatingAction } from "@/components/AppLayout";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 
 const Templates = () => {
   const { setActionButton } = useFloatingAction();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setActionButton(<FloatingActionButton label="New Template" />);
+    setActionButton(
+      <FloatingActionButton 
+        label="New Template" 
+        onClick={() => navigate("/templates/new")} 
+      />
+    );
     return () => setActionButton(null);
-  }, [setActionButton]);
+  }, [setActionButton, navigate]);
   const templates = [
     {
       id: 1,

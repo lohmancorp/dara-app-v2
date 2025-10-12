@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Library from "./pages/Library";
 import Templates from "./pages/Templates";
+import NewTemplate from "./pages/NewTemplate";
 import ActiveJobs from "./pages/ActiveJobs";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/chat" element={<Chat />} />
               <Route path="/library" element={<Library />} />
               <Route path="/templates" element={<Templates />} />
+              <Route path="/templates/new" element={<NewTemplate />} />
               <Route path="/active-jobs" element={<ActiveJobs />} />
               <Route path="/connections" element={<Connections />} />
               <Route path="/profile" element={<Profile />} />

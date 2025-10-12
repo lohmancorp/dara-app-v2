@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      prompt_templates: {
+        Row: {
+          created_at: string
+          id: string
+          prompt: string
+          prompt_description: string
+          prompt_model: string
+          prompt_name: string
+          prompt_outcome: string
+          system_outcome: string
+          system_prompt: string
+          total_prompt_cost: number | null
+          total_tokens: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prompt: string
+          prompt_description: string
+          prompt_model: string
+          prompt_name: string
+          prompt_outcome: string
+          system_outcome: string
+          system_prompt: string
+          total_prompt_cost?: number | null
+          total_tokens?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prompt?: string
+          prompt_description?: string
+          prompt_model?: string
+          prompt_name?: string
+          prompt_outcome?: string
+          system_outcome?: string
+          system_prompt?: string
+          total_prompt_cost?: number | null
+          total_tokens?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
