@@ -5,10 +5,12 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Bell, Lock, Globe, Database, Trash2 } from "lucide-react";
 import { LanguageCombobox } from "@/components/LanguageCombobox";
+import { TimezoneCombobox } from "@/components/TimezoneCombobox";
 import { useState } from "react";
 
 const Settings = () => {
   const [selectedLanguage, setSelectedLanguage] = useState<{ code: string; name: string }>();
+  const [selectedTimezone, setSelectedTimezone] = useState<string>();
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
@@ -140,10 +142,11 @@ const Settings = () => {
               <Separator />
 
               <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Button variant="outline" className="w-full justify-start">
-                  (GMT-8:00) Pacific Time
-                </Button>
+                <Label htmlFor="timezone-select">Timezone</Label>
+                <TimezoneCombobox
+                  value={selectedTimezone}
+                  onSelect={setSelectedTimezone}
+                />
               </div>
             </CardContent>
           </Card>
