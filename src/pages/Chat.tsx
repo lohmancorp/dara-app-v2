@@ -1,33 +1,33 @@
-import { MessageSquare, Send, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { MessageSquare, Send } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AdvancedPanel } from "@/components/AdvancedPanel";
-import { useAdvancedStore } from "@/store/advancedStore";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
-import { FloatingControls } from "@/components/FloatingControls";
+import { useFloatingAction } from "@/components/AppLayout";
 
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const { setAdvancedControls } = useFloatingAction();
 
   const handleAdvancedClick = () => {
-    console.log('Advanced button clicked, current state:', showAdvanced);
-    setShowAdvanced(!showAdvanced);
+    setShowAdvanced((prev) => !prev);
   };
 
-  console.log('Chat render, showAdvanced:', showAdvanced);
+  useEffect(() => {
+    setAdvancedControls({
+      onClick: handleAdvancedClick,
+      isPressed: showAdvanced,
+    });
+    // Cleanup on unmount
+    return () => setAdvancedControls(null);
+  }, [showAdvanced, setAdvancedControls]);
 
   return (
     <>
-      <FloatingControls 
-        onAdvancedClick={handleAdvancedClick}
-        advancedPressed={showAdvanced}
-      />
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
       <div className="min-h-screen bg-background flex flex-col">
-        <PageHeader 
+        <PageHeader
           icon={MessageSquare}
           title="Research"
           description="Get learnings and outcomes from your research."
@@ -52,11 +52,7 @@ const Chat = () => {
                 placeholder="Ask anything about your research documents..."
                 className="min-h-[60px] resize-none flex-1"
               />
-              <Button 
-                size="icon" 
-                className="h-[60px] w-[60px] rounded-full flex-shrink-0" 
-                variant="accent"
-              >
+              <Button size="icon" className="h-[60px] w-[60px] rounded-full flex-shrink-0" variant="accent">
                 <Send className="h-6 w-6" />
               </Button>
             </div>
