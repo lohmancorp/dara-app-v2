@@ -71,7 +71,7 @@ export const TagInput = ({ value, onChange, placeholder, suggestions = [], id }:
             <button
               type="button"
               onClick={() => removeTag(tag)}
-              className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+              className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-[1px]"
             >
               <X className="h-3 w-3" />
             </button>
