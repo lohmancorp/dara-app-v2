@@ -13,7 +13,7 @@ export function FloatingControls({ actionButton }: FloatingControlsProps) {
 
   return (
     <div className="fixed top-6 left-0 right-0 z-50 pointer-events-none">
-      <div className="container mx-auto !px-4 sm:!px-6 lg:!px-8">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-3 pointer-events-auto">
           {actionButton && <div>{actionButton}</div>}
           <div className="relative">
