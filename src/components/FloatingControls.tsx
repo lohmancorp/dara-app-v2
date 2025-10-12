@@ -1,14 +1,15 @@
-import { Bell, User } from "lucide-react";
+import { Bell, User, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ProfileDropdown } from "./ProfileDropdown";
 
 interface FloatingControlsProps {
   actionButton?: React.ReactNode;
-  advancedButton?: React.ReactNode;
+  onAdvancedClick?: () => void;
+  advancedPressed?: boolean;
 }
 
-export function FloatingControls({ actionButton, advancedButton }: FloatingControlsProps) {
+export function FloatingControls({ actionButton, onAdvancedClick, advancedPressed }: FloatingControlsProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -17,7 +18,16 @@ export function FloatingControls({ actionButton, advancedButton }: FloatingContr
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-3 pointer-events-auto">
           {actionButton && <div>{actionButton}</div>}
-          {advancedButton && <div>{advancedButton}</div>}
+          {onAdvancedClick && (
+            <button
+              onClick={onAdvancedClick}
+              className="h-11 w-11 rounded-full bg-accent text-accent-foreground border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              aria-label="Advanced settings"
+              aria-pressed={advancedPressed}
+            >
+              <Settings2 className="h-5 w-5" />
+            </button>
+          )}
           <div className="relative">
         <button
           onClick={() => {

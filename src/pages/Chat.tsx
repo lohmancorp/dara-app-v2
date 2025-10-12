@@ -17,22 +17,14 @@ const Chat = () => {
     setShowAdvanced(!showAdvanced);
   };
 
-  const advancedButton = (
-    <button
-      onClick={handleAdvancedClick}
-      className="h-11 w-11 rounded-full bg-accent text-accent-foreground border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-      aria-label="Advanced settings"
-      aria-pressed={showAdvanced}
-    >
-      <Settings2 className="h-5 w-5" />
-    </button>
-  );
-
   console.log('Chat render, showAdvanced:', showAdvanced);
 
   return (
     <>
-      <FloatingControls advancedButton={advancedButton} />
+      <FloatingControls 
+        onAdvancedClick={handleAdvancedClick}
+        advancedPressed={showAdvanced}
+      />
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
       <div className="min-h-screen bg-background flex flex-col">
         <PageHeader 
