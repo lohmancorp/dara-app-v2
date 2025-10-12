@@ -67,14 +67,11 @@ const Chat = () => {
                 variant={showAdvanced ? "default" : "outline"}
                 size="icon"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="rounded-full relative"
+                className="rounded-full"
                 aria-label="Advanced settings"
                 aria-pressed={showAdvanced}
               >
                 <Settings2 className="h-4 w-4" />
-                {enabled && (
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full border-2 border-background" />
-                )}
               </Button>
             </div>
           </div>
