@@ -266,13 +266,12 @@ const NewTemplate = () => {
               </Label>
               <Button
                 type="button"
-                size="sm"
+                size="icon"
+                variant="ghost"
                 onClick={handleGeneratePrompt}
                 disabled={isGeneratingPrompt || !formData.promptOutcome}
-                className="gap-2"
               >
                 <Sparkles className="h-4 w-4" />
-                {isGeneratingPrompt ? "Generating..." : "Generate/Improve"}
               </Button>
             </div>
             <Textarea
@@ -303,13 +302,12 @@ const NewTemplate = () => {
               </Label>
               <Button
                 type="button"
-                size="sm"
+                size="icon"
+                variant="ghost"
                 onClick={handleGenerateSystemPrompt}
                 disabled={isGeneratingSystemPrompt || !formData.systemOutcome}
-                className="gap-2"
               >
                 <Sparkles className="h-4 w-4" />
-                {isGeneratingSystemPrompt ? "Generating..." : "Generate/Improve"}
               </Button>
             </div>
             <Textarea

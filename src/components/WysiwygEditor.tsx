@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Bold, List, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ interface WysiwygEditorProps {
 
 export function WysiwygEditor({ value, onChange, placeholder, className }: WysiwygEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const [activeCommands, setActiveCommands] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -25,14 +26,19 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
     }
   };
 
+  const updateActiveCommands = () => {
+    const commands = new Set<string>();
+    if (document.queryCommandState("bold")) commands.add("bold");
+    if (document.queryCommandState("insertUnorderedList")) commands.add("insertUnorderedList");
+    if (document.queryCommandState("insertOrderedList")) commands.add("insertOrderedList");
+    setActiveCommands(commands);
+  };
+
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
+    updateActiveCommands();
     handleInput();
-  };
-
-  const isCommandActive = (command: string) => {
-    return document.queryCommandState(command);
   };
 
   return (
@@ -45,7 +51,7 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
           onClick={() => execCommand("bold")}
           className={cn(
             "h-8 w-8 p-0",
-            isCommandActive("bold") && "bg-accent"
+            activeCommands.has("bold") && "bg-accent"
           )}
         >
           <Bold className="h-4 w-4" />
@@ -57,7 +63,7 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
           onClick={() => execCommand("insertUnorderedList")}
           className={cn(
             "h-8 w-8 p-0",
-            isCommandActive("insertUnorderedList") && "bg-accent"
+            activeCommands.has("insertUnorderedList") && "bg-accent"
           )}
         >
           <List className="h-4 w-4" />
@@ -69,7 +75,7 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
           onClick={() => execCommand("insertOrderedList")}
           className={cn(
             "h-8 w-8 p-0",
-            isCommandActive("insertOrderedList") && "bg-accent"
+            activeCommands.has("insertOrderedList") && "bg-accent"
           )}
         >
           <ListOrdered className="h-4 w-4" />
@@ -79,6 +85,9 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
         ref={editorRef}
         contentEditable
         onInput={handleInput}
+        onFocus={updateActiveCommands}
+        onMouseUp={updateActiveCommands}
+        onKeyUp={updateActiveCommands}
         className={cn(
           "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !value && "text-muted-foreground",
