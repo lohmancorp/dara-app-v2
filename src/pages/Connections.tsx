@@ -1,9 +1,18 @@
-import { Link2, Plus, CheckCircle, AlertCircle } from "lucide-react";
+import { Link2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { useFloatingAction } from "@/components/AppLayout";
+import { useEffect } from "react";
 
 const Connections = () => {
+  const { setActionButton } = useFloatingAction();
+
+  useEffect(() => {
+    setActionButton(<FloatingActionButton label="Add Connection" />);
+    return () => setActionButton(null);
+  }, [setActionButton]);
   const connections = [
     {
       id: 1,
@@ -51,11 +60,6 @@ const Connections = () => {
                 </p>
               </div>
             </div>
-            <Button variant="accent" className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Add Connection</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
           </div>
         </div>
       </div>

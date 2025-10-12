@@ -1,10 +1,20 @@
-import { Library as LibraryIcon, Upload, Search, Filter, FileText } from "lucide-react";
+import { Library as LibraryIcon, Search, Filter, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { useFloatingAction } from "@/components/AppLayout";
+import { useEffect } from "react";
 
 const Library = () => {
+  const { setActionButton } = useFloatingAction();
+
+  useEffect(() => {
+    setActionButton(<FloatingActionButton label="Upload Documents" />);
+    return () => setActionButton(null);
+  }, [setActionButton]);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
@@ -21,11 +31,6 @@ const Library = () => {
                 </p>
               </div>
             </div>
-            <Button variant="accent" className="w-full sm:w-auto">
-              <Upload className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Upload Documents</span>
-              <span className="sm:hidden">Upload</span>
-            </Button>
           </div>
         </div>
       </div>

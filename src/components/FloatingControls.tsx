@@ -3,12 +3,17 @@ import { useState } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ProfileDropdown } from "./ProfileDropdown";
 
-export function FloatingControls() {
+interface FloatingControlsProps {
+  actionButton?: React.ReactNode;
+}
+
+export function FloatingControls({ actionButton }: FloatingControlsProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
+      {actionButton && <div className="mr-auto">{actionButton}</div>}
       <div className="relative">
         <button
           onClick={() => {

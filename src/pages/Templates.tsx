@@ -1,9 +1,18 @@
-import { FileText, Plus } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { useFloatingAction } from "@/components/AppLayout";
+import { useEffect } from "react";
 
 const Templates = () => {
+  const { setActionButton } = useFloatingAction();
+
+  useEffect(() => {
+    setActionButton(<FloatingActionButton label="Create Custom Template" />);
+    return () => setActionButton(null);
+  }, [setActionButton]);
   const templates = [
     {
       id: 1,
@@ -59,11 +68,6 @@ const Templates = () => {
                 </p>
               </div>
             </div>
-            <Button variant="accent" className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Create Custom Template</span>
-              <span className="sm:hidden">Create</span>
-            </Button>
           </div>
         </div>
       </div>
