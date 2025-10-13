@@ -1,10 +1,10 @@
 project_id = "bdvwfddzihsvfgstlmqc"
 
 [functions.get-languages]
-verify_jwt = false
+verify_jwt = true
 
 [functions.translate-text]
-verify_jwt = false
+verify_jwt = true
 
 [functions.improve-prompt]
 verify_jwt = true

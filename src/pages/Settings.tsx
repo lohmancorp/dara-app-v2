@@ -35,8 +35,13 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 const passwordSchema = z.object({
-  newPassword: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
+  newPassword: z.string()
+    .min(12, "Password must be at least 12 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string()
+    .min(12, "Password must be at least 12 characters"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -424,7 +429,7 @@ const Settings = () => {
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
             <DialogDescription>
-              Enter your new password below. Make sure it's at least 6 characters long.
+              Enter your new password below. Must be at least 12 characters with uppercase, lowercase, and numbers.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
