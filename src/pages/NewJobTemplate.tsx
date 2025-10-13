@@ -193,10 +193,11 @@ const NewJobTemplate = () => {
     e.preventDefault();
 
     if (!formData.jobName || !formData.jobDescription || !formData.jobConnection || 
-        !formData.jobPrompt) {
+        !formData.jobPrompt || !formData.researchType || !formData.researchDepth || 
+        !formData.researchExactness) {
       toast({
         title: "Missing Fields",
-        description: "Please fill in all required fields (Job Name, Description, Connection, and Prompt).",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
@@ -364,7 +365,9 @@ const NewJobTemplate = () => {
             <h2 className="text-lg font-semibold">Research Settings</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="researchType">Research Type</Label>
+                <Label htmlFor="researchType">
+                  Research Type <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={formData.researchType}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, researchType: value }))}
@@ -383,7 +386,9 @@ const NewJobTemplate = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="researchDepth">Research Depth</Label>
+                <Label htmlFor="researchDepth">
+                  Research Depth <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={formData.researchDepth}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, researchDepth: value }))}
@@ -402,7 +407,9 @@ const NewJobTemplate = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="researchExactness">Research Exactness</Label>
+                <Label htmlFor="researchExactness">
+                  Research Exactness <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={formData.researchExactness}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, researchExactness: value }))}
