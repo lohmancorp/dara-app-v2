@@ -71,39 +71,57 @@ export type Database = {
           bio: string | null
           company: string | null
           created_at: string
+          data_sharing: boolean | null
           email: string
+          email_notifications: boolean | null
           full_name: string | null
           id: string
           job_title: string | null
+          language_code: string | null
           location: string | null
+          research_complete_notifications: boolean | null
+          timezone: string | null
           updated_at: string
           website: string | null
+          weekly_summary_notifications: boolean | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           company?: string | null
           created_at?: string
+          data_sharing?: boolean | null
           email: string
+          email_notifications?: boolean | null
           full_name?: string | null
           id: string
           job_title?: string | null
+          language_code?: string | null
           location?: string | null
+          research_complete_notifications?: boolean | null
+          timezone?: string | null
           updated_at?: string
           website?: string | null
+          weekly_summary_notifications?: boolean | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           company?: string | null
           created_at?: string
+          data_sharing?: boolean | null
           email?: string
+          email_notifications?: boolean | null
           full_name?: string | null
           id?: string
           job_title?: string | null
+          language_code?: string | null
           location?: string | null
+          research_complete_notifications?: boolean | null
+          timezone?: string | null
           updated_at?: string
           website?: string | null
+          weekly_summary_notifications?: boolean | null
         }
         Relationships: []
       }

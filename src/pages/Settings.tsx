@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,11 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [researchCompleteNotifications, setResearchCompleteNotifications] = useState(true);
+  const [weeklySummaryNotifications, setWeeklySummaryNotifications] = useState(false);
+  const [dataSharing, setDataSharing] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState<{ code: string; name: string }>();
   const [selectedTimezone, setSelectedTimezone] = useState<string>();
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -55,10 +60,72 @@ const Settings = () => {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      loadPreferences();
+    }
+  }, [user]);
+
+  const loadPreferences = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("email_notifications, research_complete_notifications, weekly_summary_notifications, data_sharing, language_code, timezone")
+        .eq("id", user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setEmailNotifications(data.email_notifications ?? true);
+        setResearchCompleteNotifications(data.research_complete_notifications ?? true);
+        setWeeklySummaryNotifications(data.weekly_summary_notifications ?? false);
+        setDataSharing(data.data_sharing ?? true);
+        setSelectedTimezone(data.timezone ?? "UTC");
+        if (data.language_code) {
+          setLanguage(data.language_code);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading preferences:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updatePreference = async (field: string, value: any) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ [field]: value })
+        .eq("id", user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Settings Updated",
+        description: "Your preferences have been saved.",
+      });
+    } catch (error) {
+      console.error("Error updating preference:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save preference.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const handleLanguageSelect = (language: { code: string; name: string }) => {
     setSelectedLanguage(language);
     setLanguage(language.code);
+    updatePreference("language_code", language.code);
+  };
+
+  const handleTimezoneSelect = (timezone: string) => {
+    setSelectedTimezone(timezone);
+    updatePreference("timezone", timezone);
   };
 
   const handleChangePassword = async () => {
@@ -164,7 +231,15 @@ const Settings = () => {
                     {t("settings.emailNotifications.description")}
                   </p>
                 </div>
-                <Switch id="email-notifications" defaultChecked />
+                <Switch 
+                  id="email-notifications" 
+                  checked={emailNotifications}
+                  onCheckedChange={(checked) => {
+                    setEmailNotifications(checked);
+                    updatePreference("email_notifications", checked);
+                  }}
+                  disabled={isLoading}
+                />
               </div>
 
               <Separator />
@@ -176,7 +251,15 @@ const Settings = () => {
                     {t("settings.researchComplete.description")}
                   </p>
                 </div>
-                <Switch id="research-complete" defaultChecked />
+                <Switch 
+                  id="research-complete" 
+                  checked={researchCompleteNotifications}
+                  onCheckedChange={(checked) => {
+                    setResearchCompleteNotifications(checked);
+                    updatePreference("research_complete_notifications", checked);
+                  }}
+                  disabled={isLoading}
+                />
               </div>
 
               <Separator />
@@ -188,7 +271,15 @@ const Settings = () => {
                     {t("settings.weeklySummary.description")}
                   </p>
                 </div>
-                <Switch id="weekly-summary" />
+                <Switch 
+                  id="weekly-summary" 
+                  checked={weeklySummaryNotifications}
+                  onCheckedChange={(checked) => {
+                    setWeeklySummaryNotifications(checked);
+                    updatePreference("weekly_summary_notifications", checked);
+                  }}
+                  disabled={isLoading}
+                />
               </div>
             </CardContent>
           </Card>
@@ -211,7 +302,15 @@ const Settings = () => {
                     {t("settings.dataSharing.description")}
                   </p>
                 </div>
-                <Switch id="data-sharing" defaultChecked />
+                <Switch 
+                  id="data-sharing" 
+                  checked={dataSharing}
+                  onCheckedChange={(checked) => {
+                    setDataSharing(checked);
+                    updatePreference("data_sharing", checked);
+                  }}
+                  disabled={isLoading}
+                />
               </div>
 
               <Separator />
@@ -259,7 +358,7 @@ const Settings = () => {
                 <Label htmlFor="timezone-select">{t("settings.timezone")}</Label>
                 <TimezoneCombobox
                   value={selectedTimezone}
-                  onSelect={setSelectedTimezone}
+                  onSelect={handleTimezoneSelect}
                 />
               </div>
             </CardContent>
