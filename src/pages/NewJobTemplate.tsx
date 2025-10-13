@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 const RESEARCH_DEPTH_OPTIONS = ["Quick Research", "Deep Research"];
 const RESEARCH_EXACTNESS_OPTIONS = ["Creative", "Precise", "Strict", "Balanced"];
@@ -31,7 +32,7 @@ const NewJobTemplate = () => {
     jobTags: [] as string[],
     jobConnection: "",
     jobPrompt: "",
-    jobDataType: [] as string[],
+    jobDataType: "",
     jobDataTypeField: "",
     researchType: "",
     researchDepth: "Quick Research",
@@ -111,66 +112,72 @@ const NewJobTemplate = () => {
     setSelectedFile(file);
   };
 
-  const handleDataTypeToggle = (dataType: string) => {
+  const handleDataTypeSelect = (dataType: string) => {
     setFormData((prev) => ({
       ...prev,
-      jobDataType: prev.jobDataType.includes(dataType)
-        ? prev.jobDataType.filter((t) => t !== dataType)
-        : [...prev.jobDataType, dataType],
+      jobDataType: dataType,
+    }));
+  };
+
+  const handleJobTypeToggle = (jobType: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      jobType: prev.jobType.includes(jobType)
+        ? prev.jobType.filter((t) => t !== jobType)
+        : [...prev.jobType, jobType],
     }));
   };
 
   const renderDataTypeField = () => {
-    if (formData.jobDataType.length === 0) return null;
+    if (!formData.jobDataType) return null;
+
+    const dataType = formData.jobDataType;
 
     return (
-      <div className="space-y-4">
-        <Label>Job Data Type Fields</Label>
-        {formData.jobDataType.map((dataType) => (
-          <div key={dataType} className="space-y-2 p-4 border rounded-md">
-            <Label className="text-sm font-medium">{dataType}</Label>
-            {dataType === "File" && (
-              <div className="space-y-2">
-                <div className="border-2 border-dashed border-border rounded-md p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <Input
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf,.json,.csv,.xlsx,.xls,.doc,.docx"
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <Label htmlFor="file-upload" className="cursor-pointer">
-                    <span className="text-sm text-muted-foreground">
-                      {selectedFile ? selectedFile.name : "Drop file here or click to browse"}
-                    </span>
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PDF, JSON, CSV, XLSX, XLS, DOC, DOCX (Max 20MB)
-                  </p>
-                </div>
-              </div>
-            )}
-            {dataType === "Site Link" && (
+      <div className="space-y-2 p-4 border rounded-md bg-muted/30">
+        <Label className="text-sm font-medium text-muted-foreground">{dataType} (Informational)</Label>
+        {dataType === "File" && (
+          <div className="space-y-2">
+            <div className="border-2 border-dashed border-border rounded-md p-6 text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <Input
-                placeholder="https://example.com/research-article"
-                type="url"
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.json,.csv,.xlsx,.xls,.doc,.docx"
+                className="hidden"
+                id="file-upload"
               />
-            )}
-            {dataType === "JQL" && (
-              <Textarea
-                placeholder="Enter JQL statement..."
-                rows={3}
-              />
-            )}
-            {dataType === "Dynamic Search Fields" && (
-              <Input
-                placeholder="Will be dynamically pulled from connection settings"
-                disabled
-              />
-            )}
+              <Label htmlFor="file-upload" className="cursor-pointer">
+                <span className="text-sm text-muted-foreground">
+                  {selectedFile ? selectedFile.name : "Drop file here or click to browse"}
+                </span>
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, JSON, CSV, XLSX, XLS, DOC, DOCX (Max 20MB)
+              </p>
+            </div>
           </div>
-        ))}
+        )}
+        {dataType === "Site Link" && (
+          <Input
+            placeholder="https://example.com/research-article"
+            type="url"
+            disabled
+          />
+        )}
+        {dataType === "JQL" && (
+          <Textarea
+            placeholder="Enter JQL statement..."
+            rows={3}
+            disabled
+          />
+        )}
+        {dataType === "Dynamic Search Fields" && (
+          <Input
+            placeholder="Will be dynamically pulled from connection settings"
+            disabled
+          />
+        )}
       </div>
     );
   };
@@ -182,25 +189,7 @@ const NewJobTemplate = () => {
         !formData.jobPrompt) {
       toast({
         title: "Missing Fields",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.jobTeam.length === 0) {
-      toast({
-        title: "Missing Team",
-        description: "Please assign at least one team.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.jobTags.length === 0) {
-      toast({
-        title: "Missing Tags",
-        description: "Please add at least one tag.",
+        description: "Please fill in all required fields (Job Name, Description, Connection, and Prompt).",
         variant: "destructive",
       });
       return;
@@ -276,9 +265,7 @@ const NewJobTemplate = () => {
             <h2 className="text-lg font-semibold">Organization</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="jobTeam">
-                  Job Team <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="jobTeam">Job Team</Label>
                 <TagInput
                   id="jobTeam"
                   value={formData.jobTeam}
@@ -289,9 +276,7 @@ const NewJobTemplate = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobTags">
-                  Job Tags <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="jobTags">Job Tags</Label>
                 <TagInput
                   id="jobTags"
                   value={formData.jobTags}
@@ -357,9 +342,9 @@ const NewJobTemplate = () => {
                   {DATA_TYPE_OPTIONS.map((dataType) => (
                     <Badge
                       key={dataType}
-                      variant={formData.jobDataType.includes(dataType) ? "default" : "outline"}
+                      variant={formData.jobDataType === dataType ? "default" : "outline"}
                       className="cursor-pointer"
-                      onClick={() => handleDataTypeToggle(dataType)}
+                      onClick={() => handleDataTypeSelect(dataType)}
                     >
                       {dataType}
                     </Badge>
@@ -442,24 +427,13 @@ const NewJobTemplate = () => {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Chunking Settings</h2>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Job Chunking</Label>
-                <div className="flex gap-2">
-                  <Badge
-                    variant={formData.jobChunking ? "default" : "outline"}
-                    className="cursor-pointer px-6 py-2"
-                    onClick={() => setFormData((prev) => ({ ...prev, jobChunking: true }))}
-                  >
-                    Yes
-                  </Badge>
-                  <Badge
-                    variant={!formData.jobChunking ? "default" : "outline"}
-                    className="cursor-pointer px-6 py-2"
-                    onClick={() => setFormData((prev) => ({ ...prev, jobChunking: false }))}
-                  >
-                    No
-                  </Badge>
-                </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="jobChunking">Job Chunking</Label>
+                <Switch
+                  id="jobChunking"
+                  checked={formData.jobChunking}
+                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, jobChunking: checked }))}
+                />
               </div>
 
               {formData.jobChunking && (
@@ -495,14 +469,7 @@ const NewJobTemplate = () => {
                     key={type}
                     variant={formData.jobType.includes(type) ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        jobType: prev.jobType.includes(type)
-                          ? prev.jobType.filter((t) => t !== type)
-                          : [...prev.jobType, type],
-                      }))
-                    }
+                    onClick={() => handleJobTypeToggle(type)}
                   >
                     {type}
                   </Badge>
