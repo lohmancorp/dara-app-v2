@@ -60,7 +60,7 @@ export const SingleSelectTagInput = ({
         }}
       >
         {value && (
-          <Badge variant="secondary" className="gap-1 h-6 text-xs py-0 px-2">
+          <Badge variant="default" className="gap-1 h-6 text-xs py-0 px-2 bg-primary text-primary-foreground">
             {value}
             <button
               type="button"
@@ -68,7 +68,7 @@ export const SingleSelectTagInput = ({
                 e.stopPropagation();
                 handleRemove();
               }}
-              className="ml-1 hover:bg-secondary-foreground/20 rounded-full w-[23px] h-[23px] flex items-center justify-center"
+              className="ml-1 hover:bg-primary-foreground/20 rounded-full w-[23px] h-[23px] flex items-center justify-center"
             >
               <X className="h-3 w-3" />
             </button>
