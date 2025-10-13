@@ -50,14 +50,38 @@ const Profile = () => {
         .from("profiles")
         .select("*")
         .eq("id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
-      if (data) {
+      // If no profile exists, create one from auth data
+      if (!data) {
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user?.id,
+            email: user?.email || "",
+            full_name: user?.user_metadata?.full_name || "",
+            avatar_url: user?.user_metadata?.avatar_url || "",
+          });
+
+        if (insertError) throw insertError;
+
+        // Set form data from auth user
+        setFormData({
+          full_name: user?.user_metadata?.full_name || "",
+          email: user?.email || "",
+          bio: "",
+          company: "",
+          job_title: "",
+          location: "",
+          website: "",
+          avatar_url: user?.user_metadata?.avatar_url || "",
+        });
+      } else {
         setFormData({
           full_name: data.full_name || "",
-          email: data.email || "",
+          email: data.email || user?.email || "",
           bio: data.bio || "",
           company: data.company || "",
           job_title: data.job_title || "",
