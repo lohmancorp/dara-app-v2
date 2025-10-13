@@ -4,8 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TranslationProvider } from "@/contexts/TranslationContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import Library from "./pages/Library";
 import Templates from "./pages/Templates";
@@ -15,7 +18,6 @@ import ViewPromptTemplate from "./pages/ViewPromptTemplate";
 import ViewJobTemplate from "./pages/ViewJobTemplate";
 import EditPromptTemplate from "./pages/EditPromptTemplate";
 import EditJobTemplate from "./pages/EditJobTemplate";
-import SeedTemplates from "./pages/SeedTemplates";
 import ActiveJobs from "./pages/ActiveJobs";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
@@ -31,27 +33,27 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppLayout>
+          <AuthProvider>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/templates/new-prompt" element={<NewPromptTemplate />} />
-              <Route path="/templates/new-job" element={<NewJobTemplate />} />
-              <Route path="/templates/prompt/:id/view" element={<ViewPromptTemplate />} />
-              <Route path="/templates/prompt/:id/edit" element={<EditPromptTemplate />} />
-              <Route path="/templates/job/:id/view" element={<ViewJobTemplate />} />
-              <Route path="/templates/job/:id/edit" element={<EditJobTemplate />} />
-              <Route path="/templates/seed" element={<SeedTemplates />} />
-              <Route path="/active-jobs" element={<ActiveJobs />} />
-              <Route path="/connections" element={<Connections />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<ProtectedRoute><AppLayout><Index /></AppLayout></ProtectedRoute>} />
+              <Route path="/chat" element={<ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>} />
+              <Route path="/library" element={<ProtectedRoute><AppLayout><Library /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute><AppLayout><Templates /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/new-prompt" element={<ProtectedRoute><AppLayout><NewPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/new-job" element={<ProtectedRoute><AppLayout><NewJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/prompt/:id/view" element={<ProtectedRoute><AppLayout><ViewPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/prompt/:id/edit" element={<ProtectedRoute><AppLayout><EditPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/job/:id/view" element={<ProtectedRoute><AppLayout><ViewJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/templates/job/:id/edit" element={<ProtectedRoute><AppLayout><EditJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/active-jobs" element={<ProtectedRoute><AppLayout><ActiveJobs /></AppLayout></ProtectedRoute>} />
+              <Route path="/connections" element={<ProtectedRoute><AppLayout><Connections /></AppLayout></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </AppLayout>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </TranslationProvider>

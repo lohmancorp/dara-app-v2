@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Settings, Moon, Sun, Monitor, ChevronRight } from "lucide-react";
+import { User, Settings, Moon, Sun, Monitor, ChevronRight, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProfileDropdownProps {
   onClose: () => void;
@@ -9,10 +10,19 @@ interface ProfileDropdownProps {
 
 export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { user, signOut } = useAuth();
   const [theme, setTheme] = useState<"light" | "dark" | "system">(
     () => (localStorage.getItem("theme") as "light" | "dark" | "system") || "system"
   );
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+
+  const getUserName = () => {
+    return user?.user_metadata?.full_name || "User";
+  };
+
+  const getUserEmail = () => {
+    return user?.email || "user@example.com";
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -71,8 +81,8 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
     >
       <div className="p-2">
         <div className="px-3 py-2 mb-1">
-          <p className="text-sm font-medium text-foreground">John Doe</p>
-          <p className="text-xs text-muted-foreground">john.doe@example.com</p>
+          <p className="text-sm font-medium text-foreground">{getUserName()}</p>
+          <p className="text-xs text-muted-foreground">{getUserEmail()}</p>
         </div>
 
         <Separator className="my-2" />
@@ -142,6 +152,21 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
             </div>
           )}
         </div>
+
+        <Separator className="my-2" />
+
+        <button
+          onClick={() => {
+            signOut();
+            onClose();
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-md transition-colors [&:hover]:dark:text-foreground [&:hover]:light:text-white [&:hover_svg]:light:text-white"
+          role="menuitem"
+          aria-label="Log out"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
       </div>
     </div>
   );
