@@ -11,6 +11,10 @@ import Library from "./pages/Library";
 import Templates from "./pages/Templates";
 import NewPromptTemplate from "./pages/NewPromptTemplate";
 import NewJobTemplate from "./pages/NewJobTemplate";
+import ViewPromptTemplate from "./pages/ViewPromptTemplate";
+import ViewJobTemplate from "./pages/ViewJobTemplate";
+import EditPromptTemplate from "./pages/EditPromptTemplate";
+import EditJobTemplate from "./pages/EditJobTemplate";
 import ActiveJobs from "./pages/ActiveJobs";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
@@ -34,6 +38,10 @@ const App = () => (
               <Route path="/templates" element={<Templates />} />
               <Route path="/templates/new-prompt" element={<NewPromptTemplate />} />
               <Route path="/templates/new-job" element={<NewJobTemplate />} />
+              <Route path="/templates/prompt/:id/view" element={<ViewPromptTemplate />} />
+              <Route path="/templates/prompt/:id/edit" element={<EditPromptTemplate />} />
+              <Route path="/templates/job/:id/view" element={<ViewJobTemplate />} />
+              <Route path="/templates/job/:id/edit" element={<EditJobTemplate />} />
               <Route path="/active-jobs" element={<ActiveJobs />} />
               <Route path="/connections" element={<Connections />} />
               <Route path="/profile" element={<Profile />} />

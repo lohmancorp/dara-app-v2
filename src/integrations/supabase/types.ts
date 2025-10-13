@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      job_templates: {
+        Row: {
+          created_at: string
+          id: string
+          job_connection: string
+          job_description: string
+          job_name: string
+          job_outcome: string
+          job_prompt: string
+          job_tags: string[] | null
+          job_team: string[] | null
+          research_depth: string
+          research_exactness: string
+          research_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_connection: string
+          job_description: string
+          job_name: string
+          job_outcome: string
+          job_prompt: string
+          job_tags?: string[] | null
+          job_team?: string[] | null
+          research_depth: string
+          research_exactness: string
+          research_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_connection?: string
+          job_description?: string
+          job_name?: string
+          job_outcome?: string
+          job_prompt?: string
+          job_tags?: string[] | null
+          job_team?: string[] | null
+          research_depth?: string
+          research_exactness?: string
+          research_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prompt_templates: {
         Row: {
           created_at: string
