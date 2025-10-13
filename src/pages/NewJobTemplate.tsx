@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { TagInput } from "@/components/TagInput";
+import { SingleSelectTagInput } from "@/components/SingleSelectTagInput";
+import { MultiSelectTagInput } from "@/components/MultiSelectTagInput";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
 const RESEARCH_DEPTH_OPTIONS = ["Quick Research", "Deep Research"];
@@ -50,14 +51,19 @@ const NewJobTemplate = () => {
     { id: "3", name: "arXiv" },
     { id: "4", name: "IEEE Xplore" },
   ]);
-  const [availablePrompts, setAvailablePrompts] = useState<{ id: string; name: string }[]>([]);
+  const [availablePrompts, setAvailablePrompts] = useState<{ id: string; name: string }[]>([
+    { id: "dummy-1", name: "Research Summary Template" },
+    { id: "dummy-2", name: "Literature Review Template" },
+    { id: "dummy-3", name: "Data Analysis Template" },
+    { id: "dummy-4", name: "Citation Extraction Template" },
+  ]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchExistingData = async () => {
       const { data } = await supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name");
       
-      if (data) {
+      if (data && data.length > 0) {
         const teams = new Set<string>();
         const tags = new Set<string>();
         
@@ -68,6 +74,7 @@ const NewJobTemplate = () => {
         
         setExistingTeams(Array.from(teams));
         setExistingTags(Array.from(tags));
+        // Replace dummy data with real data if available
         setAvailablePrompts(data.map(item => ({ id: item.id, name: item.prompt_name })));
       }
     };
@@ -338,18 +345,12 @@ const NewJobTemplate = () => {
 
               <div className="space-y-2">
                 <Label>Job Data Type</Label>
-                <div className="flex flex-wrap gap-2">
-                  {DATA_TYPE_OPTIONS.map((dataType) => (
-                    <Badge
-                      key={dataType}
-                      variant={formData.jobDataType === dataType ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => handleDataTypeSelect(dataType)}
-                    >
-                      {dataType}
-                    </Badge>
-                  ))}
-                </div>
+                <SingleSelectTagInput
+                  value={formData.jobDataType}
+                  onChange={handleDataTypeSelect}
+                  options={DATA_TYPE_OPTIONS}
+                  placeholder="Select a data type"
+                />
               </div>
 
               {renderDataTypeField()}
@@ -463,18 +464,12 @@ const NewJobTemplate = () => {
             <h2 className="text-lg font-semibold">Job Type</h2>
             <div className="space-y-2">
               <Label>Job Type Tags</Label>
-              <div className="flex flex-wrap gap-2">
-                {JOB_TYPE_OPTIONS.map((type) => (
-                  <Badge
-                    key={type}
-                    variant={formData.jobType.includes(type) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => handleJobTypeToggle(type)}
-                  >
-                    {type}
-                  </Badge>
-                ))}
-              </div>
+              <MultiSelectTagInput
+                value={formData.jobType}
+                onChange={(types) => setFormData((prev) => ({ ...prev, jobType: types }))}
+                options={JOB_TYPE_OPTIONS}
+                placeholder="Select job types"
+              />
             </div>
           </div>
 
