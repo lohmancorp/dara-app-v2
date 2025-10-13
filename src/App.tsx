@@ -15,6 +15,7 @@ import ViewPromptTemplate from "./pages/ViewPromptTemplate";
 import ViewJobTemplate from "./pages/ViewJobTemplate";
 import EditPromptTemplate from "./pages/EditPromptTemplate";
 import EditJobTemplate from "./pages/EditJobTemplate";
+import SeedTemplates from "./pages/SeedTemplates";
 import ActiveJobs from "./pages/ActiveJobs";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/templates/prompt/:id/edit" element={<EditPromptTemplate />} />
               <Route path="/templates/job/:id/view" element={<ViewJobTemplate />} />
               <Route path="/templates/job/:id/edit" element={<EditJobTemplate />} />
+              <Route path="/templates/seed" element={<SeedTemplates />} />
               <Route path="/active-jobs" element={<ActiveJobs />} />
               <Route path="/connections" element={<Connections />} />
               <Route path="/profile" element={<Profile />} />
