@@ -208,6 +208,11 @@ const NewJobTemplate = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("User not authenticated");
 
+      // Auto-add "Job" tag if not already present
+      const tagsWithType = formData.jobTags.includes("Job") 
+        ? formData.jobTags 
+        : [...formData.jobTags, "Job"];
+
       const { error } = await supabase.from("job_templates").insert({
         user_id: userData.user.id,
         job_name: formData.jobName,
@@ -215,7 +220,7 @@ const NewJobTemplate = () => {
         job_connection: formData.jobConnection,
         job_prompt: formData.jobPrompt,
         job_team: formData.jobTeam,
-        job_tags: formData.jobTags,
+        job_tags: tagsWithType,
         research_type: formData.researchType,
         research_depth: formData.researchDepth,
         research_exactness: formData.researchExactness,

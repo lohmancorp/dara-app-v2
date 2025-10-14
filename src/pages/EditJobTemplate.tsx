@@ -123,6 +123,11 @@ const EditJobTemplate = () => {
 
     setIsSubmitting(true);
     try {
+      // Auto-add "Job" tag if not already present
+      const tagsWithType = formData.jobTags.includes("Job") 
+        ? formData.jobTags 
+        : [...formData.jobTags, "Job"];
+
       const { error } = await supabase
         .from("job_templates")
         .update({
@@ -131,7 +136,7 @@ const EditJobTemplate = () => {
           job_connection: formData.jobConnection,
           job_prompt: formData.jobPrompt,
           job_team: formData.jobTeam,
-          job_tags: formData.jobTags,
+          job_tags: tagsWithType,
           research_type: formData.researchType,
           research_depth: formData.researchDepth,
           research_exactness: formData.researchExactness,

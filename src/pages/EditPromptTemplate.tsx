@@ -208,6 +208,11 @@ const EditPromptTemplate = () => {
       const totalTokens = tokenData?.totalTokens || 0;
       const totalPromptCost = tokenData?.totalCost || 0;
 
+      // Auto-add "Prompt" tag if not already present
+      const tagsWithType = formData.promptTags.includes("Prompt") 
+        ? formData.promptTags 
+        : [...formData.promptTags, "Prompt"];
+
       const { error } = await supabase
         .from("prompt_templates")
         .update({
@@ -219,7 +224,7 @@ const EditPromptTemplate = () => {
           system_prompt: formData.systemPrompt,
           prompt_model: formData.promptModel,
           prompt_team: formData.promptTeam,
-          prompt_tags: formData.promptTags,
+          prompt_tags: tagsWithType,
           total_tokens: totalTokens,
           total_prompt_cost: totalPromptCost,
         })
