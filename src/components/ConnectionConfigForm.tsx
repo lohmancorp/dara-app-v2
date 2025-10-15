@@ -153,12 +153,15 @@ export const ConnectionConfigForm = ({
         </div>
 
         <div>
-          <Label htmlFor="endpoint">Endpoint {!isEndpointReadOnly && <span className="text-destructive">*</span>}</Label>
+          <Label htmlFor="endpoint">
+            {connectionType === 'freshservice' ? 'FreshService Domain' : 'Endpoint'} 
+            {!isEndpointReadOnly && <span className="text-destructive">*</span>}
+          </Label>
           <Input
             id="endpoint"
             value={formData.endpoint}
             onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
-            placeholder="https://api.example.com"
+            placeholder={connectionType === 'freshservice' ? 'cbportal.freshservice.com' : 'https://api.example.com'}
             disabled={isEndpointReadOnly}
             required={!isEndpointReadOnly}
           />

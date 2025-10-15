@@ -188,7 +188,12 @@ const Connections = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingConnection ? `Configure ${editingConnection.name}` : 'Add New Connection'}
+              {editingConnection 
+                ? `Configure ${editingConnection.name}` 
+                : selectedConnection
+                  ? `Add New ${getConnectionInfo(selectedConnection)?.name} Connection`
+                  : 'Add New Connection'
+              }
             </DialogTitle>
           </DialogHeader>
           {!selectedConnection && !editingConnection ? (
