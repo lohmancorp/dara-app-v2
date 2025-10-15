@@ -55,6 +55,9 @@ serve(async (req) => {
         const encodedToken = btoa(apiKey + ':X');
         headers['Authorization'] = `Basic ${encodedToken}`;
       }
+    } else if (connection.connection_type === 'gemini') {
+      // Gemini uses API key in query parameter, not in Authorization header
+      // So we skip adding the Authorization header for Gemini
     } else if (connection.auth_type === 'token') {
       const apiKey = connection.auth_config?.api_key;
       if (apiKey) {
