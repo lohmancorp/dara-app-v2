@@ -154,6 +154,14 @@ const ViewJobTemplate = () => {
           .eq("user_id", user.id);
 
         if (deleteError) throw deleteError;
+
+        // Also delete associated feedback
+        await supabase
+          .from("vote_feedback")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("template_id", id)
+          .eq("template_type", "job");
       } else {
         const { data: existingVote } = await supabase
           .from("template_votes")
@@ -170,6 +178,27 @@ const ViewJobTemplate = () => {
             .eq("id", existingVote.id);
 
           if (updateError) throw updateError;
+
+          // Handle feedback when updating to a negative vote
+          if (vote === -1 && feedbackText) {
+            await supabase.from("vote_feedback").upsert({
+              vote_id: existingVote.id,
+              template_id: id,
+              template_type: "job",
+              user_id: user.id,
+              feedback: feedbackText,
+            }, {
+              onConflict: "user_id,template_id,template_type"
+            });
+          } else if (vote === 1) {
+            // Delete feedback when changing to positive vote
+            await supabase
+              .from("vote_feedback")
+              .delete()
+              .eq("user_id", user.id)
+              .eq("template_id", id)
+              .eq("template_type", "job");
+          }
         } else {
           const { data: voteData, error: insertError } = await supabase
             .from("template_votes")

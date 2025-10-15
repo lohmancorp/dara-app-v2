@@ -105,6 +105,14 @@ export const VoteButtons = ({
             }, {
               onConflict: "user_id,template_id,template_type"
             });
+        } else if (voteValue === 1) {
+          // Delete feedback when changing to positive vote
+          await supabase
+            .from("vote_feedback")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("template_id", templateId)
+            .eq("template_type", templateType);
         }
       }
 
