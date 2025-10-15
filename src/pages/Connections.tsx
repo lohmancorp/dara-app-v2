@@ -157,7 +157,11 @@ const Connections = () => {
                   <div className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                        <Link2 className="h-7 w-7 text-primary" />
+                        <img 
+                          src={CONNECTION_ICONS[connection.connection_type]} 
+                          alt={`${connection.name} icon`}
+                          className="h-7 w-7 object-contain"
+                        />
                       </div>
                       <Badge
                         variant={connection.is_active ? "secondary" : "outline"}
