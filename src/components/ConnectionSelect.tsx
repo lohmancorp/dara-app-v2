@@ -1,6 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
-import freshserviceIcon from "@/assets/connection-icons/freshservice.png";
+import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import geminiIcon from "@/assets/connection-icons/gemini.png";
 import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
 import jiraIcon from "@/assets/connection-icons/jira.png";
@@ -23,7 +23,7 @@ const getConnectionIcon = (connectionType: string): string | null => {
     confluence: confluenceIcon,
     freshservice: freshserviceIcon,
     gemini: geminiIcon,
-    "google-alerts": googleAlertsIcon,
+    google_alerts: googleAlertsIcon,
     jira: jiraIcon,
     openai: openaiIcon,
   };
