@@ -20,6 +20,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import confluenceIcon from "@/assets/connection-icons/confluence.png";
+import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
+import geminiIcon from "@/assets/connection-icons/gemini.png";
+import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
+import jiraIcon from "@/assets/connection-icons/jira.png";
+import openaiIcon from "@/assets/connection-icons/openai.png";
 
 const JOB_TYPE_OPTIONS = ["Scheduled", "One-Time", "Recurring", "On-going"];
 
@@ -41,6 +47,21 @@ const ViewJobTemplate = () => {
   const [chunkSize, setChunkSize] = useState(20);
   const [jobTypes, setJobTypes] = useState<string[]>([]);
   const [jobDataType, setJobDataType] = useState("");
+  const [connectionDetails, setConnectionDetails] = useState<{ name: string; connection_type: string } | null>(null);
+  const [promptTemplateName, setPromptTemplateName] = useState<string>("");
+
+  const getConnectionIcon = (connectionType: string): string | null => {
+    const iconMap: Record<string, string> = {
+      confluence: confluenceIcon,
+      freshservice: freshserviceIcon,
+      gemini: geminiIcon,
+      google_alerts: googleAlertsIcon,
+      jira: jiraIcon,
+      openai: openaiIcon,
+    };
+    
+    return iconMap[connectionType.toLowerCase()] || null;
+  };
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -62,6 +83,32 @@ const ViewJobTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+
+      // Fetch connection details
+      if (templateResult.data.job_connection) {
+        const { data: connectionData } = await supabase
+          .from("connections")
+          .select("name, connection_type")
+          .eq("id", templateResult.data.job_connection)
+          .single();
+        
+        if (connectionData) {
+          setConnectionDetails(connectionData);
+        }
+      }
+
+      // Fetch prompt template name
+      if (templateResult.data.job_prompt) {
+        const { data: promptData } = await supabase
+          .from("prompt_templates")
+          .select("prompt_name")
+          .eq("id", templateResult.data.job_prompt)
+          .single();
+        
+        if (promptData) {
+          setPromptTemplateName(promptData.prompt_name);
+        }
+      }
 
       // Parse job_outcome to extract chunking and job type data
       const outcome = templateResult.data.job_outcome || "";
@@ -356,11 +403,26 @@ const ViewJobTemplate = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Connection</label>
-                <p className="mt-1">{template.job_connection}</p>
+                {connectionDetails ? (
+                  <div className="flex items-center gap-2 mt-2 p-3 border rounded-md bg-muted">
+                    {getConnectionIcon(connectionDetails.connection_type) && (
+                      <img 
+                        src={getConnectionIcon(connectionDetails.connection_type)!} 
+                        alt={connectionDetails.connection_type}
+                        className="h-5 w-5 object-contain"
+                      />
+                    )}
+                    <span>{connectionDetails.name}</span>
+                  </div>
+                ) : (
+                  <p className="mt-1 p-3 border rounded-md bg-muted text-muted-foreground">Loading connection...</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Prompt Template</label>
-                <p className="mt-1">{template.job_prompt}</p>
+                <div className="mt-2 p-3 border rounded-md bg-muted">
+                  {promptTemplateName || "Loading prompt template..."}
+                </div>
               </div>
             </div>
           </Card>
