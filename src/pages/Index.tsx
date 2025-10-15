@@ -48,7 +48,7 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="w-full" variant="outline">
+              <Button asChild className="w-full" variant="default">
                 <Link to="/templates">Browse Templates</Link>
               </Button>
             </CardContent>
@@ -67,7 +67,7 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="w-full" variant="outline">
+              <Button asChild className="w-full" variant="default">
                 <Link to="/library">View Library</Link>
               </Button>
             </CardContent>
@@ -86,7 +86,7 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="w-full" variant="outline">
+              <Button asChild className="w-full" variant="default">
                 <Link to="/active-jobs">View Jobs</Link>
               </Button>
             </CardContent>
