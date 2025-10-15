@@ -337,10 +337,10 @@ const ViewJobTemplate = () => {
 
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4">Additional Settings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="col-span-3">
+            <div className="space-y-4">
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Job Outcome Details</label>
-                <p className="mt-1 text-sm">{template.job_outcome}</p>
+                <p className="mt-1">{template.job_outcome}</p>
               </div>
             </div>
           </Card>
