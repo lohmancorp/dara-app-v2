@@ -15,8 +15,10 @@ const ViewJobTemplate = () => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [score, setScore] = useState(0);
+  const [positiveScore, setPositiveScore] = useState(0);
+  const [negativeScore, setNegativeScore] = useState(0);
   const [userVote, setUserVote] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<Array<{ feedback: string; created_at: string }>>([]);
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -24,24 +26,31 @@ const ViewJobTemplate = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const [templateResult, votesResult, userVoteResult] = await Promise.all([
+      const [templateResult, votesResult, userVoteResult, feedbackResult] = await Promise.all([
         supabase.from("job_templates").select("*").eq("id", id).single(),
         supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job"),
         user ? supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.from("vote_feedback").select("feedback, created_at").eq("template_id", id).eq("template_type", "job").order("created_at", { ascending: false }),
       ]);
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
       
       if (votesResult.data) {
-        const totalScore = votesResult.data.reduce((sum, v) => sum + v.vote, 0);
-        setScore(totalScore);
+        const positive = votesResult.data.filter(v => v.vote === 1).length;
+        const negative = votesResult.data.filter(v => v.vote === -1).length;
+        setPositiveScore(positive);
+        setNegativeScore(negative);
       }
       
       if (userVoteResult.data) {
         setUserVote(userVoteResult.data.vote);
       } else {
         setUserVote(null);
+      }
+
+      if (feedbackResult.data) {
+        setFeedback(feedbackResult.data);
       }
     } catch (error) {
       console.error("Error fetching template:", error);
@@ -89,7 +98,8 @@ const ViewJobTemplate = () => {
               <VoteButtons
                 templateId={id!}
                 templateType="job"
-                score={score}
+                positiveScore={positiveScore}
+                negativeScore={negativeScore}
                 userVote={userVote}
                 onVoteChange={fetchTemplate}
               />
@@ -171,6 +181,22 @@ const ViewJobTemplate = () => {
               <p className="mt-1 text-sm">{template.job_outcome}</p>
             </div>
           </Card>
+
+          {feedback.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-4">User Feedback</h2>
+              <div className="space-y-3">
+                {feedback.map((item, index) => (
+                  <div key={index} className="p-3 bg-muted rounded-md">
+                    <p className="text-sm">{item.feedback}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           <div className="flex gap-4 justify-end">
             <Button variant="outline" onClick={() => navigate(`/templates/job/${id}/edit`)}>

@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, ArrowUpDown } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +66,8 @@ type UnifiedTemplate = {
   type: "prompt" | "job";
   created_at: string;
   updated_at: string;
-  score: number;
+  positiveScore: number;
+  negativeScore: number;
   userVote: number | null;
 };
 
@@ -169,7 +171,8 @@ const Templates = () => {
     const unified: UnifiedTemplate[] = [
       ...promptTemplates.map(t => {
         const templateVotes = votes.filter(v => v.template_id === t.id && v.template_type === "prompt");
-        const score = templateVotes.reduce((sum, v) => sum + v.vote, 0);
+        const positiveScore = templateVotes.filter(v => v.vote === 1).length;
+        const negativeScore = templateVotes.filter(v => v.vote === -1).length;
         const userVote = userVotes.find(v => v.template_id === t.id && v.template_type === "prompt")?.vote || null;
         
         return {
@@ -181,13 +184,15 @@ const Templates = () => {
           type: "prompt" as const,
           created_at: t.created_at,
           updated_at: t.updated_at,
-          score,
+          positiveScore,
+          negativeScore,
           userVote,
         };
       }),
       ...jobTemplates.map(t => {
         const templateVotes = votes.filter(v => v.template_id === t.id && v.template_type === "job");
-        const score = templateVotes.reduce((sum, v) => sum + v.vote, 0);
+        const positiveScore = templateVotes.filter(v => v.vote === 1).length;
+        const negativeScore = templateVotes.filter(v => v.vote === -1).length;
         const userVote = userVotes.find(v => v.template_id === t.id && v.template_type === "job")?.vote || null;
         
         return {
@@ -199,7 +204,8 @@ const Templates = () => {
           type: "job" as const,
           created_at: t.created_at,
           updated_at: t.updated_at,
-          score,
+          positiveScore,
+          negativeScore,
           userVote,
         };
       }),
@@ -268,8 +274,8 @@ const Templates = () => {
           bVal = new Date(b.updated_at).getTime();
           break;
         case "score":
-          aVal = a.score;
-          bVal = b.score;
+          aVal = a.positiveScore - a.negativeScore;
+          bVal = b.positiveScore - b.negativeScore;
           break;
         default:
           return 0;
@@ -488,81 +494,132 @@ const Templates = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredTemplates.map((template) => (
-              <Card key={template.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary">
-                <div className="p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="p-3 rounded-lg bg-primary/10">
-                      {template.type === "prompt" ? (
-                        <Sparkles className="h-7 w-7 text-primary" />
-                      ) : (
-                        <Briefcase className="h-7 w-7 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex gap-1 flex-wrap">
-                      {template.tags?.filter(t => t !== "Job" && t !== "Prompt").slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="default" className="bg-primary text-primary-foreground text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2 line-clamp-2 min-h-[3.5rem]">
-                      {template.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-3 min-h-[4rem]">
+              <Card key={template.id} className="p-4 hover:shadow-lg transition-shadow flex flex-col">
+                <div className="flex items-start gap-3 mb-3">
+                  {template.type === "prompt" ? (
+                    <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Activity className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base truncate">{template.name}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                       {template.description}
                     </p>
                   </div>
-                  <div className="flex justify-center py-2">
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {template.team.map((team) => (
+                    <Badge key={team} variant="default" className="text-xs">
+                      {team}
+                    </Badge>
+                  ))}
+                  {template.tags.map((tag) => (
+                    <Badge key={tag} variant="default" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                  <span className="flex items-center gap-1">
+                    👍 {template.positiveScore}
+                  </span>
+                  <span className="mx-1">•</span>
+                  <span className="flex items-center gap-1">
+                    👎 {template.negativeScore}
+                  </span>
+                </div>
+
+                <TooltipProvider>
+                  <div className="flex gap-1 mt-auto">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            navigate(
+                              template.type === "prompt"
+                                ? `/templates/prompt/${template.id}`
+                                : `/templates/job/${template.id}`
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            navigate(
+                              template.type === "prompt"
+                                ? `/templates/prompt/${template.id}/edit`
+                                : `/templates/job/${template.id}/edit`
+                            )
+                          }
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            navigate(
+                              template.type === "prompt"
+                                ? `/active-jobs?promptId=${template.id}`
+                                : `/active-jobs?jobTemplateId=${template.id}`
+                            )
+                          }
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Use</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleDeleteClick(template.id, template.type, template.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
+
                     <VoteButtons
                       templateId={template.id}
                       templateType={template.type}
-                      score={template.score}
+                      positiveScore={template.positiveScore}
+                      negativeScore={template.negativeScore}
                       userVote={template.userVote}
                       onVoteChange={fetchTemplates}
                       size="sm"
+                      showScore={false}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => navigate(`/templates/${template.type}/${template.id}/view`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => navigate(`/templates/${template.type}/${template.id}/edit`)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => navigate(
-                        template.type === "prompt" 
-                          ? `/active-jobs?promptId=${template.id}` 
-                          : `/active-jobs?jobTemplateId=${template.id}`
-                      )}
-                    >
-                      <Play className="h-4 w-4 mr-1" />
-                      Use
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleDeleteClick(template.id, template.type, template.name)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
+                </TooltipProvider>
               </Card>
             ))}
           </div>
