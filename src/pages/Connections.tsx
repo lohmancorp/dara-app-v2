@@ -1,4 +1,4 @@
-import { Link2, CheckCircle, AlertCircle, Plus, Settings } from "lucide-react";
+import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,7 @@ const Connections = () => {
   const [selectedConnection, setSelectedConnection] = useState<ConnectionType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | null>(null);
+  const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
 
   useEffect(() => {
     setActionButton(
@@ -107,6 +108,41 @@ const Connections = () => {
 
   const getConnectionInfo = (type: ConnectionType) => {
     return AVAILABLE_CONNECTIONS.find(c => c.type === type);
+  };
+
+  const handleTestConnection = async (connection: Connection) => {
+    setTestingConnectionId(connection.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-connection', {
+        body: { connectionId: connection.id }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Connection successful",
+          description: "Successfully connected to the service",
+        });
+      } else {
+        toast({
+          title: "Connection failed",
+          description: data.error || "Failed to connect to the service",
+          variant: "destructive",
+        });
+      }
+
+      // Refresh connections to get updated status
+      await fetchConnections();
+    } catch (error: any) {
+      toast({
+        title: "Error testing connection",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnectionId(null);
+    }
   };
 
   if (isLoading) {
@@ -164,15 +200,19 @@ const Connections = () => {
                         />
                       </div>
                       <Badge
-                        variant={connection.is_active ? "secondary" : "outline"}
-                        className="flex items-center gap-1.5"
+                        variant={connection.is_active ? "default" : "destructive"}
+                        className={`flex items-center gap-1.5 ${
+                          connection.is_active 
+                            ? "bg-green-500 hover:bg-green-600" 
+                            : "bg-destructive hover:bg-destructive"
+                        }`}
                       >
                         {connection.is_active ? (
                           <CheckCircle className="h-3 w-3" />
                         ) : (
                           <AlertCircle className="h-3 w-3" />
                         )}
-                        <span>{connection.is_active ? "Active" : "Inactive"}</span>
+                        <span>{connection.is_active ? "Active" : "Problem"}</span>
                       </Badge>
                     </div>
                     <div>
@@ -186,15 +226,27 @@ const Connections = () => {
                     <div className="text-xs text-muted-foreground">
                       Auth: {connection.auth_type}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => handleConfigureConnection(connection)}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configure
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleTestConnection(connection)}
+                        disabled={testingConnectionId === connection.id}
+                      >
+                        <Wifi className="h-4 w-4 mr-2" />
+                        {testingConnectionId === connection.id ? "Testing..." : "Test"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleConfigureConnection(connection)}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
