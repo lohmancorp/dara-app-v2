@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,8 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { VoteButtons } from "@/components/VoteButtons";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +92,10 @@ const Templates = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [votes, setVotes] = useState<any[]>([]);
   const [userVotes, setUserVotes] = useState<any[]>([]);
+  const [isVoting, setIsVoting] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [pendingVoteData, setPendingVoteData] = useState<{ templateId: string; templateType: "prompt" | "job" } | null>(null);
 
   const fetchTemplates = async () => {
     setIsLoading(true);
@@ -316,6 +321,106 @@ const Templates = () => {
     return labels[sortField];
   };
 
+  const handleVote = async (templateId: string, templateType: "prompt" | "job", voteValue: 1 | -1, currentUserVote: number | null) => {
+    // If voting negative, show feedback dialog
+    if (voteValue === -1 && currentUserVote !== -1) {
+      setPendingVoteData({ templateId, templateType });
+      setShowFeedbackDialog(true);
+      return;
+    }
+    
+    await processVote(templateId, templateType, voteValue, currentUserVote);
+  };
+
+  const processVote = async (templateId: string, templateType: "prompt" | "job", voteValue: 1 | -1, currentUserVote: number | null, feedbackText?: string) => {
+    setIsVoting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to vote.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // If clicking the same vote, remove it
+      if (currentUserVote === voteValue) {
+        const { error } = await supabase
+          .from("template_votes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("template_id", templateId)
+          .eq("template_type", templateType);
+
+        if (error) throw error;
+
+        // Also delete feedback if it exists
+        await supabase
+          .from("vote_feedback")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("template_id", templateId)
+          .eq("template_type", templateType);
+      } else {
+        // Otherwise, upsert the vote
+        const { data: voteData, error } = await supabase
+          .from("template_votes")
+          .upsert({
+            user_id: user.id,
+            template_id: templateId,
+            template_type: templateType,
+            vote: voteValue,
+          }, {
+            onConflict: "user_id,template_id,template_type"
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // If negative vote with feedback, store it
+        if (voteValue === -1 && feedbackText) {
+          await supabase
+            .from("vote_feedback")
+            .upsert({
+              vote_id: voteData.id,
+              user_id: user.id,
+              template_id: templateId,
+              template_type: templateType,
+              feedback: feedbackText,
+            }, {
+              onConflict: "user_id,template_id,template_type"
+            });
+        }
+      }
+
+      fetchTemplates();
+    } catch (error) {
+      console.error("Error voting:", error);
+      toast({
+        title: "Error",
+        description: "Failed to register vote.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!pendingVoteData) return;
+    
+    const template = unifiedTemplates.find(t => t.id === pendingVoteData.templateId && t.type === pendingVoteData.templateType);
+    if (!template) return;
+
+    await processVote(pendingVoteData.templateId, pendingVoteData.templateType, -1, template.userVote, feedback);
+    setShowFeedbackDialog(false);
+    setFeedback("");
+    setPendingVoteData(null);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
@@ -498,14 +603,14 @@ const Templates = () => {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
                     {template.type === "prompt" ? (
-                      <Sparkles className="h-7 w-7 text-primary" />
+                      <Sparkles className="h-6 w-6 text-primary" />
                     ) : (
-                      <Activity className="h-7 w-7 text-primary" />
+                      <Activity className="h-6 w-6 text-primary" />
                     )}
                   </div>
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="flex-1 min-w-0 flex flex-col items-end gap-2">
+                    <div className="flex flex-wrap gap-2 justify-end">
                       {template.team.slice(0, 1).map((team) => (
                         <Badge key={team} variant="default" className="whitespace-nowrap">
                           {team}
@@ -519,15 +624,23 @@ const Templates = () => {
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="flex items-center gap-1">
-                        <span>👍</span>
+                      <button 
+                        onClick={() => handleVote(template.id, template.type, 1, template.userVote)}
+                        disabled={isVoting}
+                        className="flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
+                      >
+                        <ThumbsUp className={`h-4 w-4 ${template.userVote === 1 ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
                         <span className="text-muted-foreground">{template.positiveScore}</span>
-                      </span>
+                      </button>
                       <span className="text-muted-foreground">·</span>
-                      <span className="flex items-center gap-1">
-                        <span>👎</span>
+                      <button 
+                        onClick={() => handleVote(template.id, template.type, -1, template.userVote)}
+                        disabled={isVoting}
+                        className="flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
+                      >
+                        <ThumbsDown className={`h-4 w-4 ${template.userVote === -1 ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
                         <span className="text-muted-foreground">{template.negativeScore}</span>
-                      </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -540,7 +653,7 @@ const Templates = () => {
                 </div>
 
                 <TooltipProvider>
-                  <div className="flex gap-2 mt-auto">
+                  <div className="flex gap-1.5 mt-auto">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -614,17 +727,6 @@ const Templates = () => {
                       </TooltipTrigger>
                       <TooltipContent>Delete</TooltipContent>
                     </Tooltip>
-
-                    <VoteButtons
-                      templateId={template.id}
-                      templateType={template.type}
-                      positiveScore={template.positiveScore}
-                      negativeScore={template.negativeScore}
-                      userVote={template.userVote}
-                      onVoteChange={fetchTemplates}
-                      size="sm"
-                      showScore={false}
-                    />
                   </div>
                 </TooltipProvider>
               </Card>
@@ -649,6 +751,35 @@ const Templates = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Help us improve</DialogTitle>
+            <DialogDescription>
+              Please let us know why you're voting this template down. Your feedback helps others.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="What could be improved?"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            rows={4}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowFeedbackDialog(false);
+              setFeedback("");
+              setPendingVoteData(null);
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleFeedbackSubmit} disabled={!feedback.trim()}>
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
