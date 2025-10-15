@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TagInput } from "@/components/TagInput";
 import { SingleSelectTagInput } from "@/components/SingleSelectTagInput";
 import { MultiSelectTagInput } from "@/components/MultiSelectTagInput";
+import { ConnectionSelect } from "@/components/ConnectionSelect";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
@@ -47,12 +48,7 @@ const EditJobTemplate = () => {
 
   const [existingTeams, setExistingTeams] = useState<string[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
-  const [availableConnections] = useState([
-    { id: "1", name: "Google Scholar" },
-    { id: "2", name: "PubMed" },
-    { id: "3", name: "arXiv" },
-    { id: "4", name: "IEEE Xplore" },
-  ]);
+  const [availableConnections, setAvailableConnections] = useState<Array<{ id: string; name: string; connection_type: string }>>([]);
   const [availablePrompts, setAvailablePrompts] = useState<{ id: string; name: string }[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -106,20 +102,34 @@ const EditJobTemplate = () => {
     };
 
     const fetchExistingData = async () => {
-      const { data } = await supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [promptsData, connectionsData] = await Promise.all([
+        supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name").eq("user_id", user.id),
+        supabase.from("connections").select("id, name, connection_type, is_active").eq("user_id", user.id).eq("is_active", true),
+      ]);
       
-      if (data && data.length > 0) {
+      if (promptsData.data && promptsData.data.length > 0) {
         const teams = new Set<string>();
         const tags = new Set<string>();
         
-        data.forEach((item) => {
+        promptsData.data.forEach((item) => {
           item.prompt_team?.forEach((team: string) => teams.add(team));
           item.prompt_tags?.forEach((tag: string) => tags.add(tag));
         });
         
         setExistingTeams(Array.from(teams));
         setExistingTags(Array.from(tags));
-        setAvailablePrompts(data.map(item => ({ id: item.id, name: item.prompt_name })));
+        setAvailablePrompts(promptsData.data.map(item => ({ id: item.id, name: item.prompt_name })));
+      }
+
+      if (connectionsData.data) {
+        setAvailableConnections(connectionsData.data.map(conn => ({
+          id: conn.id,
+          name: conn.name,
+          connection_type: conn.connection_type,
+        })));
       }
     };
 
@@ -384,21 +394,11 @@ const EditJobTemplate = () => {
                 <Label htmlFor="jobConnection">
                   Job Connection <span className="text-destructive">*</span>
                 </Label>
-                <Select
+                <ConnectionSelect
                   value={formData.jobConnection}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, jobConnection: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a connection" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableConnections.map((connection) => (
-                      <SelectItem key={connection.id} value={connection.id}>
-                        {connection.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  connections={availableConnections}
+                />
               </div>
 
                <div className="space-y-2">
