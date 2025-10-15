@@ -221,7 +221,7 @@ const Connections = () => {
               {AVAILABLE_CONNECTIONS.map((conn) => (
                 <Card 
                   key={conn.type}
-                  className="p-4 cursor-pointer hover:border-primary transition-colors"
+                  className="p-4 cursor-pointer hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
                   onClick={() => setSelectedConnection(conn.type)}
                 >
                   <div className="flex items-start gap-4">
