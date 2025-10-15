@@ -442,18 +442,18 @@ const Templates = () => {
               className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
               onClick={() => {
                 setShowTemplateDialog(false);
-                navigate("/templates/new-prompt");
+                navigate("/templates/new-job");
               }}
             >
               <div className="p-6 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <FileText className="h-6 w-6 text-primary" />
+                    <Activity className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Prompt Template</h3>
+                    <h3 className="font-semibold text-lg">Job Template</h3>
                     <p className="text-sm text-muted-foreground">
-                      Create AI prompt configurations
+                      Create research job workflows
                     </p>
                   </div>
                 </div>
@@ -464,18 +464,18 @@ const Templates = () => {
               className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
               onClick={() => {
                 setShowTemplateDialog(false);
-                navigate("/templates/new-job");
+                navigate("/templates/new-prompt");
               }}
             >
               <div className="p-6 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Briefcase className="h-6 w-6 text-primary" />
+                    <Sparkles className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Job Template</h3>
+                    <h3 className="font-semibold text-lg">Prompt Template</h3>
                     <p className="text-sm text-muted-foreground">
-                      Create research job workflows
+                      Create AI prompt configurations
                     </p>
                   </div>
                 </div>
