@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ChevronUp, ChevronDown } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -521,29 +521,29 @@ const Templates = () => {
               <DropdownMenuItem onClick={() => { setSortField("name"); setSortDirection("desc"); }}>
                 Name (Z-A)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}>
-                <ChevronUp className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("asc"); }} className="justify-between">
                 Created
+                <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}>
-                <ChevronDown className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("desc"); }} className="justify-between">
                 Created
+                <ArrowDown className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("asc"); }}>
-                <ChevronUp className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("asc"); }} className="justify-between">
                 Last Updated
+                <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("desc"); }}>
-                <ChevronDown className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("desc"); }} className="justify-between">
                 Last Updated
+                <ArrowDown className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("asc"); }}>
-                <ChevronUp className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("asc"); }} className="justify-between">
                 Score
+                <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("desc"); }}>
-                <ChevronDown className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("desc"); }} className="justify-between">
                 Score
+                <ArrowDown className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
