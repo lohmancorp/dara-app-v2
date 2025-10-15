@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Briefcase, Upload } from "lucide-react";
+import { Activity, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -297,7 +297,7 @@ const EditJobTemplate = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        icon={Briefcase}
+        icon={Activity}
         title="Edit Job Template"
         description="Update your job template"
       />

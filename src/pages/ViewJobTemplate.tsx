@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Briefcase, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Activity, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +210,7 @@ const ViewJobTemplate = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        icon={Briefcase}
+        icon={Activity}
         title={template.job_name}
         description="View job template details"
       />
