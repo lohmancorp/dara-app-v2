@@ -48,7 +48,8 @@ const ViewPromptTemplate = () => {
           .select(`
             feedback,
             created_at,
-            profiles:user_id (
+            user_id,
+            profiles!vote_feedback_user_id_fkey (
               email,
               full_name
             )
