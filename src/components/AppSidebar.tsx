@@ -37,7 +37,7 @@ export function AppSidebar() {
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className="h-[50px] w-[50px] rounded-lg object-cover"
+              className="h-[55px] w-[55px] rounded-lg object-cover"
             />
             <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
           </div>
