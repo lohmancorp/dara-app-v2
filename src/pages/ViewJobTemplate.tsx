@@ -16,6 +16,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+
+const JOB_TYPE_OPTIONS = ["Scheduled", "One-Time", "Recurring", "On-going"];
 
 const ViewJobTemplate = () => {
   const { id } = useParams();
@@ -31,6 +37,10 @@ const ViewJobTemplate = () => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [pendingVoteData, setPendingVoteData] = useState<{ vote: number } | null>(null);
+  const [jobChunking, setJobChunking] = useState(false);
+  const [chunkSize, setChunkSize] = useState(20);
+  const [jobTypes, setJobTypes] = useState<string[]>([]);
+  const [jobDataType, setJobDataType] = useState("");
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -59,6 +69,18 @@ const ViewJobTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+
+      // Parse job_outcome to extract chunking and job type data
+      const outcome = templateResult.data.job_outcome || "";
+      const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
+      const chunkingMatch = outcome.match(/Chunking: (true|false)/);
+      const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
+      const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+
+      setJobDataType(dataTypeMatch ? dataTypeMatch[1] : "");
+      setJobChunking(chunkingMatch ? chunkingMatch[1] === "true" : false);
+      setChunkSize(chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20);
+      setJobTypes(jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter(t => t) : []);
       
       if (votesResult.data) {
         const positive = votesResult.data.filter(v => v.vote === 1).length;
@@ -336,11 +358,69 @@ const ViewJobTemplate = () => {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Additional Settings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Job Outcome Details</label>
-                <p className="mt-1">{template.job_outcome}</p>
+            <h2 className="text-lg font-semibold mb-4">Data Type</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Job Data Type</Label>
+                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted min-h-[42px]">
+                  {jobDataType ? (
+                    <Badge variant="default" className="bg-primary text-primary-foreground">
+                      {jobDataType}
+                    </Badge>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No data type selected</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Chunking Settings</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="jobChunking">Job Chunking</Label>
+                <Switch
+                  id="jobChunking"
+                  checked={jobChunking}
+                  disabled
+                />
+              </div>
+
+              {jobChunking && (
+                <div className="space-y-2">
+                  <Label htmlFor="chunkSize">Chunk Size</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="chunkSize"
+                      type="number"
+                      value={chunkSize}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <span className="text-sm text-muted-foreground">objects</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Job Type</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Job Type(s)</Label>
+                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted min-h-[42px]">
+                  {jobTypes.length > 0 ? (
+                    jobTypes.map((type) => (
+                      <Badge key={type} variant="default" className="bg-primary text-primary-foreground">
+                        {type}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No job types selected</span>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
