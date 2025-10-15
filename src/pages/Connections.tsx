@@ -202,7 +202,8 @@ const Connections = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
               {editingConnection 
                 ? `Configure ${editingConnection.name}` 
                 : selectedConnection
