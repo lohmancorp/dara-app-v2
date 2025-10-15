@@ -71,7 +71,7 @@ serve(async (req) => {
     // Add a simple health check endpoint path if needed
     // For FreshService, Jira, Confluence - try their respective API health endpoints
     if (connection.connection_type === 'freshservice') {
-      testUrl = testUrl.endsWith('/') ? `${testUrl}api/v2/tickets?per_page=1` : `${testUrl}/api/v2/tickets?per_page=1`;
+      testUrl = testUrl.endsWith('/') ? `${testUrl}api/v2/ticket_form_fields` : `${testUrl}/api/v2/ticket_form_fields`;
     } else if (connection.connection_type === 'jira') {
       testUrl = testUrl.endsWith('/') ? `${testUrl}rest/api/2/myself` : `${testUrl}/rest/api/2/myself`;
     } else if (connection.connection_type === 'confluence') {
