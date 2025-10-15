@@ -1,5 +1,6 @@
 import { Home, MessageSquare, Library, FileText, Activity, Link2 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import daraLogo from "@/assets/dara-logo.png";
 
 import {
   Sidebar,
@@ -33,9 +34,11 @@ export function AppSidebar() {
       >
         {open && (
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <span className="text-white text-sm font-bold">DA</span>
-            </div>
+            <img 
+              src={daraLogo} 
+              alt="D.A.R.A. Logo" 
+              className="h-[50px] w-[50px] rounded-lg object-cover"
+            />
             <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
           </div>
         )}
