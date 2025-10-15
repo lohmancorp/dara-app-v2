@@ -1,4 +1,5 @@
 import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ConnectionConfigForm } from "@/components/ConnectionConfigForm";
 import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
@@ -54,14 +54,13 @@ const AVAILABLE_CONNECTIONS: { type: ConnectionType; name: string; description: 
 ];
 
 const Connections = () => {
+  const navigate = useNavigate();
   const { setActionButton } = useFloatingAction();
   const { user } = useAuth();
   const { toast } = useToast();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedConnection, setSelectedConnection] = useState<ConnectionType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<Connection | null>(null);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,10 +99,8 @@ const Connections = () => {
     }
   };
 
-  const handleConfigureConnection = (connection: Connection) => {
-    setEditingConnection(connection);
-    setSelectedConnection(connection.connection_type);
-    setIsDialogOpen(true);
+  const handleConfigureConnection = (connectionId: string) => {
+    navigate(`/connections/edit/${connectionId}`);
   };
 
   const getConnectionInfo = (type: ConnectionType) => {
@@ -237,15 +234,15 @@ const Connections = () => {
                         <Wifi className="h-4 w-4 mr-2" />
                         {testingConnectionId === connection.id ? "Testing..." : "Test"}
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleConfigureConnection(connection)}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configure
-                      </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleConfigureConnection(connection.id)}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Configure
+                        </Button>
                     </div>
                   </div>
                 </Card>
@@ -255,82 +252,40 @@ const Connections = () => {
         )}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) {
-          setSelectedConnection(null);
-          setEditingConnection(null);
-        }
-      }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                {editingConnection ? (
-                  <img 
-                    src={CONNECTION_ICONS[editingConnection.connection_type]} 
-                    alt={`${editingConnection.name} icon`}
-                    className="h-5 w-5 object-contain"
-                  />
-                ) : selectedConnection ? (
-                  <img 
-                    src={CONNECTION_ICONS[selectedConnection]} 
-                    alt={`${getConnectionInfo(selectedConnection)?.name} icon`}
-                    className="h-5 w-5 object-contain"
-                  />
-                ) : (
-                  <Link2 className="h-5 w-5 text-primary" />
-                )}
+                <Link2 className="h-5 w-5 text-primary" />
               </div>
-              <span>
-                {editingConnection 
-                  ? `Configure ${editingConnection.name}` 
-                  : selectedConnection
-                    ? `Add New ${getConnectionInfo(selectedConnection)?.name} Connection`
-                    : 'Add New Connection'
-                }
-              </span>
+              <span>Select Connection Type</span>
             </DialogTitle>
           </DialogHeader>
-          {!selectedConnection && !editingConnection ? (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              {AVAILABLE_CONNECTIONS.map((conn) => (
-                <Card 
-                  key={conn.type}
-                  className="p-4 cursor-pointer hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
-                  onClick={() => setSelectedConnection(conn.type)}
-                >
-                  <div className="flex items-start gap-4">
-                    <img 
-                      src={CONNECTION_ICONS[conn.type]} 
-                      alt={`${conn.name} icon`}
-                      className="w-14 h-14 object-contain rounded-lg p-2 bg-muted flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold mb-1">{conn.name}</h4>
-                      <p className="text-sm text-muted-foreground">{conn.description}</p>
-                    </div>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {AVAILABLE_CONNECTIONS.map((conn) => (
+              <Card 
+                key={conn.type}
+                className="p-4 cursor-pointer hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  navigate(`/connections/new/${conn.type}`);
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <img 
+                    src={CONNECTION_ICONS[conn.type]} 
+                    alt={`${conn.name} icon`}
+                    className="w-14 h-14 object-contain rounded-lg p-2 bg-muted flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold mb-1">{conn.name}</h4>
+                    <p className="text-sm text-muted-foreground">{conn.description}</p>
                   </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <ConnectionConfigForm
-              connectionType={selectedConnection || editingConnection?.connection_type}
-              existingConnection={editingConnection}
-              onSuccess={() => {
-                setIsDialogOpen(false);
-                setSelectedConnection(null);
-                setEditingConnection(null);
-                fetchConnections();
-              }}
-              onCancel={() => {
-                setIsDialogOpen(false);
-                setSelectedConnection(null);
-                setEditingConnection(null);
-              }}
-            />
-          )}
+                </div>
+              </Card>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

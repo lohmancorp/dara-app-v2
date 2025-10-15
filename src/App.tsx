@@ -20,6 +20,8 @@ import EditPromptTemplate from "./pages/EditPromptTemplate";
 import EditJobTemplate from "./pages/EditJobTemplate";
 import ActiveJobs from "./pages/ActiveJobs";
 import Connections from "./pages/Connections";
+import NewConnection from "./pages/NewConnection";
+import EditConnection from "./pages/EditConnection";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -48,6 +50,8 @@ const App = () => (
               <Route path="/templates/job/:id/edit" element={<ProtectedRoute><AppLayout><EditJobTemplate /></AppLayout></ProtectedRoute>} />
               <Route path="/active-jobs" element={<ProtectedRoute><AppLayout><ActiveJobs /></AppLayout></ProtectedRoute>} />
               <Route path="/connections" element={<ProtectedRoute><AppLayout><Connections /></AppLayout></ProtectedRoute>} />
+              <Route path="/connections/new/:type" element={<ProtectedRoute><AppLayout><NewConnection /></AppLayout></ProtectedRoute>} />
+              <Route path="/connections/edit/:id" element={<ProtectedRoute><AppLayout><EditConnection /></AppLayout></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
