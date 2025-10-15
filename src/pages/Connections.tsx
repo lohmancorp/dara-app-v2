@@ -223,9 +223,9 @@ const Connections = () => {
                     <div className="text-xs text-muted-foreground">
                       Auth: {connection.auth_type}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       <Button 
-                        variant="outline" 
+                        variant="default" 
                         size="sm" 
                         className="flex-1"
                         onClick={() => handleTestConnection(connection)}
@@ -234,15 +234,15 @@ const Connections = () => {
                         <Wifi className="h-4 w-4 mr-2" />
                         {testingConnectionId === connection.id ? "Testing..." : "Test"}
                       </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => handleConfigureConnection(connection.id)}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Configure
-                        </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleConfigureConnection(connection.id)}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure
+                      </Button>
                     </div>
                   </div>
                 </Card>
