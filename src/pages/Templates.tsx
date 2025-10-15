@@ -494,51 +494,51 @@ const Templates = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredTemplates.map((template) => (
-              <Card key={template.id} className="p-4 hover:shadow-lg transition-shadow flex flex-col">
-                <div className="flex items-start gap-3 mb-3">
-                  {template.type === "prompt" ? (
-                    <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <Activity className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base truncate">{template.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                      {template.description}
-                    </p>
+              <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="p-4 rounded-xl bg-primary/10">
+                    {template.type === "prompt" ? (
+                      <Sparkles className="h-8 w-8 text-primary" />
+                    ) : (
+                      <Activity className="h-8 w-8 text-primary" />
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {template.team.map((team) => (
+                      <Badge key={team} variant="default">
+                        {team}
+                      </Badge>
+                    ))}
+                    {template.tags.map((tag) => (
+                      <Badge key={tag} variant="default">
+                        {tag}
+                      </Badge>
+                    ))}
+                    <div className="flex items-center gap-1 text-sm">
+                      <span>👍</span>
+                      <span className="text-muted-foreground">{template.positiveScore}</span>
+                      <span className="text-muted-foreground mx-1">·</span>
+                      <span>👎</span>
+                      <span className="text-muted-foreground">{template.negativeScore}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {template.team.map((team) => (
-                    <Badge key={team} variant="default" className="text-xs">
-                      {team}
-                    </Badge>
-                  ))}
-                  {template.tags.map((tag) => (
-                    <Badge key={tag} variant="default" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
-                  <span className="flex items-center gap-1">
-                    👍 {template.positiveScore}
-                  </span>
-                  <span className="mx-1">•</span>
-                  <span className="flex items-center gap-1">
-                    👎 {template.negativeScore}
-                  </span>
+                <div className="mb-4 flex-1">
+                  <h3 className="font-semibold text-lg mb-2">{template.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {template.description}
+                  </p>
                 </div>
 
                 <TooltipProvider>
-                  <div className="flex gap-1 mt-auto">
+                  <div className="flex gap-2 mt-auto">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="default"
+                          size="lg"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -548,7 +548,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-5 w-5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>View</TooltipContent>
@@ -557,8 +557,8 @@ const Templates = () => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="default"
+                          size="lg"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -568,7 +568,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-5 w-5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Edit</TooltipContent>
@@ -577,8 +577,8 @@ const Templates = () => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="default"
+                          size="lg"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -588,7 +588,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Play className="h-4 w-4" />
+                          <Play className="h-5 w-5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Use</TooltipContent>
@@ -597,12 +597,12 @@ const Templates = () => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="default"
+                          size="lg"
                           className="flex-1"
                           onClick={() => handleDeleteClick(template.id, template.type, template.name)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Delete</TooltipContent>
@@ -615,7 +615,7 @@ const Templates = () => {
                       negativeScore={template.negativeScore}
                       userVote={template.userVote}
                       onVoteChange={fetchTemplates}
-                      size="sm"
+                      size="lg"
                       showScore={false}
                     />
                   </div>

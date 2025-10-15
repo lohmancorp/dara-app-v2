@@ -13,7 +13,7 @@ type VoteButtonsProps = {
   negativeScore: number;
   userVote: number | null;
   onVoteChange: () => void;
-  size?: "sm" | "default";
+  size?: "sm" | "default" | "lg";
   showScore?: boolean;
 };
 
@@ -140,7 +140,7 @@ export const VoteButtons = ({
           disabled={isVoting}
           className="gap-1"
         >
-          <ThumbsUp className={size === "sm" ? "h-3 w-3" : "h-4 w-4"} />
+          <ThumbsUp className={size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
           {showScore && <span className="text-sm">{positiveScore}</span>}
         </Button>
         <Button
@@ -150,7 +150,7 @@ export const VoteButtons = ({
           disabled={isVoting}
           className="gap-1"
         >
-          <ThumbsDown className={size === "sm" ? "h-3 w-3" : "h-4 w-4"} />
+          <ThumbsDown className={size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
           {showScore && <span className="text-sm">{negativeScore}</span>}
         </Button>
       </div>
