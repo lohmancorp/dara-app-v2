@@ -204,7 +204,21 @@ const Connections = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Link2 className="h-5 w-5 text-primary" />
+                {editingConnection ? (
+                  <img 
+                    src={CONNECTION_ICONS[editingConnection.connection_type]} 
+                    alt={`${editingConnection.name} icon`}
+                    className="h-5 w-5 object-contain"
+                  />
+                ) : selectedConnection ? (
+                  <img 
+                    src={CONNECTION_ICONS[selectedConnection]} 
+                    alt={`${getConnectionInfo(selectedConnection)?.name} icon`}
+                    className="h-5 w-5 object-contain"
+                  />
+                ) : (
+                  <Link2 className="h-5 w-5 text-primary" />
+                )}
               </div>
               <span>
                 {editingConnection 
