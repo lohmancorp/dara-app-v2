@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      connections: {
+        Row: {
+          auth_config: Json | null
+          auth_type: string
+          call_delay_ms: number | null
+          connection_config: Json | null
+          connection_type: string
+          created_at: string
+          endpoint: string | null
+          id: string
+          is_active: boolean | null
+          max_retries: number | null
+          name: string
+          retry_delay_sec: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_config?: Json | null
+          auth_type: string
+          call_delay_ms?: number | null
+          connection_config?: Json | null
+          connection_type: string
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_retries?: number | null
+          name: string
+          retry_delay_sec?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_config?: Json | null
+          auth_type?: string
+          call_delay_ms?: number | null
+          connection_config?: Json | null
+          connection_type?: string
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_retries?: number | null
+          name?: string
+          retry_delay_sec?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       job_templates: {
         Row: {
           created_at: string
