@@ -45,15 +45,7 @@ const ViewPromptTemplate = () => {
         user ? supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "prompt").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
         supabase
           .from("vote_feedback")
-          .select(`
-            feedback,
-            created_at,
-            user_id,
-            profiles!vote_feedback_user_id_fkey (
-              email,
-              full_name
-            )
-          `)
+          .select("feedback, created_at, user_id")
           .eq("template_id", id)
           .eq("template_type", "prompt")
           .order("created_at", { ascending: false }),
@@ -75,13 +67,25 @@ const ViewPromptTemplate = () => {
         setUserVote(null);
       }
 
-      if (feedbackResult.data) {
-        const formattedFeedback = feedbackResult.data.map((item: any) => ({
-          feedback: item.feedback,
-          created_at: item.created_at,
-          user_email: item.profiles?.email || 'Unknown',
-          user_name: item.profiles?.full_name || null,
-        }));
+      if (feedbackResult.data && feedbackResult.data.length > 0) {
+        // Fetch user profiles for feedback
+        const userIds = feedbackResult.data.map((item: any) => item.user_id);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, email, full_name")
+          .in("id", userIds);
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+        
+        const formattedFeedback = feedbackResult.data.map((item: any) => {
+          const profile = profilesMap.get(item.user_id);
+          return {
+            feedback: item.feedback,
+            created_at: item.created_at,
+            user_email: profile?.email || 'Unknown',
+            user_name: profile?.full_name || null,
+          };
+        });
         setFeedback(formattedFeedback);
       }
     } catch (error) {
