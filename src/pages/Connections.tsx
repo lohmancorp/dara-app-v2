@@ -203,8 +203,8 @@ const Connections = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <Link2 className="h-7 w-7 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Link2 className="h-5 w-5 text-primary" />
               </div>
               <span>
                 {editingConnection 
