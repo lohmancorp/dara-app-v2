@@ -48,6 +48,15 @@ const DEFAULT_AUTH_TYPES: Record<ConnectionType, AuthType> = {
   google_alerts: 'oauth',
 };
 
+const CONNECTION_NAMES: Record<ConnectionType, string> = {
+  freshservice: 'FreshService',
+  jira: 'Jira',
+  confluence: 'Confluence',
+  gemini: 'Gemini',
+  openai: 'OpenAI',
+  google_alerts: 'Google Alerts',
+};
+
 export const ConnectionConfigForm = ({ 
   connectionType, 
   existingConnection, 
@@ -147,7 +156,7 @@ export const ConnectionConfigForm = ({
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="My FreshService Connection"
+            placeholder={connectionType ? `My ${CONNECTION_NAMES[connectionType]} Connection` : "My Connection"}
             required
           />
         </div>
