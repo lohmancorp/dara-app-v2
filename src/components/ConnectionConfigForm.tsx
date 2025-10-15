@@ -299,26 +299,6 @@ export const ConnectionConfigForm = ({
 
       <Separator />
 
-      {/* FreshService-specific Configuration */}
-      {connectionType === 'freshservice' && (
-        <>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="domain">FreshService Domain <span className="text-destructive">*</span></Label>
-              <Input
-                id="domain"
-                value={connectionConfig.domain}
-                onChange={(e) => setConnectionConfig({ ...connectionConfig, domain: e.target.value })}
-                placeholder="cbportal.freshservice.com"
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-1">Your full FreshService URL.</p>
-            </div>
-          </div>
-          <Separator />
-        </>
-      )}
-
       {/* API Throttling */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">API Throttling</h3>
