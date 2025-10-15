@@ -48,7 +48,14 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    if (connection.auth_type === 'token') {
+    if (connection.connection_type === 'freshservice') {
+      // FreshService requires base64 encoded token in 'auth' header
+      const apiKey = connection.auth_config?.api_key;
+      if (apiKey) {
+        const encodedToken = btoa(apiKey + ':X');
+        headers['Authorization'] = `Basic ${encodedToken}`;
+      }
+    } else if (connection.auth_type === 'token') {
       const apiKey = connection.auth_config?.api_key;
       if (apiKey) {
         headers['Authorization'] = `Bearer ${apiKey}`;
