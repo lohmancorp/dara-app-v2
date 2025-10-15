@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConnectionConfigForm } from "@/components/ConnectionConfigForm";
-import freshserviceIcon from "@/assets/connection-icons/freshservice.png";
+import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
 import geminiIcon from "@/assets/connection-icons/gemini.png";
