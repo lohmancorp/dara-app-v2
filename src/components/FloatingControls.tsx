@@ -1,7 +1,9 @@
 import { Bell, User, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ProfileDropdown } from "./ProfileDropdown";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FloatingControlsProps {
   actionButton?: React.ReactNode;
@@ -12,6 +14,26 @@ interface FloatingControlsProps {
 export function FloatingControls({ actionButton, onAdvancedClick, advancedPressed }: FloatingControlsProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      if (!user?.id) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (data?.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      }
+    };
+
+    fetchAvatarUrl();
+  }, [user?.id]);
 
   const handleAdvancedClick = () => {
     onAdvancedClick?.();
@@ -59,12 +81,20 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
                 setProfileOpen(!profileOpen);
                 setNotificationOpen(false);
               }}
-              className="h-11 w-11 rounded-full bg-gradient-to-br from-primary to-accent border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-white focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="h-11 w-11 rounded-full bg-gradient-to-br from-primary to-accent border-2 border-border shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-white focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 overflow-hidden"
               aria-expanded={profileOpen}
               aria-controls="profile-dropdown"
               aria-label="Profile menu"
             >
-              <User className="h-5 w-5" />
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt="User avatar" 
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User className="h-5 w-5" />
+              )}
             </button>
             {profileOpen && <ProfileDropdown onClose={() => setProfileOpen(false)} />}
           </div>
