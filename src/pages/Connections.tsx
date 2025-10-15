@@ -11,6 +11,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConnectionConfigForm } from "@/components/ConnectionConfigForm";
+import freshserviceIcon from "@/assets/connection-icons/freshservice.png";
+import jiraIcon from "@/assets/connection-icons/jira.png";
+import confluenceIcon from "@/assets/connection-icons/confluence.png";
+import geminiIcon from "@/assets/connection-icons/gemini.png";
+import openaiIcon from "@/assets/connection-icons/openai.png";
+import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 type AuthType = 'oauth' | 'token' | 'basic_auth';
@@ -28,6 +34,15 @@ interface Connection {
   connection_config: any;
   is_active: boolean;
 }
+
+const CONNECTION_ICONS: Record<ConnectionType, string> = {
+  freshservice: freshserviceIcon,
+  jira: jiraIcon,
+  confluence: confluenceIcon,
+  gemini: geminiIcon,
+  openai: openaiIcon,
+  google_alerts: googleAlertsIcon,
+};
 
 const AVAILABLE_CONNECTIONS: { type: ConnectionType; name: string; description: string; defaultEndpoint?: string; defaultAuthType: AuthType }[] = [
   { type: 'freshservice', name: 'FreshService', description: 'IT Service Management', defaultAuthType: 'token' },
@@ -204,8 +219,17 @@ const Connections = () => {
                   className="p-4 cursor-pointer hover:border-primary transition-colors"
                   onClick={() => setSelectedConnection(conn.type)}
                 >
-                  <h4 className="font-semibold mb-1">{conn.name}</h4>
-                  <p className="text-sm text-muted-foreground">{conn.description}</p>
+                  <div className="flex items-start gap-4">
+                    <img 
+                      src={CONNECTION_ICONS[conn.type]} 
+                      alt={`${conn.name} icon`}
+                      className="w-14 h-14 object-contain rounded-lg p-2 bg-muted flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold mb-1">{conn.name}</h4>
+                      <p className="text-sm text-muted-foreground">{conn.description}</p>
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>
