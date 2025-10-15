@@ -42,7 +42,7 @@ export function AppSidebar() {
             <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
           </div>
         )}
-        <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
+        <SidebarTrigger className={`text-foreground hover:text-primary hidden md:flex ${!open ? "pb-[5px]" : ""}`} />
       </div>
 
       <SidebarContent>
