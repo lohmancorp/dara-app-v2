@@ -102,11 +102,11 @@ const ActiveJobs = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Button variant="default" size="sm" className="w-full sm:w-auto">
                     View Details
                   </Button>
                   {job.status === "running" && (
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Button variant="default" size="sm" className="w-full sm:w-auto">
                       Pause
                     </Button>
                   )}
