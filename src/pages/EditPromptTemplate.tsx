@@ -256,7 +256,7 @@ const EditPromptTemplate = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        icon={FilePlus}
+        icon={Sparkles}
         title="Edit Prompt Template"
         description="Update your prompt template"
       />

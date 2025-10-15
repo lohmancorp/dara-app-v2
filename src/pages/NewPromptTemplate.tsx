@@ -258,7 +258,7 @@ const NewTemplate = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        icon={FilePlus}
+        icon={Sparkles}
         title="Create Prompt Template"
         description="Define a new prompt template for your research workflow"
       />
