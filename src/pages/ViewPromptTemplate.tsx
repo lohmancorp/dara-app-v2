@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Sparkles, ArrowLeft, Pencil, Play } from "lucide-react";
+import { Sparkles, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,15 @@ import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { VoteButtons } from "@/components/VoteButtons";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const ViewPromptTemplate = () => {
   const { id } = useParams();
@@ -20,6 +28,10 @@ const ViewPromptTemplate = () => {
   const [negativeScore, setNegativeScore] = useState(0);
   const [userVote, setUserVote] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Array<{ feedback: string; created_at: string; user_email: string; user_name: string | null }>>([]);
+  const [isVoting, setIsVoting] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [pendingVoteData, setPendingVoteData] = useState<{ vote: number } | null>(null);
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -84,6 +96,106 @@ const ViewPromptTemplate = () => {
     }
   };
 
+  const handleVote = async (vote: number, currentUserVote: number | null) => {
+    if (isVoting) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to vote.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (vote === -1) {
+      setPendingVoteData({ vote });
+      setShowFeedbackDialog(true);
+      return;
+    }
+
+    await submitVote(vote, currentUserVote, null);
+  };
+
+  const submitVote = async (vote: number, currentUserVote: number | null, feedbackText: string | null) => {
+    setIsVoting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (currentUserVote === vote) {
+        const { error: deleteError } = await supabase
+          .from("template_votes")
+          .delete()
+          .eq("template_id", id)
+          .eq("template_type", "prompt")
+          .eq("user_id", user.id);
+
+        if (deleteError) throw deleteError;
+      } else {
+        const { data: existingVote } = await supabase
+          .from("template_votes")
+          .select("id")
+          .eq("template_id", id)
+          .eq("template_type", "prompt")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingVote) {
+          const { error: updateError } = await supabase
+            .from("template_votes")
+            .update({ vote })
+            .eq("id", existingVote.id);
+
+          if (updateError) throw updateError;
+        } else {
+          const { data: voteData, error: insertError } = await supabase
+            .from("template_votes")
+            .insert({
+              template_id: id,
+              template_type: "prompt",
+              user_id: user.id,
+              vote,
+            })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+
+          if (vote === -1 && feedbackText && voteData) {
+            await supabase.from("vote_feedback").insert({
+              vote_id: voteData.id,
+              template_id: id,
+              template_type: "prompt",
+              user_id: user.id,
+              feedback: feedbackText,
+            });
+          }
+        }
+      }
+
+      await fetchTemplate();
+    } catch (error) {
+      console.error("Error voting:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit vote.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!pendingVoteData) return;
+    await submitVote(pendingVoteData.vote, userVote, feedbackText);
+    setShowFeedbackDialog(false);
+    setFeedbackText("");
+    setPendingVoteData(null);
+  };
+
   useEffect(() => {
     fetchTemplate();
   }, [id]);
@@ -126,16 +238,35 @@ const ViewPromptTemplate = () => {
           <Card className="p-6">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-lg font-semibold">Basic Information</h2>
-              <VoteButtons
-                templateId={id!}
-                templateType="prompt"
-                positiveScore={positiveScore}
-                negativeScore={negativeScore}
-                userVote={userVote}
-                onVoteChange={fetchTemplate}
-              />
+              <div className="flex items-center gap-2 text-sm">
+                <button 
+                  onClick={() => handleVote(1, userVote)}
+                  disabled={isVoting}
+                  className="flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
+                >
+                  <ThumbsUp className={`h-4 w-4 ${userVote === 1 ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-muted-foreground">{positiveScore}</span>
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button 
+                  onClick={() => handleVote(-1, userVote)}
+                  disabled={isVoting}
+                  className="flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
+                >
+                  <ThumbsDown className={`h-4 w-4 ${userVote === -1 ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-muted-foreground">{negativeScore}</span>
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Template Type</label>
+                <div className="mt-2">
+                  <Badge variant="default" className="bg-purple-600 text-white hover:bg-purple-700">
+                    Prompt
+                  </Badge>
+                </div>
+              </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Prompt Name</label>
                 <p className="mt-1">{template.prompt_name}</p>
@@ -245,6 +376,38 @@ const ViewPromptTemplate = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Help Us Improve</DialogTitle>
+            <DialogDescription>
+              We'd love to hear your feedback. What could make this template better?
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Your feedback..."
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            rows={4}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFeedbackDialog(false);
+                setFeedbackText("");
+                setPendingVoteData(null);
+              }}
+            >
+              Skip
+            </Button>
+            <Button onClick={handleFeedbackSubmit} disabled={!feedbackText.trim()}>
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

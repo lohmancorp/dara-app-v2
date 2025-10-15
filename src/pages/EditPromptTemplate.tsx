@@ -267,6 +267,16 @@ const EditPromptTemplate = () => {
             <h2 className="text-lg font-semibold">Basic Information</h2>
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="templateId">Template ID</Label>
+                <Input
+                  id="templateId"
+                  value={id}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="promptName">
                   Prompt Name <span className="text-destructive">*</span>
                 </Label>

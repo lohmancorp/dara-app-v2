@@ -36,6 +36,7 @@ const EditJobTemplate = () => {
     researchType: "",
     researchDepth: "Quick Research",
     researchExactness: "Balanced",
+    jobOutcome: "",
   });
 
   const [existingTeams, setExistingTeams] = useState<string[]>([]);
@@ -71,6 +72,7 @@ const EditJobTemplate = () => {
           researchType: data.research_type,
           researchDepth: data.research_depth,
           researchExactness: data.research_exactness,
+          jobOutcome: data.job_outcome || "",
         });
       } catch (error) {
         console.error("Error fetching template:", error);
@@ -140,6 +142,7 @@ const EditJobTemplate = () => {
           research_type: formData.researchType,
           research_depth: formData.researchDepth,
           research_exactness: formData.researchExactness,
+          job_outcome: formData.jobOutcome,
         })
         .eq("id", id);
 
@@ -179,6 +182,16 @@ const EditJobTemplate = () => {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Basic Information</h2>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="templateId">Template ID</Label>
+                <Input
+                  id="templateId"
+                  value={id}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="jobName">
                   Job Name <span className="text-destructive">*</span>
@@ -352,6 +365,24 @@ const EditJobTemplate = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Additional Settings</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="jobOutcome">Job Outcome Details</Label>
+                <Textarea
+                  id="jobOutcome"
+                  value={formData.jobOutcome}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, jobOutcome: e.target.value }))}
+                  placeholder="Enter additional job outcome details..."
+                  rows={3}
+                />
               </div>
             </div>
           </div>
