@@ -543,8 +543,8 @@ const Templates = () => {
                           onClick={() =>
                             navigate(
                               template.type === "prompt"
-                                ? `/templates/prompt/${template.id}`
-                                : `/templates/job/${template.id}`
+                                ? `/templates/prompt/${template.id}/view`
+                                : `/templates/job/${template.id}/view`
                             )
                           }
                         >
