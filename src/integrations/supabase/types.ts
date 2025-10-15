@@ -179,6 +179,36 @@ export type Database = {
         }
         Relationships: []
       }
+      template_votes: {
+        Row: {
+          created_at: string
+          id: string
+          template_id: string
+          template_type: string
+          updated_at: string
+          user_id: string
+          vote: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          template_id: string
+          template_type: string
+          updated_at?: string
+          user_id: string
+          vote: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          template_id?: string
+          template_type?: string
+          updated_at?: string
+          user_id?: string
+          vote?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

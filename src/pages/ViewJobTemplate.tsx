@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { VoteButtons } from "@/components/VoteButtons";
 
 const ViewJobTemplate = () => {
   const { id } = useParams();
@@ -14,35 +15,50 @@ const ViewJobTemplate = () => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [score, setScore] = useState(0);
+  const [userVote, setUserVote] = useState<number | null>(null);
+
+  const fetchTemplate = async () => {
+    if (!id) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const [templateResult, votesResult, userVoteResult] = await Promise.all([
+        supabase.from("job_templates").select("*").eq("id", id).single(),
+        supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job"),
+        user ? supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+
+      if (templateResult.error) throw templateResult.error;
+      setTemplate(templateResult.data);
+      
+      if (votesResult.data) {
+        const totalScore = votesResult.data.reduce((sum, v) => sum + v.vote, 0);
+        setScore(totalScore);
+      }
+      
+      if (userVoteResult.data) {
+        setUserVote(userVoteResult.data.vote);
+      } else {
+        setUserVote(null);
+      }
+    } catch (error) {
+      console.error("Error fetching template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load template.",
+        variant: "destructive",
+      });
+      navigate("/templates");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTemplate = async () => {
-      if (!id) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("job_templates")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error) throw error;
-        setTemplate(data);
-      } catch (error) {
-        console.error("Error fetching template:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load template.",
-          variant: "destructive",
-        });
-        navigate("/templates");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchTemplate();
-  }, [id, navigate, toast]);
+  }, [id]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
@@ -68,7 +84,16 @@ const ViewJobTemplate = () => {
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-lg font-semibold">Basic Information</h2>
+              <VoteButtons
+                templateId={id!}
+                templateType="job"
+                score={score}
+                userVote={userVote}
+                onVoteChange={fetchTemplate}
+              />
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Job Name</label>
