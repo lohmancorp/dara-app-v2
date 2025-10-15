@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 const RESEARCH_DEPTH_OPTIONS = ["Quick Research", "Deep Research"];
 const RESEARCH_EXACTNESS_OPTIONS = ["Creative", "Precise", "Strict", "Balanced"];
 const RESEARCH_TYPE_OPTIONS = ["Per Object", "Per Outcome", "Overall", "Data Synthesis"];
+const DATA_TYPE_OPTIONS = ["File", "Site Link", "JQL", "Dynamic Search Fields"];
+const JOB_TYPE_OPTIONS = ["Scheduled", "One-Time", "Recurring", "On-going"];
 
 const EditJobTemplate = () => {
   const { id } = useParams();
@@ -33,10 +35,14 @@ const EditJobTemplate = () => {
     jobTags: [] as string[],
     jobConnection: "",
     jobPrompt: "",
+    jobDataType: "",
+    jobDataTypeField: "",
     researchType: "",
     researchDepth: "Quick Research",
     researchExactness: "Balanced",
-    jobOutcome: "",
+    jobChunking: false,
+    chunkSize: 20,
+    jobType: [] as string[],
   });
 
   const [existingTeams, setExistingTeams] = useState<string[]>([]);
@@ -48,6 +54,7 @@ const EditJobTemplate = () => {
     { id: "4", name: "IEEE Xplore" },
   ]);
   const [availablePrompts, setAvailablePrompts] = useState<{ id: string; name: string }[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -62,6 +69,13 @@ const EditJobTemplate = () => {
 
         if (error) throw error;
 
+        // Parse job_outcome to extract individual fields
+        const outcome = data.job_outcome || "";
+        const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
+        const chunkingMatch = outcome.match(/Chunking: (true|false)/);
+        const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
+        const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+
         setFormData({
           jobName: data.job_name,
           jobDescription: data.job_description,
@@ -69,10 +83,14 @@ const EditJobTemplate = () => {
           jobTags: data.job_tags || [],
           jobConnection: data.job_connection,
           jobPrompt: data.job_prompt,
+          jobDataType: dataTypeMatch ? dataTypeMatch[1] : "",
+          jobDataTypeField: "",
           researchType: data.research_type,
           researchDepth: data.research_depth,
           researchExactness: data.research_exactness,
-          jobOutcome: data.job_outcome || "",
+          jobChunking: chunkingMatch ? chunkingMatch[1] === "true" : false,
+          chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
+          jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter(t => t) : [],
         });
       } catch (error) {
         console.error("Error fetching template:", error);
@@ -109,6 +127,113 @@ const EditJobTemplate = () => {
     fetchExistingData();
   }, [id, navigate, toast]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/json',
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a PDF, JSON, CSV, XLSX, XLS, DOC, or DOCX file.",
+        variant: "destructive",
+      });
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "File size must be less than 20MB.",
+        variant: "destructive",
+      });
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleDataTypeSelect = (dataType: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      jobDataType: dataType,
+    }));
+  };
+
+  const handleJobTypeToggle = (jobType: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      jobType: prev.jobType.includes(jobType)
+        ? prev.jobType.filter((t) => t !== jobType)
+        : [...prev.jobType, jobType],
+    }));
+  };
+
+  const renderDataTypeField = () => {
+    if (!formData.jobDataType) return null;
+
+    const dataType = formData.jobDataType;
+
+    return (
+      <div className="space-y-2 p-4 border rounded-md bg-muted/30">
+        <Label className="text-sm font-medium text-muted-foreground">{dataType} (Informational)</Label>
+        {dataType === "File" && (
+          <div className="space-y-2">
+            <div className="border-2 border-dashed border-border rounded-md p-6 text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Input
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.json,.csv,.xlsx,.xls,.doc,.docx"
+                className="hidden"
+                id="file-upload"
+              />
+              <Label htmlFor="file-upload" className="cursor-pointer">
+                <span className="text-sm text-muted-foreground">
+                  {selectedFile ? selectedFile.name : "Drop file here or click to browse"}
+                </span>
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, JSON, CSV, XLSX, XLS, DOC, DOCX (Max 20MB)
+              </p>
+            </div>
+          </div>
+        )}
+        {dataType === "Site Link" && (
+          <Input
+            placeholder="https://example.com/research-article"
+            type="url"
+            disabled
+          />
+        )}
+        {dataType === "JQL" && (
+          <Textarea
+            placeholder="Enter JQL statement..."
+            rows={3}
+            disabled
+          />
+        )}
+        {dataType === "Dynamic Search Fields" && (
+          <Input
+            placeholder="Will be dynamically pulled from connection settings"
+            disabled
+          />
+        )}
+      </div>
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -142,7 +267,7 @@ const EditJobTemplate = () => {
           research_type: formData.researchType,
           research_depth: formData.researchDepth,
           research_exactness: formData.researchExactness,
-          job_outcome: formData.jobOutcome,
+          job_outcome: `Data Type: ${formData.jobDataType}, Chunking: ${formData.jobChunking}, Chunk Size: ${formData.chunkSize}, Job Types: ${formData.jobType.join(", ")}`,
         })
         .eq("id", id);
 
@@ -276,7 +401,7 @@ const EditJobTemplate = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+               <div className="space-y-2">
                 <Label htmlFor="jobPrompt">
                   Job Prompt <span className="text-destructive">*</span>
                 </Label>
@@ -296,6 +421,18 @@ const EditJobTemplate = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Job Data Type</Label>
+                <SingleSelectTagInput
+                  value={formData.jobDataType}
+                  onChange={handleDataTypeSelect}
+                  options={DATA_TYPE_OPTIONS}
+                  placeholder="Select a data type"
+                />
+              </div>
+
+              {renderDataTypeField()}
             </div>
           </div>
 
@@ -371,17 +508,51 @@ const EditJobTemplate = () => {
 
           <Separator />
 
+          {/* Chunking Settings */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Additional Settings</h2>
+            <h2 className="text-lg font-semibold">Chunking Settings</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="jobChunking">Job Chunking</Label>
+                <Switch
+                  id="jobChunking"
+                  checked={formData.jobChunking}
+                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, jobChunking: checked }))}
+                />
+              </div>
+
+              {formData.jobChunking && (
+                <div className="space-y-2">
+                  <Label htmlFor="chunkSize">Chunk Size</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="chunkSize"
+                      type="number"
+                      value={formData.chunkSize}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, chunkSize: parseInt(e.target.value) || 20 }))}
+                      min={1}
+                      max={100}
+                    />
+                    <span className="text-sm text-muted-foreground">objects</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Job Type */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Job Type</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="jobOutcome">Job Outcome Details</Label>
-                <Textarea
-                  id="jobOutcome"
-                  value={formData.jobOutcome}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, jobOutcome: e.target.value }))}
-                  placeholder="Enter additional job outcome details..."
-                  rows={3}
+                <Label>Select Job Type(s)</Label>
+                <MultiSelectTagInput
+                  value={formData.jobType}
+                  onChange={(jobTypes) => setFormData((prev) => ({ ...prev, jobType: jobTypes }))}
+                  options={JOB_TYPE_OPTIONS}
+                  placeholder="Select job types"
                 />
               </div>
             </div>
