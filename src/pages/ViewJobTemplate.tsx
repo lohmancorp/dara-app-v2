@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Briefcase, ArrowLeft } from "lucide-react";
+import { Briefcase, ArrowLeft, Pencil, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ const ViewJobTemplate = () => {
   const [positiveScore, setPositiveScore] = useState(0);
   const [negativeScore, setNegativeScore] = useState(0);
   const [userVote, setUserVote] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<Array<{ feedback: string; created_at: string }>>([]);
+  const [feedback, setFeedback] = useState<Array<{ feedback: string; created_at: string; user_email: string; user_name: string | null }>>([]);
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -30,7 +30,19 @@ const ViewJobTemplate = () => {
         supabase.from("job_templates").select("*").eq("id", id).single(),
         supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job"),
         user ? supabase.from("template_votes").select("vote").eq("template_id", id).eq("template_type", "job").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-        supabase.from("vote_feedback").select("feedback, created_at").eq("template_id", id).eq("template_type", "job").order("created_at", { ascending: false }),
+        supabase
+          .from("vote_feedback")
+          .select(`
+            feedback,
+            created_at,
+            profiles:user_id (
+              email,
+              full_name
+            )
+          `)
+          .eq("template_id", id)
+          .eq("template_type", "job")
+          .order("created_at", { ascending: false }),
       ]);
 
       if (templateResult.error) throw templateResult.error;
@@ -50,7 +62,13 @@ const ViewJobTemplate = () => {
       }
 
       if (feedbackResult.data) {
-        setFeedback(feedbackResult.data);
+        const formattedFeedback = feedbackResult.data.map((item: any) => ({
+          feedback: item.feedback,
+          created_at: item.created_at,
+          user_email: item.profiles?.email || 'Unknown',
+          user_name: item.profiles?.full_name || null,
+        }));
+        setFeedback(formattedFeedback);
       }
     } catch (error) {
       console.error("Error fetching template:", error);
@@ -86,10 +104,22 @@ const ViewJobTemplate = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <Button variant="outline" onClick={() => navigate("/templates")} className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Templates
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="outline" onClick={() => navigate("/templates")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Templates
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate(`/templates/job/${id}/edit`)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Template
+            </Button>
+            <Button onClick={() => navigate(`/active-jobs?jobTemplateId=${id}`)}>
+              <Play className="h-4 w-4 mr-2" />
+              Use Template
+            </Button>
+          </div>
+        </div>
 
         <div className="space-y-6">
           <Card className="p-6">
@@ -189,9 +219,14 @@ const ViewJobTemplate = () => {
                 {feedback.map((item, index) => (
                   <div key={index} className="p-3 bg-muted rounded-md">
                     <p className="text-sm">{item.feedback}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </p>
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {item.user_name || item.user_email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
