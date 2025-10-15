@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -521,23 +521,29 @@ const Templates = () => {
               <DropdownMenuItem onClick={() => { setSortField("name"); setSortDirection("desc"); }}>
                 Name (Z-A)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}>
-                Newest Created
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}>
-                Oldest Created
+                <ChevronUp className="h-4 w-4 mr-2" />
+                Created
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("desc"); }}>
-                Recently Updated
+              <DropdownMenuItem onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Created
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("asc"); }}>
-                Least Recently Updated
+                <ChevronUp className="h-4 w-4 mr-2" />
+                Last Updated
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("desc"); }}>
-                Highest Score
+              <DropdownMenuItem onClick={() => { setSortField("updated_at"); setSortDirection("desc"); }}>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Last Updated
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("asc"); }}>
-                Lowest Score
+                <ChevronUp className="h-4 w-4 mr-2" />
+                Score
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setSortField("score"); setSortDirection("desc"); }}>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Score
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
