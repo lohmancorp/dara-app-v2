@@ -232,15 +232,6 @@ const ViewJobTemplate = () => {
               </div>
             </Card>
           )}
-
-          <div className="flex gap-4 justify-end">
-            <Button variant="outline" onClick={() => navigate(`/templates/job/${id}/edit`)}>
-              Edit Template
-            </Button>
-            <Button onClick={() => navigate(`/active-jobs?jobTemplateId=${id}`)}>
-              Use Template
-            </Button>
-          </div>
         </div>
       </div>
     </div>

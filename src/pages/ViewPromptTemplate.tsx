@@ -243,15 +243,6 @@ const ViewPromptTemplate = () => {
               </div>
             </Card>
           )}
-
-          <div className="flex gap-4 justify-end">
-            <Button variant="outline" onClick={() => navigate(`/templates/prompt/${id}/edit`)}>
-              Edit Template
-            </Button>
-            <Button onClick={() => navigate(`/active-jobs?promptId=${id}`)}>
-              Use Template
-            </Button>
-          </div>
         </div>
       </div>
     </div>
