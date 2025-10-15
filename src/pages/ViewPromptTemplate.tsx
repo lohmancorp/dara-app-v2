@@ -218,7 +218,7 @@ const ViewPromptTemplate = () => {
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="flex justify-between items-center mb-6">
-          <Button variant="outline" onClick={() => navigate("/templates")}>
+          <Button variant="ghost" onClick={() => navigate("/templates")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Templates
           </Button>
