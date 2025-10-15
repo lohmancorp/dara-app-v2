@@ -202,14 +202,18 @@ const Connections = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5" />
-              {editingConnection 
-                ? `Configure ${editingConnection.name}` 
-                : selectedConnection
-                  ? `Add New ${getConnectionInfo(selectedConnection)?.name} Connection`
-                  : 'Add New Connection'
-              }
+            <DialogTitle className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Link2 className="h-7 w-7 text-primary" />
+              </div>
+              <span>
+                {editingConnection 
+                  ? `Configure ${editingConnection.name}` 
+                  : selectedConnection
+                    ? `Add New ${getConnectionInfo(selectedConnection)?.name} Connection`
+                    : 'Add New Connection'
+                }
+              </span>
             </DialogTitle>
           </DialogHeader>
           {!selectedConnection && !editingConnection ? (
