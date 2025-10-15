@@ -154,14 +154,6 @@ const ViewJobTemplate = () => {
           .eq("user_id", user.id);
 
         if (deleteError) throw deleteError;
-
-        // Also delete associated feedback
-        await supabase
-          .from("vote_feedback")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("template_id", id)
-          .eq("template_type", "job");
       } else {
         const { data: existingVote } = await supabase
           .from("template_votes")
@@ -179,25 +171,25 @@ const ViewJobTemplate = () => {
 
           if (updateError) throw updateError;
 
-          // Handle feedback when updating to a negative vote
+          // Only add feedback if voting negative and feedback is provided and doesn't exist yet
           if (vote === -1 && feedbackText) {
-            await supabase.from("vote_feedback").upsert({
-              vote_id: existingVote.id,
-              template_id: id,
-              template_type: "job",
-              user_id: user.id,
-              feedback: feedbackText,
-            }, {
-              onConflict: "user_id,template_id,template_type"
-            });
-          } else if (vote === 1) {
-            // Delete feedback when changing to positive vote
-            await supabase
+            const { data: existingFeedback } = await supabase
               .from("vote_feedback")
-              .delete()
+              .select("id")
               .eq("user_id", user.id)
               .eq("template_id", id)
-              .eq("template_type", "job");
+              .eq("template_type", "job")
+              .maybeSingle();
+
+            if (!existingFeedback) {
+              await supabase.from("vote_feedback").insert({
+                vote_id: existingVote.id,
+                template_id: id,
+                template_type: "job",
+                user_id: user.id,
+                feedback: feedbackText,
+              });
+            }
           }
         } else {
           const { data: voteData, error: insertError } = await supabase

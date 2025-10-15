@@ -67,14 +67,6 @@ export const VoteButtons = ({
           .eq("template_type", templateType);
 
         if (error) throw error;
-
-        // Also delete feedback if it exists
-        await supabase
-          .from("vote_feedback")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("template_id", templateId)
-          .eq("template_type", templateType);
       } else {
         // Otherwise, upsert the vote
         const { data: voteData, error } = await supabase
@@ -92,27 +84,25 @@ export const VoteButtons = ({
 
         if (error) throw error;
 
-        // If negative vote with feedback, store it
+        // Only add feedback if voting negative and feedback is provided and doesn't exist yet
         if (voteValue === -1 && feedbackText) {
-          await supabase
+          const { data: existingFeedback } = await supabase
             .from("vote_feedback")
-            .upsert({
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("template_id", templateId)
+            .eq("template_type", templateType)
+            .maybeSingle();
+
+          if (!existingFeedback) {
+            await supabase.from("vote_feedback").insert({
               vote_id: voteData.id,
               user_id: user.id,
               template_id: templateId,
               template_type: templateType,
               feedback: feedbackText,
-            }, {
-              onConflict: "user_id,template_id,template_type"
             });
-        } else if (voteValue === 1) {
-          // Delete feedback when changing to positive vote
-          await supabase
-            .from("vote_feedback")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("template_id", templateId)
-            .eq("template_type", templateType);
+          }
         }
       }
 
