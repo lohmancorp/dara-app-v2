@@ -495,32 +495,39 @@ const Templates = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredTemplates.map((template) => (
               <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow flex flex-col">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="p-4 rounded-xl bg-primary/10">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
                     {template.type === "prompt" ? (
-                      <Sparkles className="h-8 w-8 text-primary" />
+                      <Sparkles className="h-7 w-7 text-primary" />
                     ) : (
-                      <Activity className="h-8 w-8 text-primary" />
+                      <Activity className="h-7 w-7 text-primary" />
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    {template.team.map((team) => (
-                      <Badge key={team} variant="default">
-                        {team}
-                      </Badge>
-                    ))}
-                    {template.tags.map((tag) => (
-                      <Badge key={tag} variant="default">
-                        {tag}
-                      </Badge>
-                    ))}
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>👍</span>
-                      <span className="text-muted-foreground">{template.positiveScore}</span>
-                      <span className="text-muted-foreground mx-1">·</span>
-                      <span>👎</span>
-                      <span className="text-muted-foreground">{template.negativeScore}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {template.team.slice(0, 1).map((team) => (
+                        <Badge key={team} variant="default" className="whitespace-nowrap">
+                          {team}
+                        </Badge>
+                      ))}
+                      {template.tags.slice(0, 1).map((tag) => (
+                        <Badge key={tag} variant="default" className="whitespace-nowrap">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex items-center gap-1">
+                        <span>👍</span>
+                        <span className="text-muted-foreground">{template.positiveScore}</span>
+                      </span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="flex items-center gap-1">
+                        <span>👎</span>
+                        <span className="text-muted-foreground">{template.negativeScore}</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -538,7 +545,7 @@ const Templates = () => {
                       <TooltipTrigger asChild>
                         <Button
                           variant="default"
-                          size="lg"
+                          size="sm"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -548,7 +555,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Eye className="h-5 w-5" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>View</TooltipContent>
@@ -558,7 +565,7 @@ const Templates = () => {
                       <TooltipTrigger asChild>
                         <Button
                           variant="default"
-                          size="lg"
+                          size="sm"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -568,7 +575,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Pencil className="h-5 w-5" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Edit</TooltipContent>
@@ -578,7 +585,7 @@ const Templates = () => {
                       <TooltipTrigger asChild>
                         <Button
                           variant="default"
-                          size="lg"
+                          size="sm"
                           className="flex-1"
                           onClick={() =>
                             navigate(
@@ -588,7 +595,7 @@ const Templates = () => {
                             )
                           }
                         >
-                          <Play className="h-5 w-5" />
+                          <Play className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Use</TooltipContent>
@@ -598,11 +605,11 @@ const Templates = () => {
                       <TooltipTrigger asChild>
                         <Button
                           variant="default"
-                          size="lg"
+                          size="sm"
                           className="flex-1"
                           onClick={() => handleDeleteClick(template.id, template.type, template.name)}
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Delete</TooltipContent>
@@ -615,7 +622,7 @@ const Templates = () => {
                       negativeScore={template.negativeScore}
                       userVote={template.userVote}
                       onVoteChange={fetchTemplates}
-                      size="lg"
+                      size="sm"
                       showScore={false}
                     />
                   </div>
