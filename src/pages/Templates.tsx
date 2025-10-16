@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ArrowUp, ArrowDown } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +73,7 @@ type UnifiedTemplate = {
   negativeScore: number;
   userVote: number | null;
   authorName: string | null;
+  user_id: string;
 };
 
 type SortField = "name" | "created_at" | "updated_at" | "score";
@@ -100,11 +101,13 @@ const Templates = () => {
   const [feedback, setFeedback] = useState("");
   const [pendingVoteData, setPendingVoteData] = useState<{ templateId: string; templateType: "prompt" | "job" } | null>(null);
   const [authorNames, setAuthorNames] = useState<Map<string, string | null>>(new Map());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchTemplates = async () => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
       
       const [promptResult, jobResult, votesResult, userVotesResult] = await Promise.all([
         supabase.from("prompt_templates").select("id, prompt_name, prompt_description, prompt_team, prompt_tags, created_at, updated_at, user_id").order("created_at", { ascending: false }),
@@ -212,6 +215,7 @@ const Templates = () => {
           negativeScore,
           userVote,
           authorName: authorNames.get(t.user_id) || null,
+          user_id: t.user_id,
         };
       }),
       ...jobTemplates.map(t => {
@@ -233,6 +237,7 @@ const Templates = () => {
           negativeScore,
           userVote,
           authorName: authorNames.get(t.user_id) || null,
+          user_id: t.user_id,
         };
       }),
     ];
@@ -702,25 +707,47 @@ const Templates = () => {
                       <TooltipContent>View</TooltipContent>
                     </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() =>
-                            navigate(
-                              template.type === "prompt"
-                                ? `/templates/prompt/${template.id}/edit`
-                                : `/templates/job/${template.id}/edit`
-                            )
-                          }
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
-                    </Tooltip>
+                    {currentUserId === template.user_id ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() =>
+                              navigate(
+                                template.type === "prompt"
+                                  ? `/templates/prompt/${template.id}/edit`
+                                  : `/templates/job/${template.id}/edit`
+                              )
+                            }
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() =>
+                              navigate(
+                                template.type === "prompt"
+                                  ? `/templates/prompt/${template.id}/view`
+                                  : `/templates/job/${template.id}/view`
+                              )
+                            }
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Clone</TooltipContent>
+                      </Tooltip>
+                    )}
 
                     <Tooltip>
                       <TooltipTrigger asChild>

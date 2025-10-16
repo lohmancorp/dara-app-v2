@@ -68,7 +68,7 @@ const EditPromptTemplate = () => {
             description: "You can only edit your own templates. You can clone this template instead.",
             variant: "destructive",
           });
-          navigate(`/templates/prompt/${id}`);
+          navigate(`/templates/prompt/${id}/view`);
           return;
         }
 

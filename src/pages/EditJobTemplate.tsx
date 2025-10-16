@@ -74,7 +74,7 @@ const EditJobTemplate = () => {
             description: "You can only edit your own templates. You can clone this template instead.",
             variant: "destructive",
           });
-          navigate(`/templates/job/${id}`);
+          navigate(`/templates/job/${id}/view`);
           return;
         }
 
