@@ -723,7 +723,7 @@ const Templates = () => {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="button-small h-6 gap-0.5 p-0 text-xs"
+              className="button-small max-h-[24px] gap-0.5 p-0 text-xs"
             >
               <X className="h-2.5 w-2.5" />
               Clear filters
