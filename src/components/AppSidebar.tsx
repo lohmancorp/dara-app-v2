@@ -32,15 +32,23 @@ export function AppSidebar() {
       <div
         className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
       >
-        {open && (
-          <div className="flex items-center gap-2">
+        {open ? (
+          <NavLink to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
               className="h-[55px] w-[55px] rounded-lg object-cover"
             />
             <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
-          </div>
+          </NavLink>
+        ) : (
+          <NavLink to="/" className="cursor-pointer hover:opacity-80 transition-opacity">
+            <img 
+              src={daraLogo} 
+              alt="D.A.R.A. Logo" 
+              className="h-[40px] w-[40px] rounded-lg object-cover"
+            />
+          </NavLink>
         )}
         <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
       </div>
