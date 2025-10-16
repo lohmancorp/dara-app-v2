@@ -308,7 +308,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
             onClick={() => {
               window.open(contextMenu.link.href, "_blank");
               setContextMenu(null);
@@ -318,14 +318,14 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
             Open Link
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
             onClick={() => handleEditLink(contextMenu.link)}
           >
             <Edit className="h-4 w-4" />
             Edit Hyperlink
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left text-destructive"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
             onClick={() => handleRemoveLink(contextMenu.link)}
           >
             <Trash className="h-4 w-4" />
