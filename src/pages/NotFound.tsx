@@ -14,7 +14,7 @@ const NotFound = () => {
       <img 
         src={notFoundImage} 
         alt="404 - Page not found" 
-        className="max-w-full max-h-full object-contain"
+        className="max-w-[640px] max-h-full object-contain w-full"
       />
     </div>
   );
