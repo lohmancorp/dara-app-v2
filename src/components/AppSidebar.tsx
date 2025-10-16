@@ -37,7 +37,7 @@ export function AppSidebar() {
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className={`rounded-lg object-cover ${open ? "h-[55px] w-[55px]" : "h-[40px] w-[40px]"}`}
+              className={`rounded-lg object-cover ${open ? "h-[55px] w-[55px]" : "h-[32px] w-[32px]"}`}
             />
           </NavLink>
           {open && (
