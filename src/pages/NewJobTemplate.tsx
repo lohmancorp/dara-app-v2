@@ -91,19 +91,12 @@ const NewJobTemplate = () => {
           connection_type: conn.connection_type,
         })));
       }
-    };
 
-    fetchExistingData();
-    
-    // Handle clone data from location state
-    const cloneData = (location.state as any)?.cloneData;
-    if (cloneData) {
-      console.log('Clone data received:', cloneData);
-      
-      const handleCloneMapping = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
+      // Handle clone data from location state AFTER data is loaded
+      const cloneData = (location.state as any)?.cloneData;
+      if (cloneData) {
+        console.log('Clone data received:', cloneData);
+        
         const outcome = cloneData.jobOutcome || "";
         const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
         const chunkingMatch = outcome.match(/Chunking: (true|false)/);
@@ -114,18 +107,13 @@ const NewJobTemplate = () => {
         let mappedPromptId = cloneData.jobPrompt || '';
         
         // Map the connection to user's equivalent connection by connection_type
-        // cloneData.jobConnectionType now contains the connection_type string, not a UUID
         if (cloneData.jobConnectionType) {
           console.log('Looking up user connection with type:', cloneData.jobConnectionType, 'for user:', user.id);
-          const { data: userConnection, error: userConnError } = await supabase
-            .from("connections")
-            .select("id, name")
-            .eq("user_id", user.id)
-            .eq("connection_type", cloneData.jobConnectionType)
-            .eq("is_active", true)
-            .maybeSingle();
+          const userConnection = connectionsData.data?.find(
+            conn => conn.connection_type === cloneData.jobConnectionType
+          );
 
-          console.log('User connection result:', userConnection, 'Error:', userConnError);
+          console.log('User connection result:', userConnection);
 
           if (userConnection) {
             mappedConnectionId = userConnection.id;
@@ -162,10 +150,10 @@ const NewJobTemplate = () => {
           mappedPromptId,
         });
         setFormData(parsedFormData);
-      };
+      }
+    };
 
-      handleCloneMapping();
-    }
+    fetchExistingData();
   }, [location]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
