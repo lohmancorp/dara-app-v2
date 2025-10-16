@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Briefcase, MapPin, Loader2, Globe } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { User, Mail, Briefcase, MapPin, Loader2, Globe, Upload, RefreshCw, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
@@ -26,6 +28,10 @@ const Profile = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -166,6 +172,153 @@ const Profile = () => {
     return formData.email?.slice(0, 2).toUpperCase() || "U";
   };
 
+  const isGoogleAuth = () => {
+    return user?.app_metadata?.provider === "google" || user?.app_metadata?.providers?.includes("google");
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    // Check if the click was on an icon button
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) {
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPEG, PNG, or WebP image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Delete old avatar if exists
+      if (formData.avatar_url && formData.avatar_url.includes('avatars/')) {
+        const oldPath = formData.avatar_url.split('avatars/')[1];
+        await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      // Upload new avatar
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError, data } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user?.id);
+
+      if (updateError) throw updateError;
+
+      setFormData({ ...formData, avatar_url: publicUrl });
+      setIsModalOpen(false);
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleSyncFromGoogle = async () => {
+    if (!isGoogleAuth()) {
+      toast({
+        title: "Not Available",
+        description: "Sync is only available for Google authenticated accounts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Get fresh user data from Google
+      const { data: { user: freshUser }, error: refreshError } = await supabase.auth.getUser();
+      
+      if (refreshError) throw refreshError;
+
+      const googleAvatarUrl = freshUser?.user_metadata?.avatar_url;
+      
+      if (!googleAvatarUrl) {
+        toast({
+          title: "No Google Avatar",
+          description: "No avatar found in your Google account.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update profile with Google avatar
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: googleAvatarUrl })
+        .eq('id', user?.id);
+
+      if (updateError) throw updateError;
+
+      setFormData({ ...formData, avatar_url: googleAvatarUrl });
+      setIsModalOpen(false);
+      toast({
+        title: "Avatar Synced",
+        description: "Your profile picture has been synced from Google.",
+      });
+    } catch (error) {
+      console.error('Error syncing avatar:', error);
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync avatar from Google. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -191,17 +344,75 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
+                <TooltipProvider>
+                  <div 
+                    className="relative cursor-pointer"
+                    onMouseEnter={() => setIsHovering(true)}
+                    onMouseLeave={() => setIsHovering(false)}
+                    onClick={handleAvatarClick}
+                  >
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    {isHovering && (
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 rounded-full">
+                        {isGoogleAuth() && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSyncFromGoogle();
+                                }}
+                                disabled={isUploading}
+                                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                              >
+                                <RefreshCw className="h-4 w-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Sync from Google</TooltipContent>
+                          </Tooltip>
+                        )}
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUploadClick();
+                              }}
+                              disabled={isUploading}
+                              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                            >
+                              <Upload className="h-4 w-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Upload new picture</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </div>
+                </TooltipProvider>
+                
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    Avatar is synced from your authentication provider
+                    {isGoogleAuth() 
+                      ? "Click to view or update your profile picture" 
+                      : "Click to upload a profile picture"}
                   </p>
                 </div>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
               </div>
 
               <div className="space-y-2">
@@ -317,6 +528,73 @@ const Profile = () => {
           </Card>
         </div>
       </div>
+
+      {/* Avatar Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile Picture</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="relative">
+              <Avatar className="h-48 w-48">
+                <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-6xl">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            
+            <div className="flex gap-3">
+              {isGoogleAuth() && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleSyncFromGoogle}
+                        disabled={isUploading}
+                        className="p-3 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-5 w-5" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Sync from Google</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleUploadClick}
+                      disabled={isUploading}
+                      className="p-3 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Upload className="h-5 w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Upload new picture</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            
+            <p className="text-sm text-muted-foreground text-center">
+              {isGoogleAuth() 
+                ? "Sync from Google or upload a custom picture (max 2MB)" 
+                : "Upload a custom picture (max 2MB, JPEG/PNG/WebP)"}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
