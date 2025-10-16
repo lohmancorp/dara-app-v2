@@ -683,6 +683,13 @@ const Templates = () => {
         {/* Row 2: Filter Tags */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Badge
+            variant={showMyTemplatesOnly ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setShowMyTemplatesOnly(prev => !prev)}
+          >
+            My Templates
+          </Badge>
+          <Badge
             variant={typeFilter === "job" ? "default" : "outline"}
             className="cursor-pointer"
             onClick={() => toggleTypeFilter("job")}
@@ -695,13 +702,6 @@ const Templates = () => {
             onClick={() => toggleTypeFilter("prompt")}
           >
             Prompt
-          </Badge>
-          <Badge
-            variant={showMyTemplatesOnly ? "default" : "outline"}
-            className="cursor-pointer"
-            onClick={() => setShowMyTemplatesOnly(prev => !prev)}
-          >
-            My Templates
           </Badge>
           {allTags.length > 0 && (
             <>
@@ -723,9 +723,9 @@ const Templates = () => {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="button-small max-h-[24px] gap-0.5 p-0 text-xs"
+              className="h-auto px-2.5 py-0.5 text-xs font-semibold gap-1"
             >
-              <X className="h-2.5 w-2.5" />
+              <X className="h-3 w-3" />
               Clear filters
             </Button>
           )}
