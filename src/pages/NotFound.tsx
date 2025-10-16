@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import notFoundImage from "@/assets/404-dara-robot.png";
+import notFoundVideo from "@/assets/404-dara-robot.mp4";
 
 const NotFound = () => {
   const location = useLocation();
@@ -11,11 +11,14 @@ const NotFound = () => {
 
   return (
     <div className="flex items-center justify-center h-[calc(100vh-4rem)] w-full">
-      <img 
-        src={notFoundImage} 
-        alt="404 - Page not found" 
+      <video 
+        src={notFoundVideo} 
         className="max-w-[640px] max-h-full object-contain w-full"
-      />
+        autoPlay
+        muted
+      >
+        Your browser does not support the video tag.
+      </video>
     </div>
   );
 };
