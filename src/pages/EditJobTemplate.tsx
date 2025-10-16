@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, Upload, Plus } from "lucide-react";
+import { Activity, Upload, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -428,7 +428,7 @@ const EditJobTemplate = () => {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8 rounded-full"
+                          className="h-5 w-5 rounded-full p-0"
                           onClick={() => {
                             const availableToAdd = availableConnections.filter(
                               conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id)
@@ -438,7 +438,7 @@ const EditJobTemplate = () => {
                             }
                           }}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -465,17 +465,27 @@ const EditJobTemplate = () => {
                         )}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const updated = formData.secondaryConnections.filter((_, i) => i !== index);
-                        setFormData((prev) => ({ ...prev, secondaryConnections: updated }));
-                      }}
-                    >
-                      Remove
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-5 w-5 rounded-full p-0 bg-muted hover:bg-muted/80"
+                            onClick={() => {
+                              const updated = formData.secondaryConnections.filter((_, i) => i !== index);
+                              setFormData((prev) => ({ ...prev, secondaryConnections: updated }));
+                            }}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Remove</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 ))}
               </div>
