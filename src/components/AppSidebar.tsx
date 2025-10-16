@@ -29,10 +29,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}>
+      <div className={`grid border-b border-sidebar-border ${open ? "grid-cols-[1fr_auto] gap-2 p-4" : "grid-cols-1 p-4"}`}>
         {open ? (
           <>
-            <NavLink to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <NavLink 
+              to="/" 
+              className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
+            >
               <img 
                 src={daraLogo} 
                 alt="D.A.R.A. Logo" 
@@ -42,12 +45,18 @@ export function AppSidebar() {
                 D.A.R.A.
               </span>
             </NavLink>
-            <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0" />
+            <button
+              onClick={() => setOpenMobile(false)}
+              className="flex items-center justify-center text-foreground hover:text-primary transition-colors"
+              aria-label="Collapse sidebar"
+            >
+              <SidebarTrigger />
+            </button>
           </>
         ) : (
           <button
             onClick={() => setOpenMobile(true)}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             aria-label="Expand sidebar"
           >
             <img 
