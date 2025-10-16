@@ -111,26 +111,34 @@ const NewJobTemplate = () => {
         const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
 
         let mappedConnectionId = '';
+        let mappedPromptId = cloneData.jobPrompt || '';
         
         // Map the connection to user's equivalent connection by connection_type
         if (cloneData.jobConnection) {
-          const { data: originalConnection } = await supabase
+          console.log('Looking up original connection:', cloneData.jobConnection);
+          const { data: originalConnection, error: connError } = await supabase
             .from("connections")
             .select("connection_type")
             .eq("id", cloneData.jobConnection)
             .maybeSingle();
 
+          console.log('Original connection result:', originalConnection, 'Error:', connError);
+
           if (originalConnection) {
-            const { data: userConnection } = await supabase
+            console.log('Searching for user connection with type:', originalConnection.connection_type, 'for user:', user.id);
+            const { data: userConnection, error: userConnError } = await supabase
               .from("connections")
-              .select("id")
+              .select("id, name")
               .eq("user_id", user.id)
               .eq("connection_type", originalConnection.connection_type)
               .eq("is_active", true)
               .maybeSingle();
 
+            console.log('User connection result:', userConnection, 'Error:', userConnError);
+
             if (userConnection) {
               mappedConnectionId = userConnection.id;
+              console.log('Mapped connection ID:', mappedConnectionId);
             } else {
               toast({
                 title: "Connection Not Found",
@@ -147,7 +155,7 @@ const NewJobTemplate = () => {
           jobTeam: cloneData.jobTeam || [],
           jobTags: cloneData.jobTags || [],
           jobConnection: mappedConnectionId,
-          jobPrompt: cloneData.jobPrompt || '', // Prompt IDs work across users (RLS allows viewing all)
+          jobPrompt: mappedPromptId,
           jobDataType: dataTypeMatch ? dataTypeMatch[1].trim() : '',
           jobDataTypeField: '',
           researchType: cloneData.researchType || '',
@@ -158,7 +166,11 @@ const NewJobTemplate = () => {
           jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t.trim()).map(t => t.trim()) : [],
         };
 
-        console.log('Parsed form data:', parsedFormData);
+        console.log('Final parsed form data with mappings:', {
+          ...parsedFormData,
+          mappedConnectionId,
+          mappedPromptId,
+        });
         setFormData(parsedFormData);
       };
 
