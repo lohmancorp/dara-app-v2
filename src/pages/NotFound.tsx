@@ -17,15 +17,15 @@ const NotFound = () => {
       <h1 className="text-2xl font-semibold text-center px-4">
         Oops! We cannot find what you are looking for.
       </h1>
+      <Button variant="ghost" onClick={() => navigate(-1)}>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Go Back
+      </Button>
       <img 
         src={notFoundImage} 
         alt="404 - Page not found" 
         className="max-w-[1024px] max-h-full object-contain w-full"
       />
-      <Button variant="ghost" onClick={() => navigate(-1)}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Go Back
-      </Button>
     </div>
   );
 };
