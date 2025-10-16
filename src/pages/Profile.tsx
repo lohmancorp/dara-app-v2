@@ -353,59 +353,25 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-start gap-6">
-                <TooltipProvider>
-                  <div 
-                    className="relative cursor-pointer flex-shrink-0"
-                    onMouseEnter={() => setIsHovering(true)}
-                    onMouseLeave={() => setIsHovering(false)}
-                    onClick={handleAvatarClick}
-                  >
-                    <Avatar className="h-20 w-20">
-                      <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl">
-                        {getInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {isHovering && (
-                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 rounded-full">
-                        {isGoogleAuth() && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSyncFromGoogle();
-                                }}
-                                disabled={isUploading}
-                                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                              >
-                                <RefreshCw className="h-4 w-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Sync from Google</TooltipContent>
-                          </Tooltip>
-                        )}
-                        
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUploadClick();
-                              }}
-                              disabled={isUploading}
-                              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                            >
-                              <Upload className="h-4 w-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>Upload new picture</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </div>
-                </TooltipProvider>
+                <div 
+                  className="relative cursor-pointer flex-shrink-0"
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                  onClick={handleAvatarClick}
+                >
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {isHovering && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                      <Upload className="h-6 w-6 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} />
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex-1 space-y-3">
                   <div 
