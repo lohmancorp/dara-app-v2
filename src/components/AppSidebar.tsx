@@ -29,27 +29,34 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div
-        className={`flex items-center gap-2 p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
-      >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <NavLink to="/" className="cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0">
+      <div className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}>
+        {open ? (
+          <>
+            <NavLink to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+              <img 
+                src={daraLogo} 
+                alt="D.A.R.A. Logo" 
+                className="h-[55px] w-[55px] rounded-lg object-cover flex-shrink-0"
+              />
+              <span className="text-lg font-semibold text-foreground truncate">
+                D.A.R.A.
+              </span>
+            </NavLink>
+            <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0" />
+          </>
+        ) : (
+          <button
+            onClick={() => setOpenMobile(true)}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label="Expand sidebar"
+          >
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className={`rounded-lg object-cover ${open ? "h-[55px] w-[55px]" : "h-[32px] w-[32px]"}`}
+              className="h-[30px] w-[30px] rounded-lg object-cover"
             />
-          </NavLink>
-          {open && (
-            <NavLink 
-              to="/" 
-              className="text-lg font-semibold text-foreground no-underline hover:opacity-80 transition-opacity truncate"
-            >
-              D.A.R.A.
-            </NavLink>
-          )}
-        </div>
-        {open && <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0 hidden md:block" />}
+          </button>
+        )}
       </div>
 
       <SidebarContent>
