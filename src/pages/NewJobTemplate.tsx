@@ -50,6 +50,7 @@ const NewJobTemplate = () => {
   const [availableConnections, setAvailableConnections] = useState<Array<{ id: string; name: string; connection_type: string }>>([]);
   const [availablePrompts, setAvailablePrompts] = useState<{ id: string; name: string }[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -149,7 +150,14 @@ const NewJobTemplate = () => {
           mappedConnectionId,
           mappedPromptId,
         });
-        setFormData(parsedFormData);
+        
+        // Use setTimeout to ensure React has processed all state updates
+        setTimeout(() => {
+          setFormData(parsedFormData);
+          setIsDataLoaded(true);
+        }, 0);
+      } else {
+        setIsDataLoaded(true);
       }
     };
 
@@ -422,6 +430,7 @@ const NewJobTemplate = () => {
                   Job Connection <span className="text-destructive">*</span>
                 </Label>
                 <ConnectionSelect
+                  key={`connection-${isDataLoaded}-${formData.jobConnection}`}
                   value={formData.jobConnection}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, jobConnection: value }))}
                   connections={availableConnections}
@@ -433,6 +442,7 @@ const NewJobTemplate = () => {
                   Job Prompt <span className="text-destructive">*</span>
                 </Label>
                 <Select
+                  key={`prompt-${isDataLoaded}-${formData.jobPrompt}`}
                   value={formData.jobPrompt}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, jobPrompt: value }))}
                 >
