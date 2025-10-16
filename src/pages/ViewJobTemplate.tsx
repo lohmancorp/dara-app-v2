@@ -49,6 +49,7 @@ const ViewJobTemplate = () => {
   const [jobDataType, setJobDataType] = useState("");
   const [connectionDetails, setConnectionDetails] = useState<{ name: string; connection_type: string } | null>(null);
   const [promptTemplateName, setPromptTemplateName] = useState<string>("");
+  const [authorName, setAuthorName] = useState<string | null>(null);
 
   const getConnectionIcon = (connectionType: string): string | null => {
     const iconMap: Record<string, string> = {
@@ -83,6 +84,19 @@ const ViewJobTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+
+      // Fetch author name
+      if (templateResult.data.user_id) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", templateResult.data.user_id)
+          .maybeSingle();
+        
+        if (profileData && profileData.full_name) {
+          setAuthorName(profileData.full_name);
+        }
+      }
 
       // Fetch connection details
       if (templateResult.data.job_connection) {
@@ -369,6 +383,12 @@ const ViewJobTemplate = () => {
                 <label className="text-sm font-medium text-muted-foreground">Description</label>
                 <p className="mt-1">{template.job_description}</p>
               </div>
+              {authorName && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Author</label>
+                  <p className="mt-1">{authorName}</p>
+                </div>
+              )}
             </div>
           </Card>
 

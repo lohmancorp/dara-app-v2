@@ -46,6 +46,7 @@ type PromptTemplate = {
   prompt_tags: string[];
   created_at: string;
   updated_at: string;
+  user_id: string;
 };
 
 type JobTemplate = {
@@ -56,6 +57,7 @@ type JobTemplate = {
   job_tags: string[];
   created_at: string;
   updated_at: string;
+  user_id: string;
 };
 
 type UnifiedTemplate = {
@@ -70,6 +72,7 @@ type UnifiedTemplate = {
   positiveScore: number;
   negativeScore: number;
   userVote: number | null;
+  authorName: string | null;
 };
 
 type SortField = "name" | "created_at" | "updated_at" | "score";
@@ -96,6 +99,7 @@ const Templates = () => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [pendingVoteData, setPendingVoteData] = useState<{ templateId: string; templateType: "prompt" | "job" } | null>(null);
+  const [authorNames, setAuthorNames] = useState<Map<string, string | null>>(new Map());
 
   const fetchTemplates = async () => {
     setIsLoading(true);
@@ -103,8 +107,8 @@ const Templates = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const [promptResult, jobResult, votesResult, userVotesResult] = await Promise.all([
-        supabase.from("prompt_templates").select("id, prompt_name, prompt_description, prompt_team, prompt_tags, created_at, updated_at").order("created_at", { ascending: false }),
-        supabase.from("job_templates").select("id, job_name, job_description, job_team, job_tags, created_at, updated_at").order("created_at", { ascending: false }),
+        supabase.from("prompt_templates").select("id, prompt_name, prompt_description, prompt_team, prompt_tags, created_at, updated_at, user_id").order("created_at", { ascending: false }),
+        supabase.from("job_templates").select("id, job_name, job_description, job_team, job_tags, created_at, updated_at, user_id").order("created_at", { ascending: false }),
         supabase.from("template_votes").select("template_id, template_type, vote"),
         user ? supabase.from("template_votes").select("template_id, template_type, vote").eq("user_id", user.id) : Promise.resolve({ data: [] }),
       ]);
@@ -113,6 +117,21 @@ const Templates = () => {
       if (jobResult.data) setJobTemplates(jobResult.data);
       if (votesResult.data) setVotes(votesResult.data);
       if (userVotesResult.data) setUserVotes(userVotesResult.data);
+
+      // Fetch author names
+      const allUserIds = [
+        ...(promptResult.data || []).map(t => t.user_id),
+        ...(jobResult.data || []).map(t => t.user_id),
+      ].filter(Boolean);
+
+      if (allUserIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", allUserIds);
+
+        setAuthorNames(new Map(profilesData?.map(p => [p.id, p.full_name]) || []));
+      }
     } catch (error) {
       console.error("Error fetching templates:", error);
       toast({
@@ -192,6 +211,7 @@ const Templates = () => {
           positiveScore,
           negativeScore,
           userVote,
+          authorName: authorNames.get(t.user_id) || null,
         };
       }),
       ...jobTemplates.map(t => {
@@ -212,12 +232,13 @@ const Templates = () => {
           positiveScore,
           negativeScore,
           userVote,
+          authorName: authorNames.get(t.user_id) || null,
         };
       }),
     ];
 
     return unified;
-  }, [promptTemplates, jobTemplates, votes, userVotes]);
+  }, [promptTemplates, jobTemplates, votes, userVotes, authorNames]);
 
   // Filter templates based on search and type
   const searchFilteredTemplates = useMemo(() => {
@@ -227,7 +248,8 @@ const Templates = () => {
         template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         template.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        template.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (template.authorName && template.authorName.toLowerCase().includes(searchQuery.toLowerCase()));
 
       // Type filter
       const matchesType = !typeFilter || template.type === typeFilter;
@@ -491,7 +513,7 @@ const Templates = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search templates by name, description, type, or tags..."
+              placeholder="Search templates by name, description, type, tags, or author..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-10"

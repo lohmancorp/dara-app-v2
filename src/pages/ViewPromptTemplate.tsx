@@ -32,6 +32,7 @@ const ViewPromptTemplate = () => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [pendingVoteData, setPendingVoteData] = useState<{ vote: number } | null>(null);
+  const [authorName, setAuthorName] = useState<string | null>(null);
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -53,6 +54,19 @@ const ViewPromptTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+
+      // Fetch author name
+      if (templateResult.data.user_id) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", templateResult.data.user_id)
+          .maybeSingle();
+        
+        if (profileData && profileData.full_name) {
+          setAuthorName(profileData.full_name);
+        }
+      }
       
       if (votesResult.data) {
         const positive = votesResult.data.filter(v => v.vote === 1).length;
@@ -305,6 +319,12 @@ const ViewPromptTemplate = () => {
                 <label className="text-sm font-medium text-muted-foreground">Model</label>
                 <p className="mt-1">{template.prompt_model}</p>
               </div>
+              {authorName && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Author</label>
+                  <p className="mt-1">{authorName}</p>
+                </div>
+              )}
             </div>
           </Card>
 
