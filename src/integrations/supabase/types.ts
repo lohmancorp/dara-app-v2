@@ -298,7 +298,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_connection_type_for_mapping: {
+        Args: { _connection_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

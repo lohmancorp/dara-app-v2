@@ -116,13 +116,14 @@ const NewJobTemplate = () => {
         // Map the connection to user's equivalent connection by connection_type
         if (cloneData.jobConnection) {
           console.log('Looking up original connection:', cloneData.jobConnection);
-          const { data: originalConnection, error: connError } = await supabase
-            .from("connections")
-            .select("connection_type")
-            .eq("id", cloneData.jobConnection)
-            .maybeSingle();
+          const { data: connectionType, error: connError } = await supabase
+            .rpc('get_connection_type_for_mapping', { 
+              _connection_id: cloneData.jobConnection 
+            });
 
-          console.log('Original connection result:', originalConnection, 'Error:', connError);
+          console.log('Original connection type:', connectionType, 'Error:', connError);
+          
+          const originalConnection = connectionType ? { connection_type: connectionType } : null;
 
           if (originalConnection) {
             console.log('Searching for user connection with type:', originalConnection.connection_type, 'for user:', user.id);
