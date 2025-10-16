@@ -32,7 +32,7 @@ export function AppSidebar() {
       <div
         className={`flex items-center border-b border-sidebar-border ${
           open 
-            ? "justify-between p-4" 
+            ? "justify-between p-3 sm:p-4" 
             : "justify-center p-2"
         }`}
       >
@@ -41,16 +41,16 @@ export function AppSidebar() {
             <NavLink 
               to="/" 
               onClick={() => isMobile && setOpenMobile(false)}
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-w-0"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1"
             >
               <img 
                 src={daraLogo} 
                 alt="D.A.R.A. Logo" 
-                className="h-[55px] w-[55px] sm:h-[50px] sm:w-[50px] rounded-lg object-cover flex-shrink-0"
+                className="h-[45px] w-[45px] sm:h-[50px] sm:w-[50px] lg:h-[55px] lg:w-[55px] rounded-lg object-cover flex-shrink-0"
               />
-              <h2 className="text-lg sm:text-base font-semibold text-foreground truncate">D.A.R.A.</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">D.A.R.A.</h2>
             </NavLink>
-            <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex flex-shrink-0" />
+            <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0 hidden lg:flex" />
           </>
         ) : (
           <button
