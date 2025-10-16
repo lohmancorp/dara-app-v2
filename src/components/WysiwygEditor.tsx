@@ -1,16 +1,17 @@
 import { useRef, useEffect, useState } from "react";
-import { Bold, List, ListOrdered } from "lucide-react";
+import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface WysiwygEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   className?: string;
 }
 
-export function WysiwygEditor({ value, onChange, placeholder, className }: WysiwygEditorProps) {
+export function WysiwygEditor({ value, onChange, onBlur, placeholder, className }: WysiwygEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [activeCommands, setActiveCommands] = useState<Set<string>>(new Set());
 
@@ -29,13 +30,23 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
   const updateActiveCommands = () => {
     const commands = new Set<string>();
     if (document.queryCommandState("bold")) commands.add("bold");
+    if (document.queryCommandState("italic")) commands.add("italic");
+    if (document.queryCommandState("underline")) commands.add("underline");
+    if (document.queryCommandState("strikethrough")) commands.add("strikethrough");
     if (document.queryCommandState("insertUnorderedList")) commands.add("insertUnorderedList");
     if (document.queryCommandState("insertOrderedList")) commands.add("insertOrderedList");
     setActiveCommands(commands);
   };
 
   const execCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
+    if (command === "createLink") {
+      const url = prompt("Enter URL:");
+      if (url) {
+        document.execCommand(command, false, url);
+      }
+    } else {
+      document.execCommand(command, false, value);
+    }
     editorRef.current?.focus();
     updateActiveCommands();
     handleInput();
@@ -55,6 +66,42 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
           )}
         >
           <Bold className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand("italic")}
+          className={cn(
+            "h-8 w-8 p-0",
+            activeCommands.has("italic") && "bg-accent"
+          )}
+        >
+          <Italic className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand("underline")}
+          className={cn(
+            "h-8 w-8 p-0",
+            activeCommands.has("underline") && "bg-accent"
+          )}
+        >
+          <Underline className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand("strikethrough")}
+          className={cn(
+            "h-8 w-8 p-0",
+            activeCommands.has("strikethrough") && "bg-accent"
+          )}
+        >
+          <Strikethrough className="h-4 w-4" />
         </Button>
         <Button
           type="button"
@@ -80,11 +127,21 @@ export function WysiwygEditor({ value, onChange, placeholder, className }: Wysiw
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand("createLink")}
+          className="h-8 w-8 p-0"
+        >
+          <Link className="h-4 w-4" />
+        </Button>
       </div>
       <div
         ref={editorRef}
         contentEditable
         onInput={handleInput}
+        onBlur={onBlur}
         onFocus={updateActiveCommands}
         onMouseUp={updateActiveCommands}
         onKeyUp={updateActiveCommands}

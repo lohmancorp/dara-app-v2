@@ -2,16 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, Mail, Briefcase, MapPin, Loader2, Globe, Upload, RefreshCw, X } from "lucide-react";
+import { User, Mail, Briefcase, MapPin, Loader2, Globe, Upload, RefreshCw, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { WysiwygEditor } from "@/components/WysiwygEditor";
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
@@ -31,7 +31,10 @@ const Profile = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isHoveringName, setIsHoveringName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -48,6 +51,12 @@ const Profile = () => {
       fetchProfile();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [isEditingName]);
 
   const fetchProfile = async () => {
     try {
@@ -343,10 +352,10 @@ const Profile = () => {
               <CardDescription>Update your personal details and profile picture</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
+              <div className="flex items-start gap-6">
                 <TooltipProvider>
                   <div 
-                    className="relative cursor-pointer"
+                    className="relative cursor-pointer flex-shrink-0"
                     onMouseEnter={() => setIsHovering(true)}
                     onMouseLeave={() => setIsHovering(false)}
                     onClick={handleAvatarClick}
@@ -398,12 +407,43 @@ const Profile = () => {
                   </div>
                 </TooltipProvider>
                 
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {isGoogleAuth() 
-                      ? "Click to view or update your profile picture" 
-                      : "Click to upload a profile picture"}
-                  </p>
+                <div className="flex-1 space-y-3">
+                  <div 
+                    className="relative group"
+                    onMouseEnter={() => setIsHoveringName(true)}
+                    onMouseLeave={() => setIsHoveringName(false)}
+                  >
+                    {isEditingName ? (
+                      <Input
+                        ref={nameInputRef}
+                        value={formData.full_name}
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                        onBlur={() => {
+                          setIsEditingName(false);
+                          handleFieldSave("full_name");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setIsEditingName(false);
+                            handleFieldSave("full_name");
+                          }
+                        }}
+                        className="text-2xl font-semibold h-auto py-1 px-2"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsEditingName(true)}>
+                        <h3 className="text-2xl font-semibold">{formData.full_name}</h3>
+                        {isHoveringName && (
+                          <Pencil className="h-4 w-4 text-muted-foreground" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' }} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="h-4 w-4" />
+                    <span className="text-sm">{formData.email}</span>
+                  </div>
                 </div>
                 
                 <input
@@ -416,47 +456,16 @@ const Profile = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  onBlur={() => handleFieldSave("full_name")}
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    className="pl-10 bg-muted"
-                    value={formData.email}
-                    disabled
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Email cannot be changed. Contact support if you need to update it.
-                </p>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
+                <WysiwygEditor
+                  value={formData.bio}
+                  onChange={(value) => setFormData({ ...formData, bio: value })}
+                  onBlur={() => handleFieldSave("bio")}
                   placeholder="Tell us about yourself"
                   className="min-h-[100px]"
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  onBlur={() => handleFieldSave("bio")}
-                  maxLength={500}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {formData.bio.length}/500 characters
+                  {formData.bio.replace(/<[^>]*>/g, '').length}/500 characters
                 </p>
               </div>
             </CardContent>
