@@ -403,7 +403,7 @@ const Profile = () => {
                   onMouseLeave={() => setIsHovering(false)}
                   onClick={handleAvatarClick}
                 >
-                  <Avatar className="h-20 w-20">
+                  <Avatar className="h-[95px] w-[95px]">
                     <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl">
                       {getInitials()}
