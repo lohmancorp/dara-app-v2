@@ -49,7 +49,7 @@ export function AppSidebar() {
             </NavLink>
           )}
         </div>
-        {open && <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex flex-shrink-0" />}
+        {open && <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0 hidden md:block" />}
       </div>
 
       <SidebarContent>
