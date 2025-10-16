@@ -82,85 +82,37 @@ const NewJobTemplate = () => {
           connection_type: conn.connection_type,
         })));
       }
-
-      // Handle clone data from location state
-      const cloneData = (location.state as any)?.cloneData;
-      if (cloneData) {
-        const outcome = cloneData.job_outcome || "";
-        const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
-        const chunkingMatch = outcome.match(/Chunking: (true|false)/);
-        const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
-        const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
-
-        // Map connection and prompt to current user's equivalent
-        let mappedConnectionId = '';
-        let mappedPromptId = '';
-
-        // Fetch original connection type
-        if (cloneData.job_connection) {
-          const { data: originalConnection } = await supabase
-            .from("connections")
-            .select("connection_type")
-            .eq("id", cloneData.job_connection)
-            .single();
-
-          if (originalConnection && connectionsData.data) {
-            const userEquivalentConnection = connectionsData.data.find(
-              conn => conn.connection_type === originalConnection.connection_type
-            );
-            
-            if (userEquivalentConnection) {
-              mappedConnectionId = userEquivalentConnection.id;
-            } else {
-              toast({
-                title: "Connection Not Found",
-                description: `You don't have a ${originalConnection.connection_type} connection. Please create one to use this template.`,
-                variant: "destructive",
-              });
-            }
-          }
-        }
-
-        // Fetch original prompt name
-        if (cloneData.job_prompt) {
-          const { data: originalPrompt } = await supabase
-            .from("prompt_templates")
-            .select("prompt_name")
-            .eq("id", cloneData.job_prompt)
-            .single();
-
-          if (originalPrompt && promptsData.data) {
-            const userEquivalentPrompt = promptsData.data.find(
-              prompt => prompt.prompt_name === originalPrompt.prompt_name
-            );
-            
-            if (userEquivalentPrompt) {
-              mappedPromptId = userEquivalentPrompt.id;
-            }
-          }
-        }
-
-        setFormData({
-          jobName: '', // Always empty for uniqueness
-          jobDescription: cloneData.job_description || '',
-          jobTeam: cloneData.job_team || [],
-          jobTags: cloneData.job_tags || [],
-          jobConnection: mappedConnectionId,
-          jobPrompt: mappedPromptId,
-          jobDataType: dataTypeMatch ? dataTypeMatch[1] : '',
-          jobDataTypeField: '',
-          researchType: cloneData.research_type || '',
-          researchDepth: cloneData.research_depth || 'Quick Research',
-          researchExactness: cloneData.research_exactness || 'Balanced',
-          jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
-          chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
-          jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t) : [],
-        });
-      }
     };
 
     fetchExistingData();
-  }, [location, toast]);
+    
+    // Handle clone data from location state
+    const cloneData = (location.state as any)?.cloneData;
+    if (cloneData) {
+      const outcome = cloneData.jobOutcome || "";
+      const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
+      const chunkingMatch = outcome.match(/Chunking: (true|false)/);
+      const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
+      const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+
+      setFormData({
+        jobName: '', // Always empty for uniqueness
+        jobDescription: cloneData.jobDescription || '',
+        jobTeam: cloneData.jobTeam || [],
+        jobTags: cloneData.jobTags || [],
+        jobConnection: cloneData.jobConnection || '',
+        jobPrompt: cloneData.jobPrompt || '',
+        jobDataType: dataTypeMatch ? dataTypeMatch[1] : '',
+        jobDataTypeField: '',
+        researchType: cloneData.researchType || '',
+        researchDepth: cloneData.researchDepth || 'Quick Research',
+        researchExactness: cloneData.researchExactness || 'Balanced',
+        jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
+        chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
+        jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t) : [],
+      });
+    }
+  }, [location]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
