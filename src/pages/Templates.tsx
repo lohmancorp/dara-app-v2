@@ -723,7 +723,7 @@ const Templates = () => {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="h-auto px-2.5 py-[2px] text-xs font-semibold gap-1"
+              className="h-auto min-h-0 px-2.5 py-[2px] text-xs font-semibold gap-1 leading-none"
             >
               <X className="h-3 w-3" />
               Clear filters
