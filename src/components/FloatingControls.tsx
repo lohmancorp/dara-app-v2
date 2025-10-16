@@ -33,6 +33,29 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
     };
 
     fetchAvatarUrl();
+
+    // Set up realtime subscription to listen for profile changes
+    const channel = supabase
+      .channel('profile-avatar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user?.id}`,
+        },
+        (payload) => {
+          if (payload.new && 'avatar_url' in payload.new) {
+            setAvatarUrl((payload.new as any).avatar_url);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const handleAdvancedClick = () => {

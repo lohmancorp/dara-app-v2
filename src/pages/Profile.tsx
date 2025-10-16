@@ -456,7 +456,7 @@ const Profile = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio" className="font-bold">Bio</Label>
                 <WysiwygEditor
                   value={formData.bio}
                   onChange={(value) => setFormData({ ...formData, bio: value })}

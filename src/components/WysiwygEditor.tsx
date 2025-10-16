@@ -297,11 +297,10 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className={cn(
-          "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-primary/80",
+          "resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-primary/80",
           !value && "text-muted-foreground",
           className
         )}
-        style={{ minHeight: "200px" }}
         data-placeholder={placeholder}
       />
 
