@@ -723,9 +723,9 @@ const Templates = () => {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="button-small h-7 gap-1 p-0"
+              className="button-small h-6 gap-0.5 p-0 text-xs"
             >
-              <X className="h-3 w-3" />
+              <X className="h-2.5 w-2.5" />
               Clear filters
             </Button>
           )}
