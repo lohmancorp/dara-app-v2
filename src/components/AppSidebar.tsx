@@ -25,24 +25,46 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const { open, setOpenMobile } = useSidebar();
+  const { open, setOpenMobile, isMobile, setOpen } = useSidebar();
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <div
-        className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
+        className={`flex items-center border-b border-sidebar-border ${
+          open 
+            ? "justify-between p-4" 
+            : "justify-center p-2"
+        }`}
       >
-        {open && (
-          <NavLink to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+        {open ? (
+          <>
+            <NavLink 
+              to="/" 
+              onClick={() => isMobile && setOpenMobile(false)}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-w-0"
+            >
+              <img 
+                src={daraLogo} 
+                alt="D.A.R.A. Logo" 
+                className="h-[55px] w-[55px] sm:h-[50px] sm:w-[50px] rounded-lg object-cover flex-shrink-0"
+              />
+              <h2 className="text-lg sm:text-base font-semibold text-foreground truncate">D.A.R.A.</h2>
+            </NavLink>
+            <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex flex-shrink-0" />
+          </>
+        ) : (
+          <button
+            onClick={() => setOpen(true)}
+            className="p-1 hover:opacity-80 transition-opacity"
+            aria-label="Expand sidebar"
+          >
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className="h-[55px] w-[55px] rounded-lg object-cover"
+              className="h-[30px] w-[30px] rounded-lg object-cover"
             />
-            <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
-          </NavLink>
+          </button>
         )}
-        <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
       </div>
 
       <SidebarContent>
