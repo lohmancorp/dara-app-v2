@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, Upload } from "lucide-react";
+import { Activity, Upload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RESEARCH_DEPTH_OPTIONS = ["Quick Research", "Deep Research"];
 const RESEARCH_EXACTNESS_OPTIONS = ["Creative", "Precise", "Strict", "Balanced"];
@@ -420,21 +421,31 @@ const EditJobTemplate = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Secondary Connections</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const availableToAdd = availableConnections.filter(
-                        conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id)
-                      );
-                      if (availableToAdd.length > 0) {
-                        setFormData((prev) => ({ ...prev, secondaryConnections: [...prev.secondaryConnections, ''] }));
-                      }
-                    }}
-                  >
-                    + Add Secondary Connection
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => {
+                            const availableToAdd = availableConnections.filter(
+                              conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id)
+                            );
+                            if (availableToAdd.length > 0) {
+                              setFormData((prev) => ({ ...prev, secondaryConnections: [...prev.secondaryConnections, ''] }));
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add Secondary Connection</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Add connections to query when links between data sources exist
