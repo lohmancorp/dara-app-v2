@@ -30,27 +30,20 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <div
-        className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
+        className={`flex items-center gap-2 p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
       >
-        {open ? (
-          <NavLink to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-1 min-w-0">
-            <img 
-              src={daraLogo} 
-              alt="D.A.R.A. Logo" 
-              className="h-[55px] w-[55px] rounded-lg object-cover flex-shrink-0"
-            />
-            <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
-          </NavLink>
-        ) : (
-          <NavLink to="/" className="cursor-pointer hover:opacity-80 transition-opacity block">
-            <img 
-              src={daraLogo} 
-              alt="D.A.R.A. Logo" 
-              className="h-[40px] w-[40px] rounded-lg object-cover"
-            />
-          </NavLink>
-        )}
-        <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex flex-shrink-0" />
+        <NavLink 
+          to="/" 
+          className={`flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity ${open ? "flex-1 min-w-0" : "flex-shrink-0"}`}
+        >
+          <img 
+            src={daraLogo} 
+            alt="D.A.R.A. Logo" 
+            className={`rounded-lg object-cover flex-shrink-0 ${open ? "h-[55px] w-[55px]" : "h-[40px] w-[40px]"}`}
+          />
+          {open && <h2 className="text-lg font-semibold text-foreground truncate">D.A.R.A.</h2>}
+        </NavLink>
+        {open && <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex flex-shrink-0" />}
       </div>
 
       <SidebarContent>
