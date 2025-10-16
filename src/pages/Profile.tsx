@@ -33,8 +33,11 @@ const Profile = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isHoveringName, setIsHoveringName] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isHoveringLocation, setIsHoveringLocation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const locationInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -57,6 +60,12 @@ const Profile = () => {
       nameInputRef.current.focus();
     }
   }, [isEditingName]);
+
+  useEffect(() => {
+    if (isEditingLocation && locationInputRef.current) {
+      locationInputRef.current.focus();
+    }
+  }, [isEditingLocation]);
 
   const fetchProfile = async () => {
     try {
@@ -445,6 +454,43 @@ const Profile = () => {
                     <Mail className="h-4 w-4" />
                     <span className="text-sm">{formData.email}</span>
                   </div>
+                  
+                  <div 
+                    className="relative group flex items-center gap-2 text-muted-foreground"
+                    onMouseEnter={() => setIsHoveringLocation(true)}
+                    onMouseLeave={() => setIsHoveringLocation(false)}
+                  >
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                    {isEditingLocation ? (
+                      <Input
+                        ref={locationInputRef}
+                        value={formData.location}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        onBlur={() => {
+                          setIsEditingLocation(false);
+                          handleFieldSave("location");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setIsEditingLocation(false);
+                            handleFieldSave("location");
+                          }
+                        }}
+                        className="text-sm h-auto py-1 px-2 flex-1"
+                        placeholder="Add location"
+                      />
+                    ) : (
+                      <div 
+                        className="flex items-center gap-2 cursor-pointer flex-1" 
+                        onClick={() => setIsEditingLocation(true)}
+                      >
+                        <span className="text-sm">{formData.location || "Add location"}</span>
+                        {isHoveringLocation && (
+                          <Pencil className="h-4 w-4 text-muted-foreground" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' }} />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <input
@@ -502,21 +548,6 @@ const Profile = () => {
                   onBlur={() => handleFieldSave("company")}
                   placeholder="e.g. Tech Insights Inc."
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="location"
-                    className="pl-10"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    onBlur={() => handleFieldSave("location")}
-                    placeholder="e.g. San Francisco, CA"
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
