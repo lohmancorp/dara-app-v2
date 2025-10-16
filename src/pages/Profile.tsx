@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, Mail, Briefcase, MapPin, Loader2, Globe, Upload, RefreshCw, Pencil } from "lucide-react";
+import { User, Mail, Briefcase, MapPin, Loader2, Globe, Upload, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -328,6 +328,41 @@ const Profile = () => {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    setIsUploading(true);
+    try {
+      // Delete avatar from storage if it exists
+      if (formData.avatar_url && formData.avatar_url.includes('avatars/')) {
+        const oldPath = formData.avatar_url.split('avatars/')[1];
+        await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      // Update profile to remove avatar
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user?.id);
+
+      if (updateError) throw updateError;
+
+      setFormData({ ...formData, avatar_url: '' });
+      setIsModalOpen(false);
+      toast({
+        title: "Avatar Removed",
+        description: "Your profile picture has been removed.",
+      });
+    } catch (error) {
+      console.error('Error removing avatar:', error);
+      toast({
+        title: "Remove Failed",
+        description: "Failed to remove avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -560,12 +595,33 @@ const Profile = () => {
                   <TooltipContent>Upload new picture</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              
+              {formData.avatar_url && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleRemoveAvatar}
+                        disabled={isUploading}
+                        className="p-3 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-5 w-5" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Remove picture</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             
             <p className="text-sm text-muted-foreground text-center">
               {isGoogleAuth() 
-                ? "Sync from Google or upload a custom picture (max 2MB)" 
-                : "Upload a custom picture (max 2MB, JPEG/PNG/WebP)"}
+                ? "Sync from Google, upload a custom picture, or remove it" 
+                : "Upload a custom picture or remove it (max 2MB, JPEG/PNG/WebP)"}
             </p>
           </div>
         </DialogContent>
