@@ -33,6 +33,7 @@ const ViewPromptTemplate = () => {
   const [feedbackText, setFeedbackText] = useState("");
   const [pendingVoteData, setPendingVoteData] = useState<{ vote: number } | null>(null);
   const [authorName, setAuthorName] = useState<string | null>(null);
+  const [isAuthor, setIsAuthor] = useState(false);
 
   const fetchTemplate = async () => {
     if (!id) return;
@@ -54,6 +55,9 @@ const ViewPromptTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+      
+      // Check if current user is the author
+      setIsAuthor(user?.id === templateResult.data.user_id);
 
       // Fetch author name
       if (templateResult.data.user_id) {
@@ -236,6 +240,54 @@ const ViewPromptTemplate = () => {
     setPendingVoteData(null);
   };
 
+  const handleClone = async () => {
+    if (!template) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to clone templates.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: clonedTemplate, error } = await supabase
+        .from("prompt_templates")
+        .insert({
+          prompt_name: `${template.prompt_name} (Copy)`,
+          prompt_description: template.prompt_description,
+          prompt_outcome: template.prompt_outcome,
+          prompt: template.prompt,
+          system_outcome: template.system_outcome,
+          system_prompt: template.system_prompt,
+          prompt_model: template.prompt_model,
+          prompt_team: template.prompt_team,
+          prompt_tags: template.prompt_tags,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Template Cloned",
+        description: "The template has been cloned successfully. You can now edit it.",
+      });
+      navigate(`/templates/prompt/${clonedTemplate.id}/edit`);
+    } catch (error) {
+      console.error("Error cloning template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clone template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchTemplate();
   }, [id]);
@@ -263,10 +315,17 @@ const ViewPromptTemplate = () => {
             Back to Templates
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(`/templates/prompt/${id}/edit`)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit Template
-            </Button>
+            {isAuthor ? (
+              <Button variant="outline" onClick={() => navigate(`/templates/prompt/${id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Template
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={handleClone}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Clone Template
+              </Button>
+            )}
             <Button onClick={() => navigate(`/active-jobs?promptId=${id}`)}>
               <Play className="h-4 w-4 mr-2" />
               Use Template

@@ -50,6 +50,8 @@ const ViewJobTemplate = () => {
   const [connectionDetails, setConnectionDetails] = useState<{ name: string; connection_type: string } | null>(null);
   const [promptTemplateName, setPromptTemplateName] = useState<string>("");
   const [authorName, setAuthorName] = useState<string | null>(null);
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [userConnection, setUserConnection] = useState<{ id: string; name: string } | null>(null);
 
   const getConnectionIcon = (connectionType: string): string | null => {
     const iconMap: Record<string, string> = {
@@ -84,6 +86,9 @@ const ViewJobTemplate = () => {
 
       if (templateResult.error) throw templateResult.error;
       setTemplate(templateResult.data);
+      
+      // Check if current user is the author
+      setIsAuthor(user?.id === templateResult.data.user_id);
 
       // Fetch author name
       if (templateResult.data.user_id) {
@@ -104,10 +109,23 @@ const ViewJobTemplate = () => {
           .from("connections")
           .select("name, connection_type")
           .eq("id", templateResult.data.job_connection)
-          .single();
+          .maybeSingle();
         
         if (connectionData) {
           setConnectionDetails(connectionData);
+          
+          // If current user is not the author, find their connection of the same type
+          if (user && user.id !== templateResult.data.user_id) {
+            const { data: userConnectionData } = await supabase
+              .from("connections")
+              .select("id, name")
+              .eq("user_id", user.id)
+              .eq("connection_type", connectionData.connection_type)
+              .eq("is_active", true)
+              .maybeSingle();
+            
+            setUserConnection(userConnectionData);
+          }
         }
       }
 
@@ -304,6 +322,66 @@ const ViewJobTemplate = () => {
     setPendingVoteData(null);
   };
 
+  const handleClone = async () => {
+    if (!template) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to clone templates.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if user has a connection of the required type
+      if (!userConnection && connectionDetails) {
+        toast({
+          title: "Connection Required",
+          description: `You need to configure a ${connectionDetails.connection_type.replace(/_/g, ' ')} connection first.`,
+          variant: "destructive",
+        });
+        navigate(`/connections/new?type=${connectionDetails.connection_type}`);
+        return;
+      }
+
+      const { data: clonedTemplate, error } = await supabase
+        .from("job_templates")
+        .insert({
+          job_name: `${template.job_name} (Copy)`,
+          job_description: template.job_description,
+          job_team: template.job_team,
+          job_tags: template.job_tags,
+          job_connection: userConnection?.id || template.job_connection,
+          job_prompt: template.job_prompt,
+          research_type: template.research_type,
+          research_depth: template.research_depth,
+          research_exactness: template.research_exactness,
+          job_outcome: template.job_outcome,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Template Cloned",
+        description: "The template has been cloned successfully. You can now edit it.",
+      });
+      navigate(`/templates/job/${clonedTemplate.id}/edit`);
+    } catch (error) {
+      console.error("Error cloning template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clone template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchTemplate();
   }, [id]);
@@ -331,10 +409,17 @@ const ViewJobTemplate = () => {
             Back to Templates
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(`/templates/job/${id}/edit`)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit Template
-            </Button>
+            {isAuthor ? (
+              <Button variant="outline" onClick={() => navigate(`/templates/job/${id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Template
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={handleClone}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Clone Template
+              </Button>
+            )}
             <Button onClick={() => navigate(`/active-jobs?jobTemplateId=${id}`)}>
               <Play className="h-4 w-4 mr-2" />
               Use Template
@@ -424,15 +509,32 @@ const ViewJobTemplate = () => {
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Connection</label>
                 {connectionDetails ? (
-                  <div className="flex items-center gap-2 mt-2 p-3 border rounded-md bg-muted">
-                    {getConnectionIcon(connectionDetails.connection_type) && (
-                      <img 
-                        src={getConnectionIcon(connectionDetails.connection_type)!} 
-                        alt={connectionDetails.connection_type}
-                        className="h-5 w-5 object-contain"
-                      />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mt-2 p-3 border rounded-md bg-muted">
+                      {getConnectionIcon(connectionDetails.connection_type) && (
+                        <img 
+                          src={getConnectionIcon(connectionDetails.connection_type)!} 
+                          alt={connectionDetails.connection_type}
+                          className="h-5 w-5 object-contain"
+                        />
+                      )}
+                      <span className="capitalize">{connectionDetails.connection_type.replace(/_/g, ' ')}</span>
+                    </div>
+                    {!isAuthor && !userConnection && (
+                      <div className="p-3 border border-destructive rounded-md bg-destructive/10 text-sm">
+                        <p className="text-destructive font-medium mb-2">Connection Required</p>
+                        <p className="text-muted-foreground mb-2">
+                          You need a {connectionDetails.connection_type.replace(/_/g, ' ')} connection to use this template.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => navigate(`/connections/new?type=${connectionDetails.connection_type}`)}
+                        >
+                          Configure Connection
+                        </Button>
+                      </div>
                     )}
-                    <span>{connectionDetails.name}</span>
                   </div>
                 ) : (
                   <p className="mt-1 p-3 border rounded-md bg-muted text-muted-foreground">Loading connection...</p>
