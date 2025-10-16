@@ -171,7 +171,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("bold")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("bold") && "bg-accent"
+            activeCommands.has("bold") && "bg-accent text-accent-foreground"
           )}
         >
           <Bold className="h-4 w-4" />
@@ -183,7 +183,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("italic")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("italic") && "bg-accent"
+            activeCommands.has("italic") && "bg-accent text-accent-foreground"
           )}
         >
           <Italic className="h-4 w-4" />
@@ -195,7 +195,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("underline")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("underline") && "bg-accent"
+            activeCommands.has("underline") && "bg-accent text-accent-foreground"
           )}
         >
           <Underline className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("strikethrough")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("strikethrough") && "bg-accent"
+            activeCommands.has("strikethrough") && "bg-accent text-accent-foreground"
           )}
         >
           <Strikethrough className="h-4 w-4" />
@@ -219,7 +219,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("insertUnorderedList")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("insertUnorderedList") && "bg-accent"
+            activeCommands.has("insertUnorderedList") && "bg-accent text-accent-foreground"
           )}
         >
           <List className="h-4 w-4" />
@@ -231,7 +231,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           onClick={() => execCommand("insertOrderedList")}
           className={cn(
             "h-8 w-8 p-0",
-            activeCommands.has("insertOrderedList") && "bg-accent"
+            activeCommands.has("insertOrderedList") && "bg-accent text-accent-foreground"
           )}
         >
           <ListOrdered className="h-4 w-4" />
