@@ -515,6 +515,12 @@ const Templates = () => {
 
       if (error) throw error;
 
+      // Fetch the connection_type for the connection
+      const { data: connType } = await supabase
+        .rpc('get_connection_type_for_mapping', { 
+          _connection_id: template.job_connection 
+        });
+
       navigate('/templates/new-job', {
         state: {
           cloneData: {
@@ -522,7 +528,7 @@ const Templates = () => {
             jobDescription: template.job_description,
             jobTeam: template.job_team,
             jobTags: template.job_tags,
-            jobConnection: template.job_connection,
+            jobConnectionType: connType || '', // Pass connection_type string (e.g., "freshservice")
             jobPrompt: template.job_prompt,
             researchType: template.research_type,
             researchDepth: template.research_depth,
