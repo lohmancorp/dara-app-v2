@@ -114,14 +114,14 @@ const NewJobTemplate = () => {
         let mappedPromptId = cloneData.jobPrompt || '';
         
         // Map the connection to user's equivalent connection by connection_type
-        // cloneData.jobConnection now contains the connection_type string, not a UUID
-        if (cloneData.jobConnection) {
-          console.log('Looking up user connection with type:', cloneData.jobConnection, 'for user:', user.id);
+        // cloneData.jobConnectionType now contains the connection_type string, not a UUID
+        if (cloneData.jobConnectionType) {
+          console.log('Looking up user connection with type:', cloneData.jobConnectionType, 'for user:', user.id);
           const { data: userConnection, error: userConnError } = await supabase
             .from("connections")
             .select("id, name")
             .eq("user_id", user.id)
-            .eq("connection_type", cloneData.jobConnection)
+            .eq("connection_type", cloneData.jobConnectionType)
             .eq("is_active", true)
             .maybeSingle();
 
@@ -133,7 +133,7 @@ const NewJobTemplate = () => {
           } else {
             toast({
               title: "Connection Not Found",
-              description: `You need a ${cloneData.jobConnection} connection to use this template. Please create one first.`,
+              description: `You need a ${cloneData.jobConnectionType} connection to use this template. Please create one first.`,
               variant: "destructive",
             });
           }
