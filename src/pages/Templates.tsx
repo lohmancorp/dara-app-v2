@@ -449,6 +449,7 @@ const Templates = () => {
   };
 
   const handleClonePrompt = async (templateId: string) => {
+    console.log('handleClonePrompt called with templateId:', templateId);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -468,6 +469,7 @@ const Templates = () => {
 
       if (error) throw error;
 
+      console.log('Navigating to new-prompt with template:', template);
       navigate('/templates/new-prompt', {
         state: {
           cloneData: {
