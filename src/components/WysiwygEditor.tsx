@@ -1,6 +1,9 @@
 import { useRef, useEffect, useState } from "react";
-import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
+import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, ExternalLink, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 interface WysiwygEditorProps {
@@ -14,6 +17,12 @@ interface WysiwygEditorProps {
 export function WysiwygEditor({ value, onChange, onBlur, placeholder, className }: WysiwygEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [activeCommands, setActiveCommands] = useState<Set<string>>(new Set());
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkText, setLinkText] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [editingLink, setEditingLink] = useState<HTMLAnchorElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; link: HTMLAnchorElement } | null>(null);
+  const savedSelection = useRef<Range | null>(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -21,9 +30,30 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
     }
   }, [value]);
 
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
   const handleInput = () => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      savedSelection.current = selection.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const selection = window.getSelection();
+    if (savedSelection.current && selection) {
+      selection.removeAllRanges();
+      selection.addRange(savedSelection.current);
     }
   };
 
@@ -38,15 +68,83 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
     setActiveCommands(commands);
   };
 
+  const handleCreateLink = () => {
+    saveSelection();
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() || "";
+    
+    setLinkText(selectedText);
+    setLinkUrl("");
+    setEditingLink(null);
+    setShowLinkDialog(true);
+  };
+
+  const handleEditLink = (link: HTMLAnchorElement) => {
+    setLinkText(link.textContent || "");
+    setLinkUrl(link.href);
+    setEditingLink(link);
+    setShowLinkDialog(true);
+    setContextMenu(null);
+  };
+
+  const handleSaveLink = () => {
+    if (!linkUrl) return;
+
+    restoreSelection();
+    
+    if (editingLink) {
+      editingLink.href = linkUrl;
+      editingLink.textContent = linkText;
+    } else {
+      const selection = window.getSelection();
+      if (selection && savedSelection.current) {
+        selection.removeAllRanges();
+        selection.addRange(savedSelection.current);
+        
+        if (selection.toString()) {
+          document.execCommand("createLink", false, linkUrl);
+        } else {
+          const link = document.createElement("a");
+          link.href = linkUrl;
+          link.textContent = linkText;
+          link.target = "_blank";
+          savedSelection.current.insertNode(link);
+        }
+      }
+    }
+
+    setShowLinkDialog(false);
+    setLinkText("");
+    setLinkUrl("");
+    setEditingLink(null);
+    handleInput();
+    editorRef.current?.focus();
+  };
+
+  const handleRemoveLink = (link: HTMLAnchorElement) => {
+    const text = document.createTextNode(link.textContent || "");
+    link.parentNode?.replaceChild(text, link);
+    setContextMenu(null);
+    handleInput();
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest("a");
+    
+    if (link && editorRef.current?.contains(link)) {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY, link: link as HTMLAnchorElement });
+    }
+  };
+
   const execCommand = (command: string, value?: string) => {
     if (command === "createLink") {
-      const url = prompt("Enter URL:");
-      if (url) {
-        document.execCommand(command, false, url);
-      }
-    } else {
-      document.execCommand(command, false, value);
+      handleCreateLink();
+      return;
     }
+    
+    document.execCommand(command, false, value);
     editorRef.current?.focus();
     updateActiveCommands();
     handleInput();
@@ -145,6 +243,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         onFocus={updateActiveCommands}
         onMouseUp={updateActiveCommands}
         onKeyUp={updateActiveCommands}
+        onContextMenu={handleContextMenu}
         className={cn(
           "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !value && "text-muted-foreground",
@@ -153,6 +252,76 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         style={{ minHeight: "200px" }}
         data-placeholder={placeholder}
       />
+
+      {/* Link Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingLink ? "Edit Link" : "Insert Link"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="linkText">Text</Label>
+              <Input
+                id="linkText"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                placeholder="Link text"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkUrl">URL</Label>
+              <Input
+                id="linkUrl"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLink}>
+              {editingLink ? "Update" : "Insert"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-popover border rounded-md shadow-lg py-1"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left"
+            onClick={() => {
+              window.open(contextMenu.link.href, "_blank");
+              setContextMenu(null);
+            }}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open Link
+          </button>
+          <button
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left"
+            onClick={() => handleEditLink(contextMenu.link)}
+          >
+            <Edit className="h-4 w-4" />
+            Edit Hyperlink
+          </button>
+          <button
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left text-destructive"
+            onClick={() => handleRemoveLink(contextMenu.link)}
+          >
+            <Trash className="h-4 w-4" />
+            Remove Hyperlink
+          </button>
+        </div>
+      )}
     </div>
   );
 }
