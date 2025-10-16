@@ -92,6 +92,7 @@ const Templates = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<"job" | "prompt" | null>(null);
+  const [showMyTemplatesOnly, setShowMyTemplatesOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [votes, setVotes] = useState<any[]>([]);
@@ -259,9 +260,12 @@ const Templates = () => {
       // Type filter
       const matchesType = !typeFilter || template.type === typeFilter;
 
-      return matchesSearch && matchesType;
+      // My Templates filter
+      const matchesOwnership = !showMyTemplatesOnly || template.user_id === currentUserId;
+
+      return matchesSearch && matchesType && matchesOwnership;
     });
-  }, [unifiedTemplates, searchQuery, typeFilter]);
+  }, [unifiedTemplates, searchQuery, typeFilter, showMyTemplatesOnly, currentUserId]);
 
   // Get top 5 tags from filtered results
   const allTags = useMemo(() => {
@@ -336,6 +340,7 @@ const Templates = () => {
   const clearFilters = () => {
     setSelectedFilters([]);
     setTypeFilter(null);
+    setShowMyTemplatesOnly(false);
   };
 
   const getSortLabel = () => {
@@ -691,6 +696,13 @@ const Templates = () => {
           >
             Prompt
           </Badge>
+          <Badge
+            variant={showMyTemplatesOnly ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setShowMyTemplatesOnly(prev => !prev)}
+          >
+            My Templates
+          </Badge>
           {allTags.length > 0 && (
             <>
               <Separator orientation="vertical" className="h-6" />
@@ -706,7 +718,7 @@ const Templates = () => {
               ))}
             </>
           )}
-          {(selectedFilters.length > 0 || typeFilter) && (
+          {(selectedFilters.length > 0 || typeFilter || showMyTemplatesOnly) && (
             <Button
               variant="ghost"
               size="sm"
