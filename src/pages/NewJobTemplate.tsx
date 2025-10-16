@@ -56,9 +56,10 @@ const NewJobTemplate = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [promptsData, connectionsData] = await Promise.all([
+      const [promptsData, connectionsData, jobTemplatesData] = await Promise.all([
         supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name"),
         supabase.from("connections").select("id, name, connection_type, is_active").eq("user_id", user.id).eq("is_active", true),
+        supabase.from("job_templates").select("job_team, job_tags"),
       ]);
       
       if (promptsData.data && promptsData.data.length > 0) {
@@ -75,6 +76,14 @@ const NewJobTemplate = () => {
         setAvailablePrompts(promptsData.data.map(item => ({ id: item.id, name: item.prompt_name })));
       }
 
+      // Also collect teams and tags from job templates
+      if (jobTemplatesData.data && jobTemplatesData.data.length > 0) {
+        jobTemplatesData.data.forEach((item) => {
+          item.job_team?.forEach((team: string) => setExistingTeams(prev => [...new Set([...prev, team])]));
+          item.job_tags?.forEach((tag: string) => setExistingTags(prev => [...new Set([...prev, tag])]));
+        });
+      }
+
       if (connectionsData.data) {
         setAvailableConnections(connectionsData.data.map(conn => ({
           id: conn.id,
@@ -89,28 +98,32 @@ const NewJobTemplate = () => {
     // Handle clone data from location state
     const cloneData = (location.state as any)?.cloneData;
     if (cloneData) {
+      console.log('Clone data received:', cloneData);
       const outcome = cloneData.jobOutcome || "";
       const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
       const chunkingMatch = outcome.match(/Chunking: (true|false)/);
       const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
       const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
 
-      setFormData({
+      const parsedFormData = {
         jobName: '', // Always empty for uniqueness
         jobDescription: cloneData.jobDescription || '',
         jobTeam: cloneData.jobTeam || [],
         jobTags: cloneData.jobTags || [],
         jobConnection: cloneData.jobConnection || '',
         jobPrompt: cloneData.jobPrompt || '',
-        jobDataType: dataTypeMatch ? dataTypeMatch[1] : '',
+        jobDataType: dataTypeMatch ? dataTypeMatch[1].trim() : '',
         jobDataTypeField: '',
         researchType: cloneData.researchType || '',
         researchDepth: cloneData.researchDepth || 'Quick Research',
         researchExactness: cloneData.researchExactness || 'Balanced',
         jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
         chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
-        jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t) : [],
-      });
+        jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t.trim()).map(t => t.trim()) : [],
+      };
+
+      console.log('Parsed form data:', parsedFormData);
+      setFormData(parsedFormData);
     }
   }, [location]);
 
