@@ -22,7 +22,9 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
   const [linkUrl, setLinkUrl] = useState("");
   const [editingLink, setEditingLink] = useState<HTMLAnchorElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; link: HTMLAnchorElement } | null>(null);
+  const [linkTooltip, setLinkTooltip] = useState<{ x: number; y: number; url: string } | null>(null);
   const savedSelection = useRef<Range | null>(null);
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -33,7 +35,12 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+      }
+    };
   }, []);
 
   const handleInput = () => {
@@ -149,6 +156,38 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
     }
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest("a");
+    
+    if (link && editorRef.current?.contains(link)) {
+      if (!hoverTimer.current) {
+        hoverTimer.current = setTimeout(() => {
+          const rect = link.getBoundingClientRect();
+          setLinkTooltip({
+            x: e.clientX,
+            y: rect.bottom + 8,
+            url: (link as HTMLAnchorElement).href
+          });
+        }, 500);
+      }
+    } else {
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+      setLinkTooltip(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setLinkTooltip(null);
+  };
+
   const execCommand = (command: string, value?: string) => {
     if (command === "createLink") {
       handleCreateLink();
@@ -255,6 +294,8 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         onMouseUp={updateActiveCommands}
         onKeyUp={updateActiveCommands}
         onContextMenu={handleContextMenu}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         className={cn(
           "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-primary/80",
           !value && "text-muted-foreground",
@@ -300,6 +341,16 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Link Tooltip */}
+      {linkTooltip && (
+        <div
+          className="fixed z-50 bg-popover border rounded-md shadow-lg px-3 py-2 text-xs max-w-xs truncate"
+          style={{ top: linkTooltip.y, left: linkTooltip.x }}
+        >
+          {linkTooltip.url}
+        </div>
+      )}
 
       {/* Context Menu */}
       {contextMenu && (
