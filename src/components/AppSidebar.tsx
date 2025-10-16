@@ -25,46 +25,24 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const { open, setOpenMobile, isMobile, setOpen } = useSidebar();
+  const { open, setOpenMobile } = useSidebar();
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <div
-        className={`flex items-center border-b border-sidebar-border ${
-          open 
-            ? "justify-between p-3 sm:p-4" 
-            : "justify-center p-2"
-        }`}
+        className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
       >
-        {open ? (
-          <>
-            <NavLink 
-              to="/" 
-              onClick={() => isMobile && setOpenMobile(false)}
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1"
-            >
-              <img 
-                src={daraLogo} 
-                alt="D.A.R.A. Logo" 
-                className="h-[45px] w-[45px] sm:h-[50px] sm:w-[50px] lg:h-[55px] lg:w-[55px] rounded-lg object-cover flex-shrink-0"
-              />
-              <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">D.A.R.A.</h2>
-            </NavLink>
-            <SidebarTrigger className="text-foreground hover:text-primary flex-shrink-0 hidden lg:flex" />
-          </>
-        ) : (
-          <button
-            onClick={() => setOpen(true)}
-            className="p-1 hover:opacity-80 transition-opacity"
-            aria-label="Expand sidebar"
-          >
+        {open && (
+          <div className="flex items-center gap-2">
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className="h-[30px] w-[30px] rounded-lg object-cover"
+              className="h-[55px] w-[55px] rounded-lg object-cover"
             />
-          </button>
+            <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
+          </div>
         )}
+        <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
       </div>
 
       <SidebarContent>
