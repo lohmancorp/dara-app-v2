@@ -451,7 +451,7 @@ const NewJobTemplate = () => {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-5 w-5 rounded-full p-0"
+                          className="h-4 w-4 rounded-full p-0"
                           onClick={() => {
                             const availableToAdd = availableConnections.filter(
                               conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id)
@@ -495,7 +495,7 @@ const NewJobTemplate = () => {
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="h-5 w-5 rounded-full p-0 bg-muted hover:bg-muted/80"
+                            className="h-4 w-4 rounded-full p-0 bg-muted hover:bg-muted/80 text-foreground"
                             onClick={() => {
                               const updated = formData.secondaryConnections.filter((_, i) => i !== index);
                               setFormData((prev) => ({ ...prev, secondaryConnections: updated }));
