@@ -57,6 +57,8 @@ const EditJobTemplate = () => {
       if (!id) return;
 
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { data, error } = await supabase
           .from("job_templates")
           .select("*")
@@ -64,6 +66,17 @@ const EditJobTemplate = () => {
           .single();
 
         if (error) throw error;
+
+        // Check if current user is the author
+        if (user?.id !== data.user_id) {
+          toast({
+            title: "Access Denied",
+            description: "You can only edit your own templates. You can clone this template instead.",
+            variant: "destructive",
+          });
+          navigate(`/templates/job/${id}`);
+          return;
+        }
 
         // Parse job_outcome to extract individual fields
         const outcome = data.job_outcome || "";
@@ -106,7 +119,7 @@ const EditJobTemplate = () => {
       if (!user) return;
 
       const [promptsData, connectionsData] = await Promise.all([
-        supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name").eq("user_id", user.id),
+        supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name"),
         supabase.from("connections").select("id, name, connection_type, is_active").eq("user_id", user.id).eq("is_active", true),
       ]);
       

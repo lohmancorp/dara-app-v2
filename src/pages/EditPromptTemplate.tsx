@@ -51,6 +51,8 @@ const EditPromptTemplate = () => {
       if (!id) return;
 
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { data, error } = await supabase
           .from("prompt_templates")
           .select("*")
@@ -58,6 +60,17 @@ const EditPromptTemplate = () => {
           .single();
 
         if (error) throw error;
+
+        // Check if current user is the author
+        if (user?.id !== data.user_id) {
+          toast({
+            title: "Access Denied",
+            description: "You can only edit your own templates. You can clone this template instead.",
+            variant: "destructive",
+          });
+          navigate(`/templates/prompt/${id}`);
+          return;
+        }
 
         setFormData({
           promptName: data.prompt_name,

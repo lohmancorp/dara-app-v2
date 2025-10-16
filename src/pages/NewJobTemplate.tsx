@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Activity, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ const JOB_TYPE_OPTIONS = ["Scheduled", "One-Time", "Recurring", "On-going"];
 
 const NewJobTemplate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,7 +57,7 @@ const NewJobTemplate = () => {
       if (!user) return;
 
       const [promptsData, connectionsData] = await Promise.all([
-        supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name").eq("user_id", user.id),
+        supabase.from("prompt_templates").select("prompt_team, prompt_tags, id, prompt_name"),
         supabase.from("connections").select("id, name, connection_type, is_active").eq("user_id", user.id).eq("is_active", true),
       ]);
       
@@ -84,7 +85,34 @@ const NewJobTemplate = () => {
     };
 
     fetchExistingData();
-  }, []);
+    
+    // Handle clone data from location state
+    const cloneData = (location.state as any)?.cloneData;
+    if (cloneData) {
+      const outcome = cloneData.jobOutcome || "";
+      const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
+      const chunkingMatch = outcome.match(/Chunking: (true|false)/);
+      const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
+      const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+
+      setFormData({
+        jobName: '', // Always empty for uniqueness
+        jobDescription: cloneData.jobDescription || '',
+        jobTeam: cloneData.jobTeam || [],
+        jobTags: cloneData.jobTags || [],
+        jobConnection: cloneData.jobConnection || '',
+        jobPrompt: cloneData.jobPrompt || '',
+        jobDataType: dataTypeMatch ? dataTypeMatch[1] : '',
+        jobDataTypeField: '',
+        researchType: cloneData.researchType || '',
+        researchDepth: cloneData.researchDepth || 'Quick Research',
+        researchExactness: cloneData.researchExactness || 'Balanced',
+        jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
+        chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
+        jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t) : [],
+      });
+    }
+  }, [location]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,6 +239,24 @@ const NewJobTemplate = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("User not authenticated");
+
+      // Check if job name already exists for this user
+      const { data: existingJob } = await supabase
+        .from("job_templates")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("job_name", formData.jobName)
+        .maybeSingle();
+
+      if (existingJob) {
+        toast({
+          title: "Duplicate Job Name",
+          description: "A job template with this name already exists. Please choose a unique name.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       // Auto-add "Job" tag if not already present
       const tagsWithType = formData.jobTags.includes("Job") 

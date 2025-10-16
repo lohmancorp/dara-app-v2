@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FilePlus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ const AVAILABLE_MODELS = [
 
 const NewTemplate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -65,7 +66,25 @@ const NewTemplate = () => {
     };
 
     fetchExistingData();
-  }, []);
+    
+    // Handle clone data from location state
+    const cloneData = (location.state as any)?.cloneData;
+    if (cloneData) {
+      setFormData({
+        promptName: '', // Always empty for uniqueness
+        promptDescription: cloneData.promptDescription || '',
+        promptOutcome: cloneData.promptOutcome || '',
+        prompt: cloneData.prompt || '',
+        systemOutcome: cloneData.systemOutcome || '',
+        systemPrompt: cloneData.systemPrompt || '',
+        promptModel: cloneData.promptModel || 'google/gemini-2.5-flash',
+        promptTeam: cloneData.promptTeam || [],
+        promptTags: cloneData.promptTags || [],
+        totalTokens: 0,
+        totalPromptCost: 0,
+      });
+    }
+  }, [location]);
 
   const handleGeneratePrompt = async () => {
     if (!formData.promptOutcome) {
@@ -189,6 +208,24 @@ const NewTemplate = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("User not authenticated");
+
+      // Check if prompt name already exists for this user
+      const { data: existingPrompt } = await supabase
+        .from("prompt_templates")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("prompt_name", formData.promptName)
+        .maybeSingle();
+
+      if (existingPrompt) {
+        toast({
+          title: "Duplicate Prompt Name",
+          description: "A prompt template with this name already exists. Please choose a unique name.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       // Calculate tokens and cost
       const { data: tokenData, error: tokenError } = await supabase.functions.invoke("calculate-tokens", {

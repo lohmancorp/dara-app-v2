@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Sparkles, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Sparkles, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -254,30 +254,22 @@ const ViewPromptTemplate = () => {
         return;
       }
 
-      const { data: clonedTemplate, error } = await supabase
-        .from("prompt_templates")
-        .insert({
-          prompt_name: `${template.prompt_name} (Copy)`,
-          prompt_description: template.prompt_description,
-          prompt_outcome: template.prompt_outcome,
-          prompt: template.prompt,
-          system_outcome: template.system_outcome,
-          system_prompt: template.system_prompt,
-          prompt_model: template.prompt_model,
-          prompt_team: template.prompt_team,
-          prompt_tags: template.prompt_tags,
-          user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast({
-        title: "Template Cloned",
-        description: "The template has been cloned successfully. You can now edit it.",
+      // Navigate to new prompt template page with cloned data (but empty name)
+      navigate('/templates/new-prompt', {
+        state: {
+          cloneData: {
+            promptName: '', // Empty name for uniqueness
+            promptDescription: template.prompt_description,
+            promptOutcome: template.prompt_outcome,
+            prompt: template.prompt,
+            systemOutcome: template.system_outcome,
+            systemPrompt: template.system_prompt,
+            promptModel: template.prompt_model,
+            promptTeam: template.prompt_team,
+            promptTags: template.prompt_tags,
+          }
+        }
       });
-      navigate(`/templates/prompt/${clonedTemplate.id}/edit`);
     } catch (error) {
       console.error("Error cloning template:", error);
       toast({
@@ -322,7 +314,7 @@ const ViewPromptTemplate = () => {
               </Button>
             ) : (
               <Button variant="outline" onClick={handleClone}>
-                <Pencil className="h-4 w-4 mr-2" />
+                <Copy className="h-4 w-4 mr-2" />
                 Clone Template
               </Button>
             )}

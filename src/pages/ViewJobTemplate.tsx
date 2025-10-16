@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Activity, ArrowLeft, Pencil, Play, ThumbsUp, ThumbsDown, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -347,31 +347,24 @@ const ViewJobTemplate = () => {
         return;
       }
 
-      const { data: clonedTemplate, error } = await supabase
-        .from("job_templates")
-        .insert({
-          job_name: `${template.job_name} (Copy)`,
-          job_description: template.job_description,
-          job_team: template.job_team,
-          job_tags: template.job_tags,
-          job_connection: userConnection?.id || template.job_connection,
-          job_prompt: template.job_prompt,
-          research_type: template.research_type,
-          research_depth: template.research_depth,
-          research_exactness: template.research_exactness,
-          job_outcome: template.job_outcome,
-          user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast({
-        title: "Template Cloned",
-        description: "The template has been cloned successfully. You can now edit it.",
+      // Navigate to new job template page with cloned data (but empty name)
+      navigate('/templates/new-job', {
+        state: {
+          cloneData: {
+            jobName: '', // Empty name for uniqueness
+            jobDescription: template.job_description,
+            jobTeam: template.job_team,
+            jobTags: template.job_tags,
+            jobConnection: userConnection?.id || '',
+            jobPrompt: template.job_prompt,
+            researchType: template.research_type,
+            researchDepth: template.research_depth,
+            researchExactness: template.research_exactness,
+            jobOutcome: template.job_outcome,
+            connectionType: connectionDetails?.connection_type,
+          }
+        }
       });
-      navigate(`/templates/job/${clonedTemplate.id}/edit`);
     } catch (error) {
       console.error("Error cloning template:", error);
       toast({
@@ -416,7 +409,7 @@ const ViewJobTemplate = () => {
               </Button>
             ) : (
               <Button variant="outline" onClick={handleClone}>
-                <Pencil className="h-4 w-4 mr-2" />
+                <Copy className="h-4 w-4 mr-2" />
                 Clone Template
               </Button>
             )}
