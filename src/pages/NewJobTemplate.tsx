@@ -99,31 +99,70 @@ const NewJobTemplate = () => {
     const cloneData = (location.state as any)?.cloneData;
     if (cloneData) {
       console.log('Clone data received:', cloneData);
-      const outcome = cloneData.jobOutcome || "";
-      const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
-      const chunkingMatch = outcome.match(/Chunking: (true|false)/);
-      const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
-      const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+      
+      const handleCloneMapping = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const parsedFormData = {
-        jobName: '', // Always empty for uniqueness
-        jobDescription: cloneData.jobDescription || '',
-        jobTeam: cloneData.jobTeam || [],
-        jobTags: cloneData.jobTags || [],
-        jobConnection: cloneData.jobConnection || '',
-        jobPrompt: cloneData.jobPrompt || '',
-        jobDataType: dataTypeMatch ? dataTypeMatch[1].trim() : '',
-        jobDataTypeField: '',
-        researchType: cloneData.researchType || '',
-        researchDepth: cloneData.researchDepth || 'Quick Research',
-        researchExactness: cloneData.researchExactness || 'Balanced',
-        jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
-        chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
-        jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t.trim()).map(t => t.trim()) : [],
+        const outcome = cloneData.jobOutcome || "";
+        const dataTypeMatch = outcome.match(/Data Type: ([^,]+)/);
+        const chunkingMatch = outcome.match(/Chunking: (true|false)/);
+        const chunkSizeMatch = outcome.match(/Chunk Size: (\d+)/);
+        const jobTypesMatch = outcome.match(/Job Types: (.+)$/);
+
+        let mappedConnectionId = '';
+        
+        // Map the connection to user's equivalent connection by connection_type
+        if (cloneData.jobConnection) {
+          const { data: originalConnection } = await supabase
+            .from("connections")
+            .select("connection_type")
+            .eq("id", cloneData.jobConnection)
+            .maybeSingle();
+
+          if (originalConnection) {
+            const { data: userConnection } = await supabase
+              .from("connections")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("connection_type", originalConnection.connection_type)
+              .eq("is_active", true)
+              .maybeSingle();
+
+            if (userConnection) {
+              mappedConnectionId = userConnection.id;
+            } else {
+              toast({
+                title: "Connection Not Found",
+                description: `You need a ${originalConnection.connection_type} connection to use this template. Please create one first.`,
+                variant: "destructive",
+              });
+            }
+          }
+        }
+
+        const parsedFormData = {
+          jobName: '', // Always empty for uniqueness
+          jobDescription: cloneData.jobDescription || '',
+          jobTeam: cloneData.jobTeam || [],
+          jobTags: cloneData.jobTags || [],
+          jobConnection: mappedConnectionId,
+          jobPrompt: cloneData.jobPrompt || '', // Prompt IDs work across users (RLS allows viewing all)
+          jobDataType: dataTypeMatch ? dataTypeMatch[1].trim() : '',
+          jobDataTypeField: '',
+          researchType: cloneData.researchType || '',
+          researchDepth: cloneData.researchDepth || 'Quick Research',
+          researchExactness: cloneData.researchExactness || 'Balanced',
+          jobChunking: chunkingMatch ? chunkingMatch[1] === 'true' : false,
+          chunkSize: chunkSizeMatch ? parseInt(chunkSizeMatch[1]) : 20,
+          jobType: jobTypesMatch && jobTypesMatch[1] ? jobTypesMatch[1].split(", ").filter((t: string) => t.trim()).map(t => t.trim()) : [],
+        };
+
+        console.log('Parsed form data:', parsedFormData);
+        setFormData(parsedFormData);
       };
 
-      console.log('Parsed form data:', parsedFormData);
-      setFormData(parsedFormData);
+      handleCloneMapping();
     }
   }, [location]);
 
