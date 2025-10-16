@@ -355,13 +355,12 @@ const ViewJobTemplate = () => {
             jobDescription: template.job_description,
             jobTeam: template.job_team,
             jobTags: template.job_tags,
-            jobConnection: userConnection?.id || '',
+            jobConnection: connectionDetails?.connection_type || '', // Pass connection_type instead of UUID
             jobPrompt: template.job_prompt,
             researchType: template.research_type,
             researchDepth: template.research_depth,
             researchExactness: template.research_exactness,
             jobOutcome: template.job_outcome,
-            connectionType: connectionDetails?.connection_type,
           }
         }
       });

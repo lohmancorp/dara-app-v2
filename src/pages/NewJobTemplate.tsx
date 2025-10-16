@@ -114,39 +114,28 @@ const NewJobTemplate = () => {
         let mappedPromptId = cloneData.jobPrompt || '';
         
         // Map the connection to user's equivalent connection by connection_type
+        // cloneData.jobConnection now contains the connection_type string, not a UUID
         if (cloneData.jobConnection) {
-          console.log('Looking up original connection:', cloneData.jobConnection);
-          const { data: connectionType, error: connError } = await supabase
-            .rpc('get_connection_type_for_mapping', { 
-              _connection_id: cloneData.jobConnection 
+          console.log('Looking up user connection with type:', cloneData.jobConnection, 'for user:', user.id);
+          const { data: userConnection, error: userConnError } = await supabase
+            .from("connections")
+            .select("id, name")
+            .eq("user_id", user.id)
+            .eq("connection_type", cloneData.jobConnection)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          console.log('User connection result:', userConnection, 'Error:', userConnError);
+
+          if (userConnection) {
+            mappedConnectionId = userConnection.id;
+            console.log('Mapped connection ID:', mappedConnectionId);
+          } else {
+            toast({
+              title: "Connection Not Found",
+              description: `You need a ${cloneData.jobConnection} connection to use this template. Please create one first.`,
+              variant: "destructive",
             });
-
-          console.log('Original connection type:', connectionType, 'Error:', connError);
-          
-          const originalConnection = connectionType ? { connection_type: connectionType } : null;
-
-          if (originalConnection) {
-            console.log('Searching for user connection with type:', originalConnection.connection_type, 'for user:', user.id);
-            const { data: userConnection, error: userConnError } = await supabase
-              .from("connections")
-              .select("id, name")
-              .eq("user_id", user.id)
-              .eq("connection_type", originalConnection.connection_type)
-              .eq("is_active", true)
-              .maybeSingle();
-
-            console.log('User connection result:', userConnection, 'Error:', userConnError);
-
-            if (userConnection) {
-              mappedConnectionId = userConnection.id;
-              console.log('Mapped connection ID:', mappedConnectionId);
-            } else {
-              toast({
-                title: "Connection Not Found",
-                description: `You need a ${originalConnection.connection_type} connection to use this template. Please create one first.`,
-                variant: "destructive",
-              });
-            }
           }
         }
 
