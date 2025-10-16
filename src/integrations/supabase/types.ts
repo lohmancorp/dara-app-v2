@@ -79,6 +79,7 @@ export type Database = {
           research_depth: string
           research_exactness: string
           research_type: string
+          secondary_connections: string[] | null
           updated_at: string
           user_id: string
         }
@@ -95,6 +96,7 @@ export type Database = {
           research_depth: string
           research_exactness: string
           research_type: string
+          secondary_connections?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -111,6 +113,7 @@ export type Database = {
           research_depth?: string
           research_exactness?: string
           research_type?: string
+          secondary_connections?: string[] | null
           updated_at?: string
           user_id?: string
         }

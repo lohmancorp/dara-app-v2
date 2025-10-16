@@ -34,6 +34,7 @@ const NewJobTemplate = () => {
     jobTeam: [] as string[],
     jobTags: [] as string[],
     jobConnection: "",
+    secondaryConnections: [] as string[],
     jobPrompt: "",
     jobDataType: "",
     jobDataTypeField: "",
@@ -134,6 +135,7 @@ const NewJobTemplate = () => {
           jobTeam: cloneData.jobTeam || [],
           jobTags: cloneData.jobTags || [],
           jobConnection: mappedConnectionId,
+          secondaryConnections: cloneData.secondaryConnections || [],
           jobPrompt: mappedPromptId,
           jobDataType: dataTypeMatch ? dataTypeMatch[1].trim() : '',
           jobDataTypeField: '',
@@ -318,6 +320,7 @@ const NewJobTemplate = () => {
         job_name: formData.jobName,
         job_description: formData.jobDescription,
         job_connection: formData.jobConnection,
+        secondary_connections: formData.secondaryConnections,
         job_prompt: formData.jobPrompt,
         job_team: formData.jobTeam,
         job_tags: tagsWithType,
@@ -427,7 +430,7 @@ const NewJobTemplate = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="jobConnection">
-                  Job Connection <span className="text-destructive">*</span>
+                  Primary Connection <span className="text-destructive">*</span>
                 </Label>
                 <ConnectionSelect
                   key={`connection-${isDataLoaded}-${formData.jobConnection}`}
@@ -435,6 +438,58 @@ const NewJobTemplate = () => {
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, jobConnection: value }))}
                   connections={availableConnections}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Secondary Connections</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const availableToAdd = availableConnections.filter(
+                        conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id)
+                      );
+                      if (availableToAdd.length > 0) {
+                        setFormData((prev) => ({ ...prev, secondaryConnections: [...prev.secondaryConnections, ''] }));
+                      }
+                    }}
+                  >
+                    + Add Secondary Connection
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Add connections to query when links between data sources exist
+                </p>
+                {formData.secondaryConnections.map((connId, index) => (
+                  <div key={index} className="flex gap-2">
+                    <div className="flex-1">
+                      <ConnectionSelect
+                        value={connId}
+                        onValueChange={(value) => {
+                          const updated = [...formData.secondaryConnections];
+                          updated[index] = value;
+                          setFormData((prev) => ({ ...prev, secondaryConnections: updated }));
+                        }}
+                        connections={availableConnections.filter(
+                          conn => conn.id !== formData.jobConnection && !formData.secondaryConnections.includes(conn.id) || conn.id === connId
+                        )}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const updated = formData.secondaryConnections.filter((_, i) => i !== index);
+                        setFormData((prev) => ({ ...prev, secondaryConnections: updated }));
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
               </div>
 
               <div className="space-y-2">

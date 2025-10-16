@@ -48,6 +48,7 @@ const ViewJobTemplate = () => {
   const [jobTypes, setJobTypes] = useState<string[]>([]);
   const [jobDataType, setJobDataType] = useState("");
   const [connectionDetails, setConnectionDetails] = useState<{ name: string; connection_type: string } | null>(null);
+  const [secondaryConnectionDetails, setSecondaryConnectionDetails] = useState<Array<{ id: string; name: string; connection_type: string }>>([]);
   const [promptTemplateName, setPromptTemplateName] = useState<string>("");
   const [authorName, setAuthorName] = useState<string | null>(null);
   const [isAuthor, setIsAuthor] = useState(false);
@@ -126,6 +127,18 @@ const ViewJobTemplate = () => {
             
             setUserConnection(userConnectionData);
           }
+        }
+      }
+
+      // Fetch secondary connection details
+      if (templateResult.data.secondary_connections && templateResult.data.secondary_connections.length > 0) {
+        const { data: secondaryConnectionsData } = await supabase
+          .from("connections")
+          .select("id, name, connection_type")
+          .in("id", templateResult.data.secondary_connections);
+        
+        if (secondaryConnectionsData) {
+          setSecondaryConnectionDetails(secondaryConnectionsData);
         }
       }
 
@@ -372,6 +385,7 @@ const ViewJobTemplate = () => {
             jobTags: template.job_tags,
             jobConnectionType: connType, // Pass connection_type string (e.g., "freshservice")
             jobPrompt: template.job_prompt,
+            secondaryConnections: template.secondary_connections || [],
             researchType: template.research_type,
             researchDepth: template.research_depth,
             researchExactness: template.research_exactness,
@@ -514,7 +528,7 @@ const ViewJobTemplate = () => {
             <h2 className="text-lg font-semibold mb-4">Job Configuration</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Connection</label>
+                <label className="text-sm font-medium text-muted-foreground">Primary Connection</label>
                 {connectionDetails ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 mt-2 p-3 border rounded-md bg-muted">
@@ -547,6 +561,30 @@ const ViewJobTemplate = () => {
                   <p className="mt-1 p-3 border rounded-md bg-muted text-muted-foreground">Loading connection...</p>
                 )}
               </div>
+              
+              {secondaryConnectionDetails.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Secondary Connections</label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Used when links between data sources exist
+                  </p>
+                  <div className="space-y-2">
+                    {secondaryConnectionDetails.map((conn) => (
+                      <div key={conn.id} className="flex items-center gap-2 p-3 border rounded-md bg-muted">
+                        {getConnectionIcon(conn.connection_type) && (
+                          <img 
+                            src={getConnectionIcon(conn.connection_type)!} 
+                            alt={conn.connection_type}
+                            className="h-5 w-5 object-contain"
+                          />
+                        )}
+                        <span className="capitalize">{conn.connection_type.replace(/_/g, ' ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Prompt Template</label>
                 <div className="mt-2 p-3 border rounded-md bg-muted">
