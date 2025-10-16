@@ -29,43 +29,20 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div className={`grid border-b border-sidebar-border ${open ? "grid-cols-[1fr_auto] gap-2 p-4" : "grid-cols-1 p-4"}`}>
-        {open ? (
-          <>
-            <NavLink 
-              to="/" 
-              className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
-            >
-              <img 
-                src={daraLogo} 
-                alt="D.A.R.A. Logo" 
-                className="h-[55px] w-[55px] rounded-lg object-cover flex-shrink-0"
-              />
-              <span className="text-lg font-semibold text-foreground truncate">
-                D.A.R.A.
-              </span>
-            </NavLink>
-            <button
-              onClick={() => setOpenMobile(false)}
-              className="flex items-center justify-center text-foreground hover:text-primary transition-colors"
-              aria-label="Collapse sidebar"
-            >
-              <SidebarTrigger />
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => setOpenMobile(true)}
-            className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-            aria-label="Expand sidebar"
-          >
+      <div
+        className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
+      >
+        {open && (
+          <div className="flex items-center gap-2">
             <img 
               src={daraLogo} 
               alt="D.A.R.A. Logo" 
-              className="h-[30px] w-[30px] rounded-lg object-cover"
+              className="h-[55px] w-[55px] rounded-lg object-cover"
             />
-          </button>
+            <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
+          </div>
         )}
+        <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
       </div>
 
       <SidebarContent>
