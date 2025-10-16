@@ -95,6 +95,8 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
     if (editingLink) {
       editingLink.href = linkUrl;
       editingLink.textContent = linkText;
+      editingLink.target = "_blank";
+      editingLink.rel = "noopener noreferrer";
     } else {
       const selection = window.getSelection();
       if (selection && savedSelection.current) {
@@ -103,11 +105,20 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         
         if (selection.toString()) {
           document.execCommand("createLink", false, linkUrl);
+          // Update the newly created link
+          const links = editorRef.current?.querySelectorAll('a[href="' + linkUrl + '"]');
+          if (links) {
+            links.forEach(link => {
+              link.setAttribute('target', '_blank');
+              link.setAttribute('rel', 'noopener noreferrer');
+            });
+          }
         } else {
           const link = document.createElement("a");
           link.href = linkUrl;
           link.textContent = linkText;
           link.target = "_blank";
+          link.rel = "noopener noreferrer";
           savedSelection.current.insertNode(link);
         }
       }
@@ -245,7 +256,7 @@ export function WysiwygEditor({ value, onChange, onBlur, placeholder, className 
         onKeyUp={updateActiveCommands}
         onContextMenu={handleContextMenu}
         className={cn(
-          "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "min-h-[200px] resize-y overflow-auto w-full rounded-b-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-primary/80",
           !value && "text-muted-foreground",
           className
         )}
