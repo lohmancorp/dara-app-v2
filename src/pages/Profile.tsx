@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,19 +101,23 @@ const Profile = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFieldSave = async (fieldName: keyof typeof formData) => {
+    // Skip auto-save for email and avatar_url (read-only fields)
+    if (fieldName === "email" || fieldName === "avatar_url") return;
 
     // Validate form data
     try {
       profileSchema.parse(formData);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        toast({
-          title: "Validation Error",
-          description: error.issues[0].message,
-          variant: "destructive",
-        });
+        const fieldError = error.issues.find(issue => issue.path[0] === fieldName);
+        if (fieldError) {
+          toast({
+            title: "Validation Error",
+            description: fieldError.message,
+            variant: "destructive",
+          });
+        }
         return;
       }
     }
@@ -136,8 +139,8 @@ const Profile = () => {
       if (error) throw error;
 
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
+        title: "Saved",
+        description: "Profile updated successfully.",
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -180,7 +183,7 @@ const Profile = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
@@ -207,6 +210,7 @@ const Profile = () => {
                   id="full_name"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  onBlur={() => handleFieldSave("full_name")}
                   placeholder="Enter your full name"
                   required
                 />
@@ -237,6 +241,7 @@ const Profile = () => {
                   className="min-h-[100px]"
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  onBlur={() => handleFieldSave("bio")}
                   maxLength={500}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -261,6 +266,7 @@ const Profile = () => {
                     className="pl-10"
                     value={formData.job_title}
                     onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                    onBlur={() => handleFieldSave("job_title")}
                     placeholder="e.g. Senior Research Analyst"
                   />
                 </div>
@@ -272,6 +278,7 @@ const Profile = () => {
                   id="company"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  onBlur={() => handleFieldSave("company")}
                   placeholder="e.g. Tech Insights Inc."
                 />
               </div>
@@ -285,6 +292,7 @@ const Profile = () => {
                     className="pl-10"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onBlur={() => handleFieldSave("location")}
                     placeholder="e.g. San Francisco, CA"
                   />
                 </div>
@@ -300,29 +308,14 @@ const Profile = () => {
                     className="pl-10"
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    onBlur={() => handleFieldSave("website")}
                     placeholder="https://example.com"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={fetchProfile} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
