@@ -336,14 +336,29 @@ const ViewJobTemplate = () => {
         return;
       }
 
-      // Check if user has a connection of the required type
-      if (!userConnection && connectionDetails) {
+      // Fetch the connection_type for the template's connection
+      const { data: connType } = await supabase
+        .rpc('get_connection_type_for_mapping', { 
+          _connection_id: template.job_connection 
+        });
+
+      if (!connType) {
         toast({
-          title: "Connection Required",
-          description: `You need to configure a ${connectionDetails.connection_type.replace(/_/g, ' ')} connection first.`,
+          title: "Connection Error",
+          description: "Could not determine the connection type for this template.",
           variant: "destructive",
         });
-        navigate(`/connections/new?type=${connectionDetails.connection_type}`);
+        return;
+      }
+
+      // Check if user has a connection of the required type
+      if (!userConnection) {
+        toast({
+          title: "Connection Required",
+          description: `You need to configure a ${connType.replace(/_/g, ' ')} connection first.`,
+          variant: "destructive",
+        });
+        navigate(`/connections/new?type=${connType}`);
         return;
       }
 
@@ -355,7 +370,7 @@ const ViewJobTemplate = () => {
             jobDescription: template.job_description,
             jobTeam: template.job_team,
             jobTags: template.job_tags,
-            jobConnection: connectionDetails?.connection_type || '', // Pass connection_type instead of UUID
+            jobConnection: connType, // Pass connection_type string (e.g., "freshservice")
             jobPrompt: template.job_prompt,
             researchType: template.research_type,
             researchDepth: template.research_depth,
