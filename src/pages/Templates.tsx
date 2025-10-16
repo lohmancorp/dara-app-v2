@@ -648,54 +648,54 @@ const Templates = () => {
             <DropdownMenuContent align="end" className="bg-background z-50">
               <DropdownMenuItem 
                 onClick={() => { setSortField("name"); setSortDirection("asc"); }}
-                className={sortField === "name" && sortDirection === "asc" ? "bg-accent" : ""}
+                className={sortField === "name" && sortDirection === "asc" ? "bg-accent text-white" : ""}
               >
                 Name (A-Z)
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("name"); setSortDirection("desc"); }}
-                className={sortField === "name" && sortDirection === "desc" ? "bg-accent" : ""}
+                className={sortField === "name" && sortDirection === "desc" ? "bg-accent text-white" : ""}
               >
                 Name (Z-A)
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("created_at"); setSortDirection("asc"); }} 
-                className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
               >
                 Created
                 <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("created_at"); setSortDirection("desc"); }} 
-                className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
               >
                 Created
                 <ArrowDown className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("updated_at"); setSortDirection("asc"); }} 
-                className={`justify-between ${sortField === "updated_at" && sortDirection === "asc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "updated_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
               >
                 Last Updated
                 <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("updated_at"); setSortDirection("desc"); }} 
-                className={`justify-between ${sortField === "updated_at" && sortDirection === "desc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "updated_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
               >
                 Last Updated
                 <ArrowDown className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("score"); setSortDirection("asc"); }} 
-                className={`justify-between ${sortField === "score" && sortDirection === "asc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "score" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
               >
                 Score
                 <ArrowUp className="h-4 w-4 ml-2" />
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => { setSortField("score"); setSortDirection("desc"); }} 
-                className={`justify-between ${sortField === "score" && sortDirection === "desc" ? "bg-accent" : ""}`}
+                className={`justify-between ${sortField === "score" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
               >
                 Score
                 <ArrowDown className="h-4 w-4 ml-2" />
