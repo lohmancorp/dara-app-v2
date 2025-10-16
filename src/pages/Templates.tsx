@@ -448,6 +448,97 @@ const Templates = () => {
     setPendingVoteData(null);
   };
 
+  const handleClonePrompt = async (templateId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to clone templates.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: template, error } = await supabase
+        .from("prompt_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+
+      if (error) throw error;
+
+      navigate('/templates/new-prompt', {
+        state: {
+          cloneData: {
+            promptName: '',
+            promptDescription: template.prompt_description,
+            promptOutcome: template.prompt_outcome,
+            prompt: template.prompt,
+            systemOutcome: template.system_outcome,
+            systemPrompt: template.system_prompt,
+            promptModel: template.prompt_model,
+            promptTeam: template.prompt_team,
+            promptTags: template.prompt_tags,
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error cloning template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clone template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCloneJob = async (templateId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to clone templates.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: template, error } = await supabase
+        .from("job_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+
+      if (error) throw error;
+
+      navigate('/templates/new-job', {
+        state: {
+          cloneData: {
+            jobName: '',
+            jobDescription: template.job_description,
+            jobTeam: template.job_team,
+            jobTags: template.job_tags,
+            jobConnection: template.job_connection,
+            jobPrompt: template.job_prompt,
+            researchType: template.research_type,
+            researchDepth: template.research_depth,
+            researchExactness: template.research_exactness,
+            jobOutcome: template.job_outcome,
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error cloning template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clone template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
@@ -734,13 +825,13 @@ const Templates = () => {
                             variant="default"
                             size="sm"
                             className="flex-1"
-                            onClick={() =>
-                              navigate(
-                                template.type === "prompt"
-                                  ? `/templates/prompt/${template.id}/view`
-                                  : `/templates/job/${template.id}/view`
-                              )
-                            }
+                            onClick={() => {
+                              if (template.type === "prompt") {
+                                handleClonePrompt(template.id);
+                              } else {
+                                handleCloneJob(template.id);
+                              }
+                            }}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
