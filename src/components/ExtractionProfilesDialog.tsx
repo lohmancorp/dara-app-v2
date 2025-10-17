@@ -388,6 +388,10 @@ export const ExtractionProfilesDialog = ({
       const fieldId = obj.id || obj.name;
       const allChildren = getAllChildIds(obj);
       const isSelected = selectedJsonFields.has(fieldId);
+      // Check if object has ANY expandable content (not just nested_fields/sections)
+      const hasExpandableContent = Object.keys(obj).some(key => 
+        key !== 'id' && key !== 'name' && key !== 'label' && key !== 'field_type'
+      );
       const hasChildren = (obj.nested_fields && obj.nested_fields.length > 0) || (obj.sections && obj.sections.length > 0);
       const isExpanded = expandedJsonItems.has(fieldId);
       
@@ -403,7 +407,7 @@ export const ExtractionProfilesDialog = ({
               {obj.label || obj.name || obj.id}
               {obj.field_type && <span className="text-xs ml-2 opacity-60">({obj.field_type})</span>}
             </span>
-            {hasChildren && (
+            {hasExpandableContent && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -417,11 +421,15 @@ export const ExtractionProfilesDialog = ({
           </div>
         );
 
-        if (isExpanded && hasChildren) {
+        if (isExpanded && hasExpandableContent) {
           lines.push(
             <div key={`${fieldId}-expanded-${depth}`} style={{ paddingLeft: `${indent + 20}px` }} className="border-l-2 border-border ml-2">
               {Object.entries(obj).map(([key, value]) => {
-                if (key === 'id' || key === 'name' || key === 'label' || key === 'field_type' || key === 'nested_fields' || key === 'sections') {
+                if (key === 'id' || key === 'name' || key === 'label' || key === 'field_type') {
+                  return null;
+                }
+                // Don't render nested_fields/sections in expanded view, they'll show normally
+                if (key === 'nested_fields' || key === 'sections') {
                   return null;
                 }
                 return renderJsonProperty(key, value, fieldId, 0);
