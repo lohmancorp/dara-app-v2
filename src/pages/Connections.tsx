@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
@@ -223,27 +224,38 @@ const Connections = () => {
                     <div className="text-xs text-muted-foreground">
                       Auth: {connection.auth_type}
                     </div>
-                    <div className="flex gap-1.5">
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleTestConnection(connection)}
-                        disabled={testingConnectionId === connection.id}
-                      >
-                        <Wifi className="h-4 w-4 mr-2" />
-                        {testingConnectionId === connection.id ? "Testing..." : "Test"}
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleConfigureConnection(connection.id)}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configure
-                      </Button>
-                    </div>
+                    <TooltipProvider>
+                      <div className="flex gap-1.5 justify-start">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => handleTestConnection(connection)}
+                            disabled={testingConnectionId === connection.id}
+                          >
+                            <Wifi className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {testingConnectionId === connection.id ? "Testing..." : "Test Connection"}
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => handleConfigureConnection(connection.id)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Configure Connection</TooltipContent>
+                      </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   </div>
                 </Card>
               );
