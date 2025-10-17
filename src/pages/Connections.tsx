@@ -272,7 +272,7 @@ const Connections = () => {
                         className={`flex items-center gap-1.5 ${
                           connection.is_active 
                             ? "bg-green-500 hover:bg-green-600" 
-                            : "bg-muted hover:bg-muted"
+                            : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
                         }`}
                       >
                         {connection.is_active ? (
