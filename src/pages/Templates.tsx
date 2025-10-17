@@ -821,13 +821,12 @@ const Templates = () => {
                 </div>
 
                 <TooltipProvider>
-                  <div className="flex gap-1.5 mt-auto">
+                  <div className="flex gap-1.5 mt-auto justify-start">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="default"
                           size="sm"
-                          className="flex-1"
                           onClick={() =>
                             navigate(
                               template.type === "prompt"
@@ -848,7 +847,6 @@ const Templates = () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="flex-1"
                             onClick={() =>
                               navigate(
                                 template.type === "prompt"
@@ -868,7 +866,6 @@ const Templates = () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="flex-1"
                             onClick={() => {
                               if (template.type === "prompt") {
                                 handleClonePrompt(template.id);
@@ -889,7 +886,6 @@ const Templates = () => {
                         <Button
                           variant="default"
                           size="sm"
-                          className="flex-1"
                           onClick={() =>
                             navigate(
                               template.type === "prompt"
@@ -909,7 +905,6 @@ const Templates = () => {
                         <Button
                           variant="default"
                           size="sm"
-                          className="flex-1"
                           onClick={() => handleDeleteClick(template.id, template.type, template.name)}
                         >
                           <Trash2 className="h-4 w-4" />
