@@ -1,4 +1,4 @@
-import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi } from "lucide-react";
+import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -110,6 +110,11 @@ const Connections = () => {
 
   const handleTestConnection = async (connection: Connection) => {
     setTestingConnectionId(connection.id);
+    toast({
+      title: "Testing connection",
+      description: "Connecting to the service...",
+    });
+    
     try {
       const { data, error } = await supabase.functions.invoke('test-connection', {
         body: { connectionId: connection.id }
@@ -140,6 +145,71 @@ const Connections = () => {
       });
     } finally {
       setTestingConnectionId(null);
+    }
+  };
+
+  const handleToggleActive = async (connection: Connection) => {
+    const newActiveState = !connection.is_active;
+    
+    // If reactivating, test the connection first
+    if (newActiveState) {
+      setTestingConnectionId(connection.id);
+      toast({
+        title: "Testing connection",
+        description: "Verifying connection before activation...",
+      });
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('test-connection', {
+          body: { connectionId: connection.id }
+        });
+
+        if (error) throw error;
+
+        if (data.success) {
+          toast({
+            title: "Connection activated",
+            description: "Connection is now active and working",
+          });
+          await fetchConnections();
+        } else {
+          toast({
+            title: "Activation failed",
+            description: data.error || "Connection test failed. Please check your configuration.",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error activating connection",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setTestingConnectionId(null);
+      }
+    } else {
+      // Deactivating - just update the database
+      try {
+        const { error } = await supabase
+          .from('connections')
+          .update({ is_active: false })
+          .eq('id', connection.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Connection deactivated",
+          description: "Connection has been disabled",
+        });
+        await fetchConnections();
+      } catch (error: any) {
+        toast({
+          title: "Error deactivating connection",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -202,7 +272,7 @@ const Connections = () => {
                         className={`flex items-center gap-1.5 ${
                           connection.is_active 
                             ? "bg-green-500 hover:bg-green-600" 
-                            : "bg-destructive hover:bg-destructive"
+                            : "bg-muted hover:bg-muted"
                         }`}
                       >
                         {connection.is_active ? (
@@ -210,7 +280,7 @@ const Connections = () => {
                         ) : (
                           <AlertCircle className="h-3 w-3" />
                         )}
-                        <span>{connection.is_active ? "Active" : "Problem"}</span>
+                        <span>{connection.is_active ? "Active" : "Deactivated"}</span>
                       </Badge>
                     </div>
                     <div>
@@ -234,7 +304,7 @@ const Connections = () => {
                             onClick={() => handleTestConnection(connection)}
                             disabled={testingConnectionId === connection.id}
                           >
-                            <Wifi className="h-4 w-4" />
+                            <Wifi className={`h-4 w-4 ${testingConnectionId === connection.id ? "animate-pulse" : ""}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -253,6 +323,22 @@ const Connections = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Configure Connection</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={connection.is_active ? "default" : "outline"} 
+                            size="sm"
+                            onClick={() => handleToggleActive(connection)}
+                            disabled={testingConnectionId === connection.id}
+                          >
+                            <Power className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {connection.is_active ? "Deactivate Connection" : "Activate Connection"}
+                        </TooltipContent>
                       </Tooltip>
                       </div>
                     </TooltipProvider>
