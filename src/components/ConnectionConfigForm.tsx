@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { ExtractionProfilesDialog } from "./ExtractionProfilesDialog";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 type AuthType = 'oauth' | 'token' | 'basic_auth';
@@ -87,7 +88,10 @@ export const ConnectionConfigForm = ({
 
   const [connectionConfig, setConnectionConfig] = useState({
     domain: existingConnection?.connection_config?.domain || '',
+    extraction_profiles: existingConnection?.connection_config?.extraction_profiles || null,
   });
+
+  const [showExtractionDialog, setShowExtractionDialog] = useState(false);
 
   const isEndpointReadOnly = connectionType && ['gemini', 'openai', 'google_alerts'].includes(connectionType);
 
@@ -308,6 +312,37 @@ export const ConnectionConfigForm = ({
 
       <Separator />
 
+      {/* Privacy Configuration - FreshService Only */}
+      {connectionType === 'freshservice' && (
+        <>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Privacy Configuration</h3>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Data Extraction & Field Exclusion
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Define which fields are pulled from FreshService. Fields not selected in a profile are effectively excluded from analysis and downloads.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowExtractionDialog(true)}
+                disabled={!formData.endpoint || !authConfig.api_key}
+              >
+                Configure Extraction Profiles
+              </Button>
+              {(!formData.endpoint || !authConfig.api_key) && (
+                <p className="text-xs text-muted-foreground">
+                  Please enter your FreshService domain and API key first
+                </p>
+              )}
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
+
       {/* API Throttling */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">API Throttling</h3>
@@ -366,6 +401,23 @@ export const ConnectionConfigForm = ({
           {existingConnection ? 'Update Connection' : 'Create Connection'}
         </Button>
       </div>
+
+      {/* Extraction Profiles Dialog */}
+      {connectionType === 'freshservice' && (
+        <ExtractionProfilesDialog
+          open={showExtractionDialog}
+          onOpenChange={setShowExtractionDialog}
+          endpoint={formData.endpoint}
+          apiKey={authConfig.api_key}
+          currentProfiles={connectionConfig.extraction_profiles}
+          onSave={(profiles) => {
+            setConnectionConfig({
+              ...connectionConfig,
+              extraction_profiles: profiles,
+            });
+          }}
+        />
+      )}
     </form>
   );
 };
