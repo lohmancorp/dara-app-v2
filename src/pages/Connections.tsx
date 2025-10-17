@@ -1,4 +1,4 @@
-import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power } from "lucide-react";
+import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -333,7 +333,11 @@ const Connections = () => {
                             onClick={() => handleToggleActive(connection)}
                             disabled={testingConnectionId === connection.id}
                           >
-                            <Power className="h-4 w-4" />
+                            {connection.is_active ? (
+                              <PowerOff className="h-4 w-4" />
+                            ) : (
+                              <Power className="h-4 w-4" />
+                            )}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
