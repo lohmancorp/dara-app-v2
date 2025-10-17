@@ -72,6 +72,7 @@ export const ExtractionProfilesDialog = ({
   const [fieldGroups, setFieldGroups] = useState<FieldGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Ticket Fields', 'Conversation Fields']));
+  const [expandedJsonItems, setExpandedJsonItems] = useState<Set<string>>(new Set());
   const [selectedFields, setSelectedFields] = useState<ExtractionProfile>({
     light: currentProfiles?.light || DEFAULT_LIGHT_FIELDS,
     extended: currentProfiles?.extended || DEFAULT_EXTENDED_FIELDS,
@@ -91,6 +92,17 @@ export const ExtractionProfilesDialog = ({
     }
   }, [open, availableFields, endpoint, apiKey]);
 
+  const filterFieldsBySelected = (fields: FreshServiceField[]): FreshServiceField[] => {
+    return fields.filter(field => {
+      const allFieldNames = getAllFieldNames(field);
+      return allFieldNames.some(name => selectedJsonFields.has(name) || selectedJsonFields.has(field.id?.toString() || ''));
+    }).map(field => ({
+      ...field,
+      nested_fields: field.nested_fields ? filterFieldsBySelected(field.nested_fields) : [],
+      sections: field.sections ? filterFieldsBySelected(field.sections) : []
+    }));
+  };
+
   const fetchFields = async () => {
     setLoading(true);
     try {
@@ -101,9 +113,12 @@ export const ExtractionProfilesDialog = ({
       if (error) throw error;
 
       if (data?.success && data?.ticket_fields) {
+        const ticketFields = filterFieldsBySelected(data.ticket_fields);
+        const conversationFields = filterFieldsBySelected(data.conversation_fields || []);
+        
         setFieldGroups([
-          { name: 'Ticket Fields', fields: data.ticket_fields },
-          { name: 'Conversation Fields', fields: data.conversation_fields || [] }
+          { name: 'Ticket Fields', fields: ticketFields },
+          { name: 'Conversation Fields', fields: conversationFields }
         ]);
       } else {
         throw new Error('Failed to fetch fields');
@@ -294,6 +309,18 @@ export const ExtractionProfilesDialog = ({
     return ids;
   };
 
+  const toggleJsonExpansion = (fieldId: string) => {
+    setExpandedJsonItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fieldId)) {
+        newSet.delete(fieldId);
+      } else {
+        newSet.add(fieldId);
+      }
+      return newSet;
+    });
+  };
+
   const renderJsonLine = (obj: any, depth: number = 0): React.ReactNode[] => {
     const lines: React.ReactNode[] = [];
     const indent = depth * 20;
@@ -306,28 +333,51 @@ export const ExtractionProfilesDialog = ({
       const fieldId = obj.id || obj.name;
       const allChildren = getAllChildIds(obj);
       const isSelected = selectedJsonFields.has(fieldId);
+      const hasChildren = (obj.nested_fields && obj.nested_fields.length > 0) || (obj.sections && obj.sections.length > 0);
+      const isExpanded = expandedJsonItems.has(fieldId);
       
       if (fieldId) {
         lines.push(
           <div
             key={`${fieldId}-${depth}`}
             style={{ paddingLeft: `${indent}px` }}
-            className={`py-1 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
+            className={`flex items-center justify-between py-1 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
             onDoubleClick={() => toggleJsonFieldSelection(fieldId, allChildren)}
           >
             <span className={`text-sm font-mono ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               {obj.label || obj.name || obj.id}
               {obj.field_type && <span className="text-xs ml-2 opacity-60">({obj.field_type})</span>}
             </span>
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleJsonExpansion(fieldId);
+                }}
+                className="flex-shrink-0 p-1 hover:bg-accent rounded"
+              >
+                <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+              </button>
+            )}
           </div>
         );
+
+        if (isExpanded && hasChildren) {
+          lines.push(
+            <div key={`${fieldId}-expanded-${depth}`} style={{ paddingLeft: `${indent + 20}px` }} className="py-1 px-2">
+              <pre className="text-xs text-muted-foreground overflow-x-auto">{JSON.stringify(obj, null, 2)}</pre>
+            </div>
+          );
+        }
       }
 
-      if (obj.nested_fields) {
-        lines.push(...renderJsonLine(obj.nested_fields, depth + 1));
-      }
-      if (obj.sections) {
-        lines.push(...renderJsonLine(obj.sections, depth + 1));
+      if (!isExpanded) {
+        if (obj.nested_fields) {
+          lines.push(...renderJsonLine(obj.nested_fields, depth + 1));
+        }
+        if (obj.sections) {
+          lines.push(...renderJsonLine(obj.sections, depth + 1));
+        }
       }
     }
 
