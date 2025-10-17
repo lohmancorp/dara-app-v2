@@ -321,6 +321,61 @@ export const ExtractionProfilesDialog = ({
     });
   };
 
+  const renderJsonProperty = (key: string, value: any, parentPath: string, depth: number): React.ReactNode[] => {
+    const lines: React.ReactNode[] = [];
+    const indent = depth * 20;
+    const fullPath = parentPath ? `${parentPath}.${key}` : key;
+    const isSelected = selectedJsonFields.has(fullPath);
+
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // Render the key as selectable
+      lines.push(
+        <div
+          key={fullPath}
+          style={{ paddingLeft: `${indent}px` }}
+          className={`py-0.5 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
+          onDoubleClick={() => toggleJsonFieldSelection(fullPath, [])}
+        >
+          <span className={`text-xs font-mono ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+            {key}: {'{...}'}
+          </span>
+        </div>
+      );
+      // Render nested properties
+      Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+        lines.push(...renderJsonProperty(nestedKey, nestedValue, fullPath, depth + 1));
+      });
+    } else if (Array.isArray(value)) {
+      lines.push(
+        <div
+          key={fullPath}
+          style={{ paddingLeft: `${indent}px` }}
+          className={`py-0.5 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
+          onDoubleClick={() => toggleJsonFieldSelection(fullPath, [])}
+        >
+          <span className={`text-xs font-mono ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+            {key}: [{value.length} items]
+          </span>
+        </div>
+      );
+    } else {
+      lines.push(
+        <div
+          key={fullPath}
+          style={{ paddingLeft: `${indent}px` }}
+          className={`py-0.5 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
+          onDoubleClick={() => toggleJsonFieldSelection(fullPath, [])}
+        >
+          <span className={`text-xs font-mono ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+            {key}: {JSON.stringify(value)}
+          </span>
+        </div>
+      );
+    }
+
+    return lines;
+  };
+
   const renderJsonLine = (obj: any, depth: number = 0): React.ReactNode[] => {
     const lines: React.ReactNode[] = [];
     const indent = depth * 20;
@@ -364,8 +419,13 @@ export const ExtractionProfilesDialog = ({
 
         if (isExpanded && hasChildren) {
           lines.push(
-            <div key={`${fieldId}-expanded-${depth}`} style={{ paddingLeft: `${indent + 20}px` }} className="py-1 px-2">
-              <pre className="text-xs text-muted-foreground overflow-x-auto">{JSON.stringify(obj, null, 2)}</pre>
+            <div key={`${fieldId}-expanded-${depth}`} style={{ paddingLeft: `${indent + 20}px` }} className="border-l-2 border-border ml-2">
+              {Object.entries(obj).map(([key, value]) => {
+                if (key === 'id' || key === 'name' || key === 'label' || key === 'field_type' || key === 'nested_fields' || key === 'sections') {
+                  return null;
+                }
+                return renderJsonProperty(key, value, fieldId, 0);
+              })}
             </div>
           );
         }
