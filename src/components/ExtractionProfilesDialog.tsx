@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 
 interface ExtractionProfile {
   light: string[];
@@ -37,7 +37,8 @@ interface ExtractionProfilesDialogProps {
   endpoint: string;
   apiKey: string;
   currentProfiles?: ExtractionProfile;
-  onSave: (profiles: ExtractionProfile) => void;
+  availableFields?: string[];
+  onSave: (profiles: ExtractionProfile, availableFields?: string[]) => void;
 }
 
 const DEFAULT_LIGHT_FIELDS = [
@@ -59,9 +60,13 @@ export const ExtractionProfilesDialog = ({
   endpoint,
   apiKey,
   currentProfiles,
+  availableFields,
   onSave,
 }: ExtractionProfilesDialogProps) => {
   const { toast } = useToast();
+  const [step, setStep] = useState<'setup' | 'configure'>('setup');
+  const [rawJson, setRawJson] = useState<any>(null);
+  const [selectedJsonFields, setSelectedJsonFields] = useState<Set<string>>(new Set(availableFields || []));
   const [activeProfile, setActiveProfile] = useState<'light' | 'extended'>('light');
   const [searchTerm, setSearchTerm] = useState('');
   const [fieldGroups, setFieldGroups] = useState<FieldGroup[]>([]);
@@ -73,10 +78,18 @@ export const ExtractionProfilesDialog = ({
   });
 
   useEffect(() => {
-    if (open && endpoint && apiKey) {
-      fetchFields();
+    if (open) {
+      if (availableFields && availableFields.length > 0) {
+        setStep('configure');
+        setSelectedJsonFields(new Set(availableFields));
+        if (endpoint && apiKey) {
+          fetchFields();
+        }
+      } else {
+        setStep('setup');
+      }
     }
-  }, [open, endpoint, apiKey]);
+  }, [open, availableFields, endpoint, apiKey]);
 
   const fetchFields = async () => {
     setLoading(true);
@@ -222,8 +235,120 @@ export const ExtractionProfilesDialog = ({
     });
   };
 
+  const fetchRawJson = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-freshservice-fields', {
+        body: { endpoint, apiKey }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setRawJson(data);
+      } else {
+        throw new Error('Failed to fetch fields');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error fetching fields",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleJsonFieldSelection = (fieldId: string, allChildren: string[] = []) => {
+    setSelectedJsonFields(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fieldId)) {
+        // Unselect this field and all children
+        newSet.delete(fieldId);
+        allChildren.forEach(child => newSet.delete(child));
+      } else {
+        // Select this field and all children
+        newSet.add(fieldId);
+        allChildren.forEach(child => newSet.add(child));
+      }
+      return newSet;
+    });
+  };
+
+  const getAllChildIds = (obj: any): string[] => {
+    const ids: string[] = [];
+    if (obj.id) ids.push(obj.id);
+    if (obj.name) ids.push(obj.name);
+    
+    if (obj.nested_fields) {
+      obj.nested_fields.forEach((field: any) => {
+        ids.push(...getAllChildIds(field));
+      });
+    }
+    if (obj.sections) {
+      obj.sections.forEach((section: any) => {
+        ids.push(...getAllChildIds(section));
+      });
+    }
+    return ids;
+  };
+
+  const renderJsonLine = (obj: any, depth: number = 0): React.ReactNode[] => {
+    const lines: React.ReactNode[] = [];
+    const indent = depth * 20;
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        lines.push(...renderJsonLine(item, depth));
+      });
+    } else if (typeof obj === 'object' && obj !== null) {
+      const fieldId = obj.id || obj.name;
+      const allChildren = getAllChildIds(obj);
+      const isSelected = selectedJsonFields.has(fieldId);
+      
+      if (fieldId) {
+        lines.push(
+          <div
+            key={`${fieldId}-${depth}`}
+            style={{ paddingLeft: `${indent}px` }}
+            className={`py-1 px-2 cursor-pointer hover:bg-accent/50 transition-colors ${isSelected ? 'bg-primary/10' : ''}`}
+            onDoubleClick={() => toggleJsonFieldSelection(fieldId, allChildren)}
+          >
+            <span className={`text-sm font-mono ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              {obj.label || obj.name || obj.id}
+              {obj.field_type && <span className="text-xs ml-2 opacity-60">({obj.field_type})</span>}
+            </span>
+          </div>
+        );
+      }
+
+      if (obj.nested_fields) {
+        lines.push(...renderJsonLine(obj.nested_fields, depth + 1));
+      }
+      if (obj.sections) {
+        lines.push(...renderJsonLine(obj.sections, depth + 1));
+      }
+    }
+
+    return lines;
+  };
+
+  const handleProceedToConfiguration = () => {
+    if (selectedJsonFields.size === 0) {
+      toast({
+        title: "No fields selected",
+        description: "Please select at least one field before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setStep('configure');
+    fetchFields();
+  };
+
   const handleSave = () => {
-    onSave(selectedFields);
+    onSave(selectedFields, Array.from(selectedJsonFields));
     onOpenChange(false);
     toast({
       title: "Profiles saved",
@@ -300,10 +425,80 @@ export const ExtractionProfilesDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Configure Extraction Profiles</DialogTitle>
+          <DialogTitle className="text-2xl">
+            {step === 'setup' ? 'Setup Available Fields' : 'Configure Extraction Profiles'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex gap-6 flex-1 min-h-0">
+        {step === 'setup' ? (
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                First, fetch the available fields from FreshService and select which ones you want to make available for extraction profiles.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Double-click on any field to select/unselect it. Selecting a parent will select all children.
+              </p>
+            </div>
+
+            {!rawJson ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                <Button onClick={fetchRawJson} disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Fetching Fields...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Fetch Available Fields
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">
+                    {selectedJsonFields.size} field(s) selected
+                  </p>
+                  <Button variant="outline" size="sm" onClick={fetchRawJson} disabled={loading}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh
+                  </Button>
+                </div>
+                
+                <ScrollArea className="flex-1 border rounded-md p-4">
+                  <div className="space-y-1">
+                    {rawJson.ticket_fields && (
+                      <>
+                        <h3 className="text-sm font-semibold mb-2">Ticket Fields</h3>
+                        {renderJsonLine(rawJson.ticket_fields, 0)}
+                      </>
+                    )}
+                    {rawJson.conversation_fields && rawJson.conversation_fields.length > 0 && (
+                      <>
+                        <h3 className="text-sm font-semibold mt-4 mb-2">Conversation Fields</h3>
+                        {renderJsonLine(rawJson.conversation_fields, 0)}
+                      </>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleProceedToConfiguration}>
+                    Proceed to Configuration
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-6 flex-1 min-h-0">
           {/* Left Panel */}
           <div className="w-64 space-y-6 flex-shrink-0">
             <div>
@@ -381,11 +576,18 @@ export const ExtractionProfilesDialog = ({
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleResetToDefault}
+                onClick={() => setStep('setup')}
               >
-                Reset to Default
+                Back to Setup
               </Button>
               <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResetToDefault}
+                >
+                  Reset to Default
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -394,12 +596,13 @@ export const ExtractionProfilesDialog = ({
                   Cancel
                 </Button>
                 <Button onClick={handleSave}>
-                  Save Profile
+                  Save Profiles
                 </Button>
               </div>
             </div>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

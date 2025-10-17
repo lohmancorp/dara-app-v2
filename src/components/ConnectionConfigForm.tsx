@@ -88,6 +88,7 @@ export const ConnectionConfigForm = ({
 
   const [connectionConfig, setConnectionConfig] = useState({
     domain: existingConnection?.connection_config?.domain || '',
+    available_fields: existingConnection?.connection_config?.available_fields || [],
     extraction_profiles: existingConnection?.connection_config?.extraction_profiles || null,
   });
 
@@ -410,10 +411,12 @@ export const ConnectionConfigForm = ({
           endpoint={formData.endpoint}
           apiKey={authConfig.api_key}
           currentProfiles={connectionConfig.extraction_profiles}
-          onSave={(profiles) => {
+          availableFields={connectionConfig.available_fields}
+          onSave={(profiles, availableFields) => {
             setConnectionConfig({
               ...connectionConfig,
               extraction_profiles: profiles,
+              available_fields: availableFields || connectionConfig.available_fields,
             });
           }}
         />
