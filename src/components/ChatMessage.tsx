@@ -1,6 +1,7 @@
 import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ChatMessageProps {
@@ -37,6 +38,7 @@ export const ChatMessage = ({ role, content, isStreaming }: ChatMessageProps) =>
             </div>
           ) : (
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
                 table: ({ node, ...props }) => (
                   <div className="my-4 w-full overflow-x-auto rounded-md border">
