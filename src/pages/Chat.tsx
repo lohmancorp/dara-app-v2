@@ -305,20 +305,26 @@ const Chat = () => {
                 onChange={(e) => {
                   setInput(e.target.value);
                   const hasContent = e.target.value.length > 0;
-                  setIsTyping(hasContent);
-                  setIsThinking(false);
                   
-                  // Clear existing timeout
+                  // Clear existing timeout first
                   if (typingTimeoutRef.current) {
                     clearTimeout(typingTimeoutRef.current);
+                    typingTimeoutRef.current = null;
                   }
                   
-                  // Set timeout to switch to thinking after 2 seconds of no typing
+                  // Update states based on content and focus
                   if (hasContent && isFocused) {
+                    setIsTyping(true);
+                    setIsThinking(false);
+                    
+                    // Set timeout to switch to thinking after 2 seconds of no typing
                     typingTimeoutRef.current = setTimeout(() => {
                       setIsTyping(false);
                       setIsThinking(true);
                     }, 2000);
+                  } else {
+                    setIsTyping(false);
+                    setIsThinking(false);
                   }
                 }}
                 onFocus={(e) => {

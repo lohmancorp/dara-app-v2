@@ -58,8 +58,10 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
   // Calculate empty rows needed to maintain consistent table height
   const emptyRowsCount = useMemo(() => {
     if (itemsPerPage === -1) return 0;
-    return Math.max(0, itemsPerPage - paginatedRows.length);
-  }, [itemsPerPage, paginatedRows.length]);
+    // Use the minimum of itemsPerPage and total rows as the target height
+    const targetRowCount = Math.min(itemsPerPage, sortedRows.length);
+    return Math.max(0, targetRowCount - paginatedRows.length);
+  }, [itemsPerPage, paginatedRows.length, sortedRows.length]);
 
   useEffect(() => {
     setCurrentPage(1);
