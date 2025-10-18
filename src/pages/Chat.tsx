@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useFloatingAction } from "@/components/AppLayout";
 import { ChatMessage } from "@/components/ChatMessage";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -21,6 +22,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { session } = useAuth();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +51,11 @@ const Chat = () => {
     setIsLoading(true);
 
     try {
+      // Check if user is authenticated
+      if (!session?.access_token) {
+        throw new Error('Please log in to use the chat');
+      }
+
       // Add assistant message placeholder
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
@@ -58,7 +65,7 @@ const Chat = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             messages: [...messages, userMessage].map(m => ({
