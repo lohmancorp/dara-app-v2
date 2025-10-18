@@ -196,19 +196,19 @@ const Chat = () => {
   return (
     <>
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
         <PageHeader
           icon={MessageSquare}
           title="Research"
           description="Get learnings and outcomes from your research."
         />
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col">
-            <div className="flex-1 border-l border-r border-border flex flex-col">
-              <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col min-h-0">
+            <div className="flex-1 border-l border-r border-border flex flex-col min-h-0">
+              <ScrollArea className="flex-1 h-full">
                 {messages.length === 0 ? (
-                  <div className="p-4 sm:p-6 flex-1 flex items-center justify-center">
+                  <div className="p-4 sm:p-6 h-full flex items-center justify-center">
                     <div className="text-center space-y-4 max-w-md">
                       <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                       <div>
@@ -228,7 +228,7 @@ const Chat = () => {
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className="p-4">
                     {messages.map((message, index) => (
                       <ChatMessage
                         key={index}
@@ -247,7 +247,7 @@ const Chat = () => {
           </div>
         </div>
 
-        <div className="border-t border-border bg-background">
+        <div className="border-t border-border bg-background flex-shrink-0">
           <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex gap-3 items-end pl-[10px]">
               <Textarea
