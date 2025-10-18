@@ -28,6 +28,10 @@ const Chat = () => {
   const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
   const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const mouseStartPos = useRef<{ x: number; y: number } | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -87,12 +91,35 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (mouseStartPos.current) {
+        const deltaX = Math.abs(e.clientX - mouseStartPos.current.x);
+        const deltaY = Math.abs(e.clientY - mouseStartPos.current.y);
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance > 100) {
+          setIsTyping(false);
+          setIsThinking(false);
+          setIsFocused(false);
+          mouseStartPos.current = null;
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setIsTyping(false);
+    setIsThinking(false);
+    setIsFocused(false);
     setIsLoading(true);
 
     try {
@@ -240,23 +267,23 @@ const Chat = () => {
                         ticketBaseUrl={ticketBaseUrl}
                       />
                     ))}
-                    {isTyping && !isLoading && (
-                      <div className="flex gap-4 p-4 sm:p-6 flex-row-reverse">
-                        <div className="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-lg overflow-hidden bg-primary">
-                          {userAvatarUrl ? (
-                            <img src={userAvatarUrl} alt="User" className="h-full w-full object-cover" />
-                          ) : (
-                            <User className="h-5 w-5 text-primary-foreground" />
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-2 overflow-hidden rounded-lg p-4 bg-muted/50">
+                    {(isTyping || isThinking) && !isLoading && (
+                      <div className="flex gap-4 p-4 sm:p-6 pr-[20px] justify-end">
+                        <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Typing</span>
+                            <span className="text-sm text-muted-foreground">{isTyping ? 'Typing' : 'Thinking'}</span>
                             <div className="flex gap-1">
                               <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
                               <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
                               <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                             </div>
+                          </div>
+                          <div className="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-lg overflow-hidden bg-primary">
+                            {userAvatarUrl ? (
+                              <img src={userAvatarUrl} alt="User" className="h-full w-full object-cover" />
+                            ) : (
+                              <User className="h-5 w-5 text-primary-foreground" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -278,7 +305,37 @@ const Chat = () => {
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
-                  setIsTyping(e.target.value.length > 0);
+                  const hasContent = e.target.value.length > 0;
+                  setIsTyping(hasContent);
+                  setIsThinking(false);
+                  
+                  // Clear existing timeout
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  
+                  // Set timeout to switch to thinking after 1 second of no typing
+                  if (hasContent && isFocused) {
+                    typingTimeoutRef.current = setTimeout(() => {
+                      setIsTyping(false);
+                      setIsThinking(true);
+                    }, 1000);
+                  }
+                }}
+                onFocus={(e) => {
+                  setIsFocused(true);
+                  mouseStartPos.current = { x: 0, y: 0 };
+                  if (e.target.value.length > 0) {
+                    setIsTyping(true);
+                  }
+                }}
+                onBlur={() => {
+                  setIsFocused(false);
+                  setIsTyping(false);
+                  setIsThinking(false);
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
                 }}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}

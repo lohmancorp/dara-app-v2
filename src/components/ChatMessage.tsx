@@ -176,7 +176,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
       )}>
         <div className="prose prose-sm dark:prose-invert max-w-none break-words">
           {isStreaming && !content ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <span className="text-sm text-muted-foreground">Thinking</span>
               <div className="flex gap-1">
                 <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
