@@ -2,9 +2,9 @@ import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import daraLogo from "@/assets/dara-logo.png";
+import { SortableMarkdownTable } from "./SortableMarkdownTable";
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -16,6 +16,136 @@ interface ChatMessageProps {
 
 export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketBaseUrl }: ChatMessageProps) => {
   const isUser = role === 'user';
+
+  // Parse markdown tables for sortable rendering
+  const parseMarkdownTable = (markdown: string) => {
+    const lines = markdown.split('\n');
+    const tables: { start: number; end: number; headers: string[]; rows: string[][] }[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('|') && lines[i + 1]?.includes('---')) {
+        const headers = line.split('|').filter(h => h.trim()).map(h => h.trim());
+        const rows: string[][] = [];
+        let j = i + 2;
+        
+        while (j < lines.length && lines[j].trim().startsWith('|')) {
+          const cells = lines[j].split('|').filter(c => c.trim()).map(c => c.trim());
+          rows.push(cells);
+          j++;
+        }
+        
+        tables.push({ start: i, end: j - 1, headers, rows });
+        i = j - 1;
+      }
+    }
+    
+    return tables;
+  };
+
+  const renderContentWithSortableTables = (markdown: string) => {
+    const tables = parseMarkdownTable(markdown);
+    
+    if (tables.length === 0) {
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+            ul: ({ node, ...props }) => <ul className="my-4 ml-6 list-disc" {...props} />,
+            ol: ({ node, ...props }) => <ol className="my-4 ml-6 list-decimal" {...props} />,
+            li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+            code: ({ node, inline, ...props }: any) => 
+              inline ? (
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm" {...props} />
+              ) : (
+                <code className="block rounded bg-muted p-4 font-mono text-sm overflow-x-auto" {...props} />
+              ),
+            h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />,
+            h2: ({ node, ...props }) => <h2 className="text-xl font-bold mb-3 mt-5" {...props} />,
+            h3: ({ node, ...props }) => <h3 className="text-lg font-bold mb-2 mt-4" {...props} />,
+            strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+            em: ({ node, ...props }) => <em className="italic" {...props} />,
+            blockquote: ({ node, ...props }) => (
+              <blockquote className="border-l-4 border-muted pl-4 italic my-4" {...props} />
+            ),
+          }}
+        >
+          {markdown}
+        </ReactMarkdown>
+      );
+    }
+
+    // Split content and render tables separately
+    const lines = markdown.split('\n');
+    const elements: JSX.Element[] = [];
+    let currentText = '';
+    let lineIndex = 0;
+    
+    tables.forEach((table, tableIndex) => {
+      // Add text before table
+      while (lineIndex < table.start) {
+        currentText += lines[lineIndex] + '\n';
+        lineIndex++;
+      }
+      
+      if (currentText.trim()) {
+        elements.push(
+          <div key={`text-${tableIndex}`}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+                ul: ({ node, ...props }) => <ul className="my-4 ml-6 list-disc" {...props} />,
+                ol: ({ node, ...props }) => <ol className="my-4 ml-6 list-decimal" {...props} />,
+                li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                code: ({ node, inline, ...props }: any) => 
+                  inline ? (
+                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm" {...props} />
+                  ) : (
+                    <code className="block rounded bg-muted p-4 font-mono text-sm overflow-x-auto" {...props} />
+                  ),
+                h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />,
+                h2: ({ node, ...props }) => <h2 className="text-xl font-bold mb-3 mt-5" {...props} />,
+                h3: ({ node, ...props }) => <h3 className="text-lg font-bold mb-2 mt-4" {...props} />,
+              }}
+            >
+              {currentText}
+            </ReactMarkdown>
+          </div>
+        );
+        currentText = '';
+      }
+      
+      // Add sortable table
+      elements.push(
+        <SortableMarkdownTable
+          key={`table-${tableIndex}`}
+          headers={table.headers}
+          rows={table.rows}
+          ticketBaseUrl={ticketBaseUrl}
+        />
+      );
+      
+      lineIndex = table.end + 1;
+    });
+    
+    // Add remaining text
+    while (lineIndex < lines.length) {
+      currentText += lines[lineIndex] + '\n';
+      lineIndex++;
+    }
+    
+    if (currentText.trim()) {
+      elements.push(
+        <div key="text-final">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentText}</ReactMarkdown>
+        </div>
+      );
+    }
+    
+    return <>{elements}</>;
+  };
 
   return (
     <div
@@ -53,83 +183,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
             </div>
           ) : (
             <TooltipProvider>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  table: ({ node, ...props }) => (
-                    <div className="my-4 w-full overflow-x-auto rounded-md border">
-                      <Table className="w-full" {...props} />
-                    </div>
-                  ),
-                  thead: ({ node, ...props }) => <TableHeader {...props} />,
-                  tbody: ({ node, ...props }) => <TableBody {...props} />,
-                  tr: ({ node, ...props }) => <TableRow {...props} />,
-                  th: ({ node, ...props }) => (
-                    <TableHead className="font-semibold whitespace-nowrap" {...props} />
-                  ),
-                  td: ({ node, children, ...props }) => {
-                    const cellContent = String(children);
-                    const isTicketId = /^\d+$/.test(cellContent) && cellContent.length > 3;
-                    const needsTooltip = cellContent.length > 50;
-                    
-                    if (isTicketId && ticketBaseUrl) {
-                      return (
-                        <TableCell className="max-w-[150px]" {...props}>
-                          <a
-                            href={`${ticketBaseUrl}/helpdesk/tickets/${cellContent}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline font-medium"
-                          >
-                            {cellContent}
-                          </a>
-                        </TableCell>
-                      );
-                    }
-                    
-                    if (needsTooltip) {
-                      return (
-                        <TableCell className="max-w-[300px]" {...props}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate cursor-help block">{cellContent}</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md">
-                              <p className="text-sm">{cellContent.substring(0, 500)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                      );
-                    }
-                    
-                    return (
-                      <TableCell className="max-w-[300px] truncate" {...props}>
-                        {children}
-                      </TableCell>
-                    );
-                  },
-                  p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
-                  ul: ({ node, ...props }) => <ul className="my-4 ml-6 list-disc" {...props} />,
-                  ol: ({ node, ...props }) => <ol className="my-4 ml-6 list-decimal" {...props} />,
-                  li: ({ node, ...props }) => <li className="mb-1" {...props} />,
-                  code: ({ node, inline, ...props }: any) => 
-                    inline ? (
-                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm" {...props} />
-                    ) : (
-                      <code className="block rounded bg-muted p-4 font-mono text-sm overflow-x-auto" {...props} />
-                    ),
-                  h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />,
-                  h2: ({ node, ...props }) => <h2 className="text-xl font-bold mb-3 mt-5" {...props} />,
-                  h3: ({ node, ...props }) => <h3 className="text-lg font-bold mb-2 mt-4" {...props} />,
-                  strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
-                  em: ({ node, ...props }) => <em className="italic" {...props} />,
-                  blockquote: ({ node, ...props }) => (
-                    <blockquote className="border-l-4 border-muted pl-4 italic my-4" {...props} />
-                  ),
-                }}
-              >
-                {content}
-              </ReactMarkdown>
+              {renderContentWithSortableTables(content)}
             </TooltipProvider>
           )}
         </div>
