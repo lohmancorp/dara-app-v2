@@ -55,12 +55,11 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     return sortedRows.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedRows, currentPage, itemsPerPage]);
 
-  // Calculate minimum height based on rows per page to prevent layout shift
-  const tableBodyMinHeight = useMemo(() => {
-    if (itemsPerPage === -1) return 'auto';
-    const rowHeight = 53; // Approximate height of a table row in pixels
-    return `${itemsPerPage * rowHeight}px`;
-  }, [itemsPerPage]);
+  // Calculate empty rows needed to maintain consistent table height
+  const emptyRowsCount = useMemo(() => {
+    if (itemsPerPage === -1) return 0;
+    return Math.max(0, itemsPerPage - paginatedRows.length);
+  }, [itemsPerPage, paginatedRows.length]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -206,7 +205,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody style={{ height: tableBodyMinHeight, minHeight: tableBodyMinHeight }}>
+            <TableBody>
               {paginatedRows.map((row, rowIndex) => (
                 <TableRow 
                   key={rowIndex}
@@ -254,6 +253,22 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                   })}
                 </TableRow>
               ))}
+              {Array.from({ length: emptyRowsCount }).map((_, index) => {
+                const rowIndex = paginatedRows.length + index;
+                const isEven = rowIndex % 2 === 0;
+                return (
+                  <TableRow 
+                    key={`empty-${index}`}
+                    className={`pointer-events-none ${isEven ? 'bg-transparent' : 'bg-muted/30'}`}
+                  >
+                    {headers.map((_, cellIndex) => (
+                      <TableCell key={cellIndex} className="border-0">
+                        &nbsp;
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
