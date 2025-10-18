@@ -255,7 +255,7 @@ const Chat = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4">
+                  <div className="p-4 space-y-4">
                     {messages.map((message, index) => (
                       <ChatMessage
                         key={index}
@@ -313,12 +313,12 @@ const Chat = () => {
                     clearTimeout(typingTimeoutRef.current);
                   }
                   
-                  // Set timeout to switch to thinking after 1 second of no typing
+                  // Set timeout to switch to thinking after 2 seconds of no typing
                   if (hasContent && isFocused) {
                     typingTimeoutRef.current = setTimeout(() => {
                       setIsTyping(false);
                       setIsThinking(true);
-                    }, 1000);
+                    }, 2000);
                   }
                 }}
                 onFocus={(e) => {
