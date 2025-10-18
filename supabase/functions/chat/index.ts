@@ -73,7 +73,7 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets by department and status. Returns ticket ID, subject, description, and status.",
+          description: "Search FreshService tickets by department and status. Returns ticket ID, subject, description (up to 500 chars), priority (1=Low, 2=Medium, 3=High, 4=Urgent), and status.",
           parameters: {
             type: "object",
             properties: {
@@ -97,7 +97,7 @@ serve(async (req) => {
       }
     ];
 
-    const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable table showing: Ticket ID, Subject, Description (brief), and Status\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
+    const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable markdown table with these columns: Ticket ID, Subject, Description, Priority, Status\n5. Priority should be converted to text: 1=Low, 2=Medium, 3=High, 4=Urgent\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
 
     // Build conversation with tool call loop
     const conversationMessages: any[] = [
@@ -383,7 +383,8 @@ serve(async (req) => {
               const formattedTickets = tickets.map((t: any) => ({
                 id: t.id,
                 subject: t.subject,
-                description: t.description_text?.substring(0, 100) || '',
+                description: t.description_text?.substring(0, 500) || 'No Description Available',
+                priority: t.priority,
                 status: statusMap.get(t.status?.toString()) || t.status
               }));
 

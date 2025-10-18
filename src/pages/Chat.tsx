@@ -22,9 +22,53 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
+  const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
+
+  useEffect(() => {
+    // Fetch user profile avatar
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+      
+      if (data?.avatar_url) {
+        setUserAvatarUrl(data.avatar_url);
+      }
+    };
+
+    // Fetch connection for ticket base URL
+    const fetchConnection = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('connections')
+        .select('endpoint')
+        .eq('user_id', user.id)
+        .eq('connection_type', 'freshservice')
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+      
+      if (data?.endpoint) {
+        let endpoint = data.endpoint;
+        if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+          endpoint = `https://${endpoint}`;
+        }
+        setTicketBaseUrl(endpoint);
+      }
+    };
+
+    fetchUserProfile();
+    fetchConnection();
+  }, [user]);
 
   const handleAdvancedClick = () => {
     setShowAdvanced((prev) => !prev);
@@ -191,6 +235,8 @@ const Chat = () => {
                         role={message.role}
                         content={message.content}
                         isStreaming={isLoading && index === messages.length - 1 && !message.content}
+                        userAvatarUrl={userAvatarUrl}
+                        ticketBaseUrl={ticketBaseUrl}
                       />
                     ))}
                     <div ref={messagesEndRef} />
