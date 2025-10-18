@@ -55,10 +55,12 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     return sortedRows.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedRows, currentPage, itemsPerPage]);
 
-  // Calculate empty rows needed to maintain consistent table height
-  const emptyRowsCount = useMemo(() => {
-    if (itemsPerPage === -1) return 0;
-    return Math.max(0, itemsPerPage - paginatedRows.length);
+  // Calculate dynamic max height based on actual results
+  const tableBodyMinHeight = useMemo(() => {
+    if (itemsPerPage === -1) return 'auto';
+    const actualRows = Math.min(paginatedRows.length, itemsPerPage);
+    const rowHeight = 53; // Approximate height of a table row in pixels
+    return `${actualRows * rowHeight}px`;
   }, [itemsPerPage, paginatedRows.length]);
 
   useEffect(() => {
@@ -183,13 +185,13 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         </div>
         
         <div ref={tableRef} className="w-full overflow-x-auto rounded-md border">
-          <Table className="w-full">
+          <Table className="w-full min-w-[600px]">
             <TableHeader>
               <TableRow>
                 {headers.map((header, index) => (
                   <TableHead 
                     key={index}
-                    className="font-semibold whitespace-nowrap cursor-pointer select-none relative group"
+                    className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4"
                     style={{ width: columnWidths[index], minWidth: columnWidths[index] }}
                     onClick={() => handleSort(index)}
                   >
@@ -205,7 +207,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody style={{ minHeight: tableBodyMinHeight }}>
               {paginatedRows.map((row, rowIndex) => (
                 <TableRow 
                   key={rowIndex}
@@ -217,7 +219,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                     
                     if (isTicketId && ticketBaseUrl) {
                       return (
-                        <TableCell key={cellIndex} className="max-w-[150px]">
+                        <TableCell key={cellIndex} className="max-w-[150px] text-xs sm:text-sm px-2 sm:px-4">
                           <a
                             href={`${ticketBaseUrl}/helpdesk/tickets/${cell}`}
                             target="_blank"
@@ -232,7 +234,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                     
                     if (needsTooltip) {
                       return (
-                        <TableCell key={cellIndex} className="max-w-[300px]">
+                        <TableCell key={cellIndex} className="max-w-[300px] text-xs sm:text-sm px-2 sm:px-4">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="truncate cursor-help block">{cell}</span>
@@ -246,29 +248,13 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                     }
                     
                     return (
-                      <TableCell key={cellIndex} className="max-w-[300px] truncate">
+                      <TableCell key={cellIndex} className="max-w-[300px] truncate text-xs sm:text-sm px-2 sm:px-4">
                         {cell}
                       </TableCell>
                     );
                   })}
                 </TableRow>
               ))}
-              {Array.from({ length: emptyRowsCount }).map((_, index) => {
-                const rowIndex = paginatedRows.length + index;
-                const isEven = rowIndex % 2 === 0;
-                return (
-                  <TableRow 
-                    key={`empty-${index}`}
-                    className={`pointer-events-none ${isEven ? 'bg-transparent' : 'bg-muted/30'}`}
-                  >
-                    {headers.map((_, cellIndex) => (
-                      <TableCell key={cellIndex} className="border-0">
-                        &nbsp;
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })}
             </TableBody>
           </Table>
         </div>
