@@ -312,8 +312,8 @@ const Chat = () => {
                     typingTimeoutRef.current = null;
                   }
                   
-                  // Update states based on content and focus
-                  if (hasContent && isFocused) {
+                  // Update states based on content (field must be focused to type)
+                  if (hasContent) {
                     setIsTyping(true);
                     setIsThinking(false);
                     
