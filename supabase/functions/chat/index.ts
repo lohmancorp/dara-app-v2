@@ -99,55 +99,68 @@ serve(async (req) => {
 
     const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable table showing: Ticket ID, Subject, Description (brief), and Status\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
 
-    // Call Lovable AI (non-streaming first to check for tool calls)
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        tools,
-        stream: false
-      }),
-    });
+    // Build conversation with tool call loop
+    const conversationMessages: any[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // Keep calling AI until no more tool calls (max 10 iterations to prevent infinite loops)
+    let iterations = 0;
+    const maxIterations = 10;
+
+    while (iterations < maxIterations) {
+      iterations++;
+      console.log(`AI call iteration ${iterations}`);
+
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: conversationMessages,
+          tools,
+          stream: false
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: 'Payment required, please add funds to your Lovable AI workspace.' }), {
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const errorText = await response.text();
+        console.error('AI gateway error:', response.status, errorText);
+        throw new Error('AI gateway error');
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Payment required, please add funds to your Lovable AI workspace.' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error('AI gateway error');
-    }
 
-    const aiResponse = await response.json();
-    console.log('AI response:', JSON.stringify(aiResponse, null, 2));
-    const firstChoice = aiResponse.choices?.[0];
+      const aiResponse = await response.json();
+      console.log('AI response:', JSON.stringify(aiResponse, null, 2));
+      const choice = aiResponse.choices?.[0];
 
-    // Check if AI wants to call tools
-    if (firstChoice?.message?.tool_calls && firstChoice.message.tool_calls.length > 0) {
-      const toolCalls = firstChoice.message.tool_calls;
-      console.log('AI requested tool calls:', toolCalls.length);
-      console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
+      // Check if AI wants to call tools
+      if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
+        const toolCalls = choice.message.tool_calls;
+        console.log('AI requested tool calls:', toolCalls.length);
+        console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
 
-      // Execute tool calls
-      const toolResults = await Promise.all(
-        toolCalls.map(async (toolCall: any) => {
+        // Add assistant message with tool calls to conversation
+        conversationMessages.push(choice.message);
+
+        // Execute tool calls
+        const toolResults = await Promise.all(
+          toolCalls.map(async (toolCall: any) => {
           const { name, arguments: argsStr } = toolCall.function;
           const args = JSON.parse(argsStr);
 
@@ -384,13 +397,26 @@ serve(async (req) => {
                 content: JSON.stringify({ error: 'Unknown tool' })
               };
           }
-        })
-      );
+          })
+        );
 
-      console.log('Tool results:', JSON.stringify(toolResults, null, 2));
+        console.log('Tool results:', JSON.stringify(toolResults, null, 2));
 
-      // Call AI again with tool results (streaming this time)
-      console.log('Making final AI call with tool results');
+        // Add tool results to conversation
+        for (const result of toolResults) {
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: result.tool_call_id,
+            content: result.content
+          });
+        }
+
+        // Continue loop to let AI process tool results and potentially call more tools
+        continue;
+      }
+
+      // No more tool calls - stream final response
+      console.log('No more tool calls, streaming final response');
       const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -399,16 +425,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages,
-            firstChoice.message,
-            ...toolResults.map(result => ({
-              role: 'tool',
-              tool_call_id: result.tool_call_id,
-              content: result.content
-            }))
-          ],
+          messages: conversationMessages,
           stream: true
         }),
       });
@@ -425,26 +442,10 @@ serve(async (req) => {
       });
     }
 
-    // No tool calls, stream direct response
-    const streamResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        stream: true
-      }),
-    });
+    // Max iterations reached
+    console.error('Max iterations reached without completion');
+    throw new Error('Too many tool call iterations');
 
-    return new Response(streamResponse.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-    });
 
   } catch (error) {
     console.error('Chat error:', error);
