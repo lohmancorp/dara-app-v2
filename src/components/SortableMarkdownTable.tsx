@@ -55,6 +55,13 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     return sortedRows.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedRows, currentPage, itemsPerPage]);
 
+  // Calculate minimum height based on rows per page to prevent layout shift
+  const tableBodyMinHeight = useMemo(() => {
+    if (itemsPerPage === -1) return 'auto';
+    const rowHeight = 53; // Approximate height of a table row in pixels
+    return `${itemsPerPage * rowHeight}px`;
+  }, [itemsPerPage]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage, sortColumn, sortDirection]);
@@ -199,7 +206,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody style={{ minHeight: tableBodyMinHeight }}>
               {paginatedRows.map((row, rowIndex) => (
                 <TableRow 
                   key={rowIndex}
