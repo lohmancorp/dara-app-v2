@@ -1,4 +1,4 @@
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
   const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -239,6 +240,27 @@ const Chat = () => {
                         ticketBaseUrl={ticketBaseUrl}
                       />
                     ))}
+                    {isTyping && !isLoading && (
+                      <div className="flex gap-4 p-4 sm:p-6 flex-row-reverse">
+                        <div className="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-lg overflow-hidden bg-primary">
+                          {userAvatarUrl ? (
+                            <img src={userAvatarUrl} alt="User" className="h-full w-full object-cover" />
+                          ) : (
+                            <User className="h-5 w-5 text-primary-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2 overflow-hidden rounded-lg p-4 bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Typing</span>
+                            <div className="flex gap-1">
+                              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 )}
@@ -254,7 +276,10 @@ const Chat = () => {
                 placeholder="Ask about tickets from your FreshService connections..."
                 className="min-h-[60px] resize-none flex-1"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  setIsTyping(e.target.value.length > 0);
+                }}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
               />

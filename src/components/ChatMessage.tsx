@@ -151,7 +151,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
     <div
       className={cn(
         "flex gap-4 p-4 sm:p-6",
-        isUser ? "flex-row-reverse bg-muted/30" : "bg-background"
+        isUser ? "flex-row-reverse" : ""
       )}
     >
       <div
@@ -170,7 +170,10 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
           <img src={daraLogo} alt="D.A.R.A." className="h-full w-full object-cover" />
         )}
       </div>
-      <div className={cn("flex-1 space-y-2 overflow-hidden", isUser && "text-left")}>
+      <div className={cn(
+        "flex-1 space-y-2 overflow-hidden rounded-lg p-4",
+        isUser ? "bg-muted/50 text-left" : ""
+      )}>
         <div className="prose prose-sm dark:prose-invert max-w-none break-words">
           {isStreaming && !content ? (
             <div className="flex items-center gap-2">
