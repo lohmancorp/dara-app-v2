@@ -206,7 +206,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody style={{ minHeight: tableBodyMinHeight }}>
+            <TableBody style={{ height: tableBodyMinHeight, minHeight: tableBodyMinHeight }}>
               {paginatedRows.map((row, rowIndex) => (
                 <TableRow 
                   key={rowIndex}

@@ -363,7 +363,7 @@ serve(async (req) => {
                 console.log(`Fetching page ${page} (${perPage} results per page)...`);
                 
                 const ticketsResponse = await fetch(
-                  `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"&page=${page}&per_page=${perPage}`,
+                  `${endpoint}/api/v2/tickets/filter?per_page=${perPage}&page=${page}&query="${encodeURIComponent(query)}"`,
                   {
                     headers: {
                       'Authorization': authHeaderValue,
