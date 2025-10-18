@@ -353,28 +353,53 @@ serve(async (req) => {
               console.log('FreshService query:', query);
               console.log('Searching tickets at:', `${endpoint}/api/v2/tickets/filter`);
 
-              const ticketsResponse = await fetch(
-                `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"`,
-                {
-                  headers: {
-                    'Authorization': authHeaderValue,
-                    'Content-Type': 'application/json'
-                  }
-                }
-              );
+              // Implement pagination to fetch all results (100 per page)
+              let allTickets: any[] = [];
+              let page = 1;
+              const perPage = 100;
+              let hasMorePages = true;
 
-              if (!ticketsResponse.ok) {
-                const errorText = await ticketsResponse.text();
-                console.error('FreshService tickets error:', ticketsResponse.status, errorText);
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Failed to fetch tickets', details: errorText })
-                };
+              while (hasMorePages) {
+                console.log(`Fetching page ${page} (${perPage} results per page)...`);
+                
+                const ticketsResponse = await fetch(
+                  `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"&page=${page}&per_page=${perPage}`,
+                  {
+                    headers: {
+                      'Authorization': authHeaderValue,
+                      'Content-Type': 'application/json'
+                    }
+                  }
+                );
+
+                if (!ticketsResponse.ok) {
+                  const errorText = await ticketsResponse.text();
+                  console.error('FreshService tickets error:', ticketsResponse.status, errorText);
+                  return {
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify({ error: 'Failed to fetch tickets', details: errorText })
+                  };
+                }
+
+                const ticketsData = await ticketsResponse.json();
+                const pageTickets = ticketsData.tickets || [];
+                
+                console.log(`Page ${page}: Retrieved ${pageTickets.length} tickets`);
+                
+                allTickets = allTickets.concat(pageTickets);
+
+                // Check if there are more pages
+                // If we got fewer tickets than requested, we've reached the last page
+                if (pageTickets.length < perPage) {
+                  hasMorePages = false;
+                  console.log('Last page reached');
+                } else {
+                  page++;
+                }
               }
 
-              const ticketsData = await ticketsResponse.json();
-              const tickets = ticketsData.tickets || [];
-              console.log('Found tickets:', tickets.length);
+              const tickets = allTickets;
+              console.log('Total tickets retrieved across all pages:', tickets.length);
 
               const statusMap = new Map(
                 statusField?.choices?.map((c: any) => [c.id.toString(), c.value]) || []
