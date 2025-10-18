@@ -32,6 +32,7 @@ serve(async (req) => {
     const { messages } = await req.json();
 
     console.log('Chat request from user:', user.id);
+    console.log('User messages:', JSON.stringify(messages, null, 2));
 
     // Define tools for the AI
     const tools = [
@@ -135,12 +136,14 @@ serve(async (req) => {
     }
 
     const aiResponse = await response.json();
+    console.log('AI response:', JSON.stringify(aiResponse, null, 2));
     const firstChoice = aiResponse.choices?.[0];
 
     // Check if AI wants to call tools
     if (firstChoice?.message?.tool_calls && firstChoice.message.tool_calls.length > 0) {
       const toolCalls = firstChoice.message.tool_calls;
       console.log('AI requested tool calls:', toolCalls.length);
+      console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
 
       // Execute tool calls
       const toolResults = await Promise.all(
@@ -152,6 +155,7 @@ serve(async (req) => {
 
           switch (name) {
             case 'get_freshservice_connections': {
+              console.log('Fetching FreshService connections for user:', user.id);
               const { data, error } = await supabase
                 .from('connections')
                 .select('*')
@@ -159,16 +163,23 @@ serve(async (req) => {
                 .eq('connection_type', 'freshservice')
                 .eq('is_active', true);
 
-              if (error) throw error;
+              if (error) {
+                console.error('Error fetching connections:', error);
+                throw error;
+              }
               
-              return {
+              console.log('Found connections:', data?.length || 0);
+              const result = {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify(data || [])
               };
+              console.log('Returning connection result:', result);
+              return result;
             }
 
             case 'get_department_id': {
               const { connection_id, department_name } = args;
+              console.log('Looking up department:', department_name, 'for connection:', connection_id);
 
               const { data: connection } = await supabase
                 .from('connections')
@@ -178,16 +189,20 @@ serve(async (req) => {
                 .single();
 
               if (!connection) {
+                console.error('Connection not found:', connection_id);
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ error: 'Connection not found' })
                 };
               }
 
+              console.log('Found connection:', connection.name);
+
               const endpoint = connection.endpoint;
               const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
               const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
 
+              console.log('Fetching ticket fields from:', endpoint);
               const fieldsResponse = await fetch(
                 `${endpoint}/api/v2/ticket_form_fields`,
                 {
@@ -199,6 +214,7 @@ serve(async (req) => {
               );
 
               if (!fieldsResponse.ok) {
+                console.error('Failed to fetch fields:', fieldsResponse.status, await fieldsResponse.text());
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ error: 'Failed to fetch ticket fields' })
@@ -207,33 +223,39 @@ serve(async (req) => {
 
               const fieldsData = await fieldsResponse.json();
               const ticketFields = fieldsData.ticket_fields || [];
+              console.log('Found ticket fields:', ticketFields.length);
 
               const departmentField = ticketFields.find((f: any) => 
                 f.name === 'department_id' || f.label === 'Department'
               );
 
               if (!departmentField) {
+                console.error('Department field not found in fields');
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ error: 'Department field not found' })
                 };
               }
 
+              console.log('Department field choices:', departmentField.choices?.length || 0);
               const department = departmentField.choices?.find((c: any) =>
                 c.value?.toLowerCase().includes(department_name.toLowerCase()) ||
                 department_name.toLowerCase().includes(c.value?.toLowerCase())
               );
 
               if (!department) {
+                const available = departmentField.choices?.map((c: any) => c.value) || [];
+                console.error('Department not found:', department_name, 'Available:', available);
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ 
                     error: `Department "${department_name}" not found`,
-                    available: departmentField.choices?.map((c: any) => c.value) || []
+                    available
                   })
                 };
               }
 
+              console.log('Found department:', department.value, 'ID:', department.id);
               return {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({ 
@@ -245,6 +267,7 @@ serve(async (req) => {
 
             case 'search_freshservice_tickets': {
               const { connection_id, department_id, status_names } = args;
+              console.log('Searching tickets - Connection:', connection_id, 'Department:', department_id, 'Statuses:', status_names);
 
               const { data: connection } = await supabase
                 .from('connections')
@@ -254,17 +277,21 @@ serve(async (req) => {
                 .single();
 
               if (!connection) {
+                console.error('Connection not found for ticket search:', connection_id);
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ error: 'Connection not found' })
                 };
               }
 
+              console.log('Using connection:', connection.name);
+
               const endpoint = connection.endpoint;
               const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
               const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
 
               const statuses = status_names || ['Open', 'Pending', 'In Progress', 'Waiting on Customer', 'Waiting on Third Party'];
+              console.log('Status names to search:', statuses);
 
               const fieldsResponse = await fetch(
                 `${endpoint}/api/v2/ticket_form_fields`,
@@ -283,20 +310,27 @@ serve(async (req) => {
               const statusIds: string[] = [];
 
               if (statusField) {
+                console.log('Status field found with', statusField.choices?.length || 0, 'choices');
                 for (const statusName of statuses) {
                   const choice = statusField.choices?.find((c: any) =>
                     c.value?.toLowerCase() === statusName.toLowerCase()
                   );
                   if (choice) {
+                    console.log('Mapped status:', statusName, '-> ID:', choice.id);
                     statusIds.push(choice.id.toString());
+                  } else {
+                    console.log('Status not found:', statusName);
                   }
                 }
+              } else {
+                console.error('Status field not found in ticket fields');
               }
 
               const statusQuery = statusIds.map(id => `status:${id}`).join(' OR ');
               const query = `department_id:${department_id} AND (${statusQuery})`;
 
               console.log('FreshService query:', query);
+              console.log('Searching tickets at:', `${endpoint}/api/v2/tickets/filter`);
 
               const ticketsResponse = await fetch(
                 `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"`,
@@ -310,15 +344,16 @@ serve(async (req) => {
 
               if (!ticketsResponse.ok) {
                 const errorText = await ticketsResponse.text();
-                console.error('FreshService error:', errorText);
+                console.error('FreshService tickets error:', ticketsResponse.status, errorText);
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Failed to fetch tickets' })
+                  content: JSON.stringify({ error: 'Failed to fetch tickets', details: errorText })
                 };
               }
 
               const ticketsData = await ticketsResponse.json();
               const tickets = ticketsData.tickets || [];
+              console.log('Found tickets:', tickets.length);
 
               const statusMap = new Map(
                 statusField?.choices?.map((c: any) => [c.id.toString(), c.value]) || []
@@ -331,13 +366,16 @@ serve(async (req) => {
                 status: statusMap.get(t.status?.toString()) || t.status
               }));
 
-              return {
+              console.log('Formatted tickets:', formattedTickets.length);
+              const result = {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({
                   total: tickets.length,
                   tickets: formattedTickets
                 })
               };
+              console.log('Returning ticket search result');
+              return result;
             }
 
             default:
@@ -349,7 +387,10 @@ serve(async (req) => {
         })
       );
 
+      console.log('Tool results:', JSON.stringify(toolResults, null, 2));
+
       // Call AI again with tool results (streaming this time)
+      console.log('Making final AI call with tool results');
       const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -372,6 +413,13 @@ serve(async (req) => {
         }),
       });
 
+      if (!finalResponse.ok) {
+        const errorText = await finalResponse.text();
+        console.error('Final AI response error:', finalResponse.status, errorText);
+        throw new Error('AI gateway error on final response');
+      }
+
+      console.log('Streaming final response to client');
       return new Response(finalResponse.body, {
         headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
       });
