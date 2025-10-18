@@ -119,7 +119,6 @@ const Chat = () => {
     setInput('');
     setIsTyping(false);
     setIsThinking(false);
-    setIsFocused(false);
     setIsLoading(true);
 
     try {

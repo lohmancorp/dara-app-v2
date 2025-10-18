@@ -55,13 +55,12 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     return sortedRows.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedRows, currentPage, itemsPerPage]);
 
-  // Calculate dynamic max height based on actual results
+  // Calculate dynamic max height based on items per page setting
   const tableBodyMinHeight = useMemo(() => {
     if (itemsPerPage === -1) return 'auto';
-    const actualRows = Math.min(paginatedRows.length, itemsPerPage);
     const rowHeight = 53; // Approximate height of a table row in pixels
-    return `${actualRows * rowHeight}px`;
-  }, [itemsPerPage, paginatedRows.length]);
+    return `${itemsPerPage * rowHeight}px`;
+  }, [itemsPerPage]);
 
   useEffect(() => {
     setCurrentPage(1);
