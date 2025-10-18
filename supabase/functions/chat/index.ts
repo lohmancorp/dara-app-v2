@@ -96,17 +96,7 @@ serve(async (req) => {
       }
     ];
 
-    const systemPrompt = `You are a helpful AI assistant that can search FreshService tickets.
-
-When a user asks for tickets for a company/department:
-1. First call get_freshservice_connections to get their FreshService connection
-2. Then call get_department_id with the company/department name to get the ID
-3. Finally call search_freshservice_tickets with the department_id to get tickets
-4. Format the results as a clear, readable table showing: Ticket ID, Subject, Description (brief), and Status
-
-If the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.
-
-Always be helpful and clear in your responses.`;
+    const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable table showing: Ticket ID, Subject, Description (brief), and Status\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
 
     // Call Lovable AI with streaming
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
