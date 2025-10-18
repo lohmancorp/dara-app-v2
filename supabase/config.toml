@@ -14,3 +14,12 @@ verify_jwt = true
 
 [functions.test-connection]
 verify_jwt = true
+
+[functions.mcp-server]
+verify_jwt = true
+
+[functions.mcp-configure-service]
+verify_jwt = true
+
+[functions.mcp-manage-token]
+verify_jwt = true

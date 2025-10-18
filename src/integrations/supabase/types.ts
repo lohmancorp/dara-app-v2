@@ -14,8 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_members: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_members_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      connection_tokens: {
+        Row: {
+          auth_config: Json | null
+          auth_type: string
+          created_at: string
+          encrypted_token: string
+          endpoint: string | null
+          id: string
+          owner_id: string
+          owner_type: string
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_config?: Json | null
+          auth_type?: string
+          created_at?: string
+          encrypted_token: string
+          endpoint?: string | null
+          id?: string
+          owner_id: string
+          owner_type: string
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_config?: Json | null
+          auth_type?: string
+          created_at?: string
+          encrypted_token?: string
+          endpoint?: string | null
+          id?: string
+          owner_id?: string
+          owner_type?: string
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connection_tokens_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connections: {
         Row: {
+          account_id: string | null
           auth_config: Json | null
           auth_type: string
           call_delay_ms: number | null
@@ -25,13 +126,17 @@ export type Database = {
           endpoint: string | null
           id: string
           is_active: boolean | null
+          is_mcp_managed: boolean | null
           max_retries: number | null
+          mcp_service_id: string | null
           name: string
           retry_delay_sec: number | null
+          team_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           auth_config?: Json | null
           auth_type: string
           call_delay_ms?: number | null
@@ -41,13 +146,17 @@ export type Database = {
           endpoint?: string | null
           id?: string
           is_active?: boolean | null
+          is_mcp_managed?: boolean | null
           max_retries?: number | null
+          mcp_service_id?: string | null
           name: string
           retry_delay_sec?: number | null
+          team_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          account_id?: string | null
           auth_config?: Json | null
           auth_type?: string
           call_delay_ms?: number | null
@@ -57,13 +166,38 @@ export type Database = {
           endpoint?: string | null
           id?: string
           is_active?: boolean | null
+          is_mcp_managed?: boolean | null
           max_retries?: number | null
+          mcp_service_id?: string | null
           name?: string
           retry_delay_sec?: number | null
+          team_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_mcp_service_id_fkey"
+            columns: ["mcp_service_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_templates: {
         Row: {
@@ -116,6 +250,95 @@ export type Database = {
           secondary_connections?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      mcp_service_tokens: {
+        Row: {
+          auth_config: Json | null
+          auth_type: string
+          created_at: string
+          encrypted_token: string
+          id: string
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_config?: Json | null
+          auth_type?: string
+          created_at?: string
+          encrypted_token: string
+          id?: string
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_config?: Json | null
+          auth_type?: string
+          created_at?: string
+          encrypted_token?: string
+          id?: string
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_service_tokens_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "mcp_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_services: {
+        Row: {
+          call_delay_ms: number | null
+          created_at: string
+          description: string | null
+          endpoint_template: string | null
+          id: string
+          max_retries: number | null
+          rate_limit_per_minute: number | null
+          resources_config: Json | null
+          retry_delay_sec: number | null
+          service_name: string
+          service_type: string
+          tools_config: Json | null
+          updated_at: string
+          uses_app_token: boolean
+        }
+        Insert: {
+          call_delay_ms?: number | null
+          created_at?: string
+          description?: string | null
+          endpoint_template?: string | null
+          id?: string
+          max_retries?: number | null
+          rate_limit_per_minute?: number | null
+          resources_config?: Json | null
+          retry_delay_sec?: number | null
+          service_name: string
+          service_type: string
+          tools_config?: Json | null
+          updated_at?: string
+          uses_app_token?: boolean
+        }
+        Update: {
+          call_delay_ms?: number | null
+          created_at?: string
+          description?: string | null
+          endpoint_template?: string | null
+          id?: string
+          max_retries?: number | null
+          rate_limit_per_minute?: number | null
+          resources_config?: Json | null
+          retry_delay_sec?: number | null
+          service_name?: string
+          service_type?: string
+          tools_config?: Json | null
+          updated_at?: string
+          uses_app_token?: boolean
         }
         Relationships: []
       }
@@ -233,6 +456,70 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_votes: {
         Row: {
           created_at: string
@@ -260,6 +547,27 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vote?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -305,9 +613,32 @@ export type Database = {
         Args: { _connection_id: string }
         Returns: string
       }
+      has_account_role: {
+        Args: {
+          _account_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_team_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _team_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "app_admin" | "account_admin" | "team_manager" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -434,6 +765,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["app_admin", "account_admin", "team_manager", "user"],
+    },
   },
 } as const
