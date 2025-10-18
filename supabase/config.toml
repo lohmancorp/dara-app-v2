@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.mcp-manage-token]
 verify_jwt = true
+
+[functions.mcp-freshservice-filter-tickets]
+verify_jwt = true
