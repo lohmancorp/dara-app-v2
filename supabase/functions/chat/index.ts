@@ -211,7 +211,11 @@ serve(async (req) => {
 
               console.log('Found connection:', connection.name);
 
-              const endpoint = connection.endpoint;
+              let endpoint = connection.endpoint;
+              // Ensure endpoint has protocol
+              if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+                endpoint = `https://${endpoint}`;
+              }
               const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
               const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
 
@@ -299,7 +303,11 @@ serve(async (req) => {
 
               console.log('Using connection:', connection.name);
 
-              const endpoint = connection.endpoint;
+              let endpoint = connection.endpoint;
+              // Ensure endpoint has protocol
+              if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+                endpoint = `https://${endpoint}`;
+              }
               const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
               const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
 
