@@ -330,8 +330,22 @@ const Chat = () => {
                 onFocus={(e) => {
                   setIsFocused(true);
                   mouseStartPos.current = { x: 0, y: 0 };
+                  
+                  // Clear any existing timeout
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                    typingTimeoutRef.current = null;
+                  }
+                  
                   if (e.target.value.length > 0) {
                     setIsTyping(true);
+                    setIsThinking(false);
+                    
+                    // Start timeout to switch to thinking
+                    typingTimeoutRef.current = setTimeout(() => {
+                      setIsTyping(false);
+                      setIsThinking(true);
+                    }, 2000);
                   }
                 }}
                 onBlur={() => {
