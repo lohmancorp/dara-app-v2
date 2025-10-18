@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.mcp-freshservice-filter-tickets]
 verify_jwt = true
+
+[functions.chat]
+verify_jwt = true
