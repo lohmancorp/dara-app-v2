@@ -98,7 +98,7 @@ serve(async (req) => {
 
     const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable table showing: Ticket ID, Subject, Description (brief), and Status\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
 
-    // Call Lovable AI with streaming
+    // Call Lovable AI (non-streaming first to check for tool calls)
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -112,7 +112,7 @@ serve(async (req) => {
           ...messages
         ],
         tools,
-        stream: true
+        stream: false
       }),
     });
 
@@ -134,284 +134,251 @@ serve(async (req) => {
       throw new Error('AI gateway error');
     }
 
+    const aiResponse = await response.json();
+    const firstChoice = aiResponse.choices?.[0];
+
     // Check if AI wants to call tools
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let toolCalls: any[] = [];
-    let currentToolCall: any = null;
+    if (firstChoice?.message?.tool_calls && firstChoice.message.tool_calls.length > 0) {
+      const toolCalls = firstChoice.message.tool_calls;
+      console.log('AI requested tool calls:', toolCalls.length);
 
-    // Stream and collect tool calls
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      // Execute tool calls
+      const toolResults = await Promise.all(
+        toolCalls.map(async (toolCall: any) => {
+          const { name, arguments: argsStr } = toolCall.function;
+          const args = JSON.parse(argsStr);
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+          console.log('Executing tool:', name, args);
 
-      for (const line of lines) {
-        if (!line.trim() || line.startsWith(':')) continue;
-        if (!line.startsWith('data: ')) continue;
+          switch (name) {
+            case 'get_freshservice_connections': {
+              const { data, error } = await supabase
+                .from('connections')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('connection_type', 'freshservice')
+                .eq('is_active', true);
 
-        const data = line.slice(6);
-        if (data === '[DONE]') continue;
+              if (error) throw error;
+              
+              return {
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(data || [])
+              };
+            }
 
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta;
+            case 'get_department_id': {
+              const { connection_id, department_name } = args;
 
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              if (tc.index !== undefined) {
-                if (!toolCalls[tc.index]) {
-                  toolCalls[tc.index] = {
-                    id: tc.id || `call_${tc.index}`,
-                    type: 'function',
-                    function: { name: '', arguments: '' }
-                  };
-                }
-                if (tc.function?.name) {
-                  toolCalls[tc.index].function.name = tc.function.name;
-                }
-                if (tc.function?.arguments) {
-                  toolCalls[tc.index].function.arguments += tc.function.arguments;
-                }
+              const { data: connection } = await supabase
+                .from('connections')
+                .select('*')
+                .eq('id', connection_id)
+                .eq('user_id', user.id)
+                .single();
+
+              if (!connection) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Connection not found' })
+                };
               }
-            }
-          }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    }
 
-    // If no tool calls, just stream the response
-    if (toolCalls.length === 0) {
-      return new Response(response.body, {
-        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-      });
-    }
+              const endpoint = connection.endpoint;
+              const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
+              const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
 
-    // Execute tool calls
-    const toolResults = await Promise.all(
-      toolCalls.map(async (toolCall) => {
-        const { name, arguments: argsStr } = toolCall.function;
-        const args = JSON.parse(argsStr);
-
-        console.log('Executing tool:', name, args);
-
-        switch (name) {
-          case 'get_freshservice_connections': {
-            const { data, error } = await supabase
-              .from('connections')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('connection_type', 'freshservice')
-              .eq('is_active', true);
-
-            if (error) throw error;
-            
-            return {
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(data || [])
-            };
-          }
-
-          case 'get_department_id': {
-            const { connection_id, department_name } = args;
-
-            // Get connection
-            const { data: connection } = await supabase
-              .from('connections')
-              .select('*')
-              .eq('id', connection_id)
-              .eq('user_id', user.id)
-              .single();
-
-            if (!connection) {
-              return {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: 'Connection not found' })
-              };
-            }
-
-            // Fetch ticket form fields
-            const endpoint = connection.endpoint;
-            const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
-            const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
-
-            const fieldsResponse = await fetch(
-              `${endpoint}/api/v2/ticket_form_fields`,
-              {
-                headers: {
-                  'Authorization': authHeaderValue,
-                  'Content-Type': 'application/json'
+              const fieldsResponse = await fetch(
+                `${endpoint}/api/v2/ticket_form_fields`,
+                {
+                  headers: {
+                    'Authorization': authHeaderValue,
+                    'Content-Type': 'application/json'
+                  }
                 }
+              );
+
+              if (!fieldsResponse.ok) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Failed to fetch ticket fields' })
+                };
               }
-            );
 
-            if (!fieldsResponse.ok) {
-              return {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: 'Failed to fetch ticket fields' })
-              };
-            }
+              const fieldsData = await fieldsResponse.json();
+              const ticketFields = fieldsData.ticket_fields || [];
 
-            const fieldsData = await fieldsResponse.json();
-            const ticketFields = fieldsData.ticket_fields || [];
+              const departmentField = ticketFields.find((f: any) => 
+                f.name === 'department_id' || f.label === 'Department'
+              );
 
-            // Find department field
-            const departmentField = ticketFields.find((f: any) => 
-              f.name === 'department_id' || f.label === 'Department'
-            );
+              if (!departmentField) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Department field not found' })
+                };
+              }
 
-            if (!departmentField) {
-              return {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: 'Department field not found' })
-              };
-            }
+              const department = departmentField.choices?.find((c: any) =>
+                c.value?.toLowerCase().includes(department_name.toLowerCase()) ||
+                department_name.toLowerCase().includes(c.value?.toLowerCase())
+              );
 
-            // Find matching department
-            const department = departmentField.choices?.find((c: any) =>
-              c.value?.toLowerCase().includes(department_name.toLowerCase()) ||
-              department_name.toLowerCase().includes(c.value?.toLowerCase())
-            );
+              if (!department) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ 
+                    error: `Department "${department_name}" not found`,
+                    available: departmentField.choices?.map((c: any) => c.value) || []
+                  })
+                };
+              }
 
-            if (!department) {
               return {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({ 
-                  error: `Department "${department_name}" not found`,
-                  available: departmentField.choices?.map((c: any) => c.value) || []
+                  department_id: department.id,
+                  department_name: department.value
                 })
               };
             }
 
-            return {
-              tool_call_id: toolCall.id,
-              content: JSON.stringify({ 
-                department_id: department.id,
-                department_name: department.value
-              })
-            };
-          }
+            case 'search_freshservice_tickets': {
+              const { connection_id, department_id, status_names } = args;
 
-          case 'search_freshservice_tickets': {
-            const { connection_id, department_id, status_names } = args;
+              const { data: connection } = await supabase
+                .from('connections')
+                .select('*')
+                .eq('id', connection_id)
+                .eq('user_id', user.id)
+                .single();
 
-            // Get connection
-            const { data: connection } = await supabase
-              .from('connections')
-              .select('*')
-              .eq('id', connection_id)
-              .eq('user_id', user.id)
-              .single();
+              if (!connection) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Connection not found' })
+                };
+              }
 
-            if (!connection) {
+              const endpoint = connection.endpoint;
+              const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
+              const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
+
+              const statuses = status_names || ['Open', 'Pending', 'In Progress', 'Waiting on Customer', 'Waiting on Third Party'];
+
+              const fieldsResponse = await fetch(
+                `${endpoint}/api/v2/ticket_form_fields`,
+                {
+                  headers: {
+                    'Authorization': authHeaderValue,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+
+              const fieldsData = await fieldsResponse.json();
+              const ticketFields = fieldsData.ticket_fields || [];
+
+              const statusField = ticketFields.find((f: any) => f.name === 'status');
+              const statusIds: string[] = [];
+
+              if (statusField) {
+                for (const statusName of statuses) {
+                  const choice = statusField.choices?.find((c: any) =>
+                    c.value?.toLowerCase() === statusName.toLowerCase()
+                  );
+                  if (choice) {
+                    statusIds.push(choice.id.toString());
+                  }
+                }
+              }
+
+              const statusQuery = statusIds.map(id => `status:${id}`).join(' OR ');
+              const query = `department_id:${department_id} AND (${statusQuery})`;
+
+              console.log('FreshService query:', query);
+
+              const ticketsResponse = await fetch(
+                `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"`,
+                {
+                  headers: {
+                    'Authorization': authHeaderValue,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+
+              if (!ticketsResponse.ok) {
+                const errorText = await ticketsResponse.text();
+                console.error('FreshService error:', errorText);
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Failed to fetch tickets' })
+                };
+              }
+
+              const ticketsData = await ticketsResponse.json();
+              const tickets = ticketsData.tickets || [];
+
+              const statusMap = new Map(
+                statusField?.choices?.map((c: any) => [c.id.toString(), c.value]) || []
+              );
+
+              const formattedTickets = tickets.map((t: any) => ({
+                id: t.id,
+                subject: t.subject,
+                description: t.description_text?.substring(0, 100) || '',
+                status: statusMap.get(t.status?.toString()) || t.status
+              }));
+
               return {
                 tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: 'Connection not found' })
+                content: JSON.stringify({
+                  total: tickets.length,
+                  tickets: formattedTickets
+                })
               };
             }
 
-            const endpoint = connection.endpoint;
-            const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
-            const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
-
-            // Default to open statuses if not specified
-            const statuses = status_names || ['Open', 'Pending', 'In Progress', 'Waiting on Customer', 'Waiting on Third Party'];
-
-            // Fetch ticket fields to map status names
-            const fieldsResponse = await fetch(
-              `${endpoint}/api/v2/ticket_form_fields`,
-              {
-                headers: {
-                  'Authorization': authHeaderValue,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-
-            const fieldsData = await fieldsResponse.json();
-            const ticketFields = fieldsData.ticket_fields || [];
-
-            const statusField = ticketFields.find((f: any) => f.name === 'status');
-            const statusIds: string[] = [];
-
-            if (statusField) {
-              for (const statusName of statuses) {
-                const choice = statusField.choices?.find((c: any) =>
-                  c.value?.toLowerCase() === statusName.toLowerCase()
-                );
-                if (choice) {
-                  statusIds.push(choice.id.toString());
-                }
-              }
-            }
-
-            // Build query
-            const statusQuery = statusIds.map(id => `status:${id}`).join(' OR ');
-            const query = `department_id:${department_id} AND (${statusQuery})`;
-
-            console.log('FreshService query:', query);
-
-            // Execute query
-            const ticketsResponse = await fetch(
-              `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(query)}"`,
-              {
-                headers: {
-                  'Authorization': authHeaderValue,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-
-            if (!ticketsResponse.ok) {
-              const errorText = await ticketsResponse.text();
-              console.error('FreshService error:', errorText);
+            default:
               return {
                 tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: 'Failed to fetch tickets' })
+                content: JSON.stringify({ error: 'Unknown tool' })
               };
-            }
-
-            const ticketsData = await ticketsResponse.json();
-            const tickets = ticketsData.tickets || [];
-
-            // Map status IDs back to names for display
-            const statusMap = new Map(
-              statusField?.choices?.map((c: any) => [c.id.toString(), c.value]) || []
-            );
-
-            const formattedTickets = tickets.map((t: any) => ({
-              id: t.id,
-              subject: t.subject,
-              description: t.description_text?.substring(0, 100) || '',
-              status: statusMap.get(t.status?.toString()) || t.status
-            }));
-
-            return {
-              tool_call_id: toolCall.id,
-              content: JSON.stringify({
-                total: tickets.length,
-                tickets: formattedTickets
-              })
-            };
           }
+        })
+      );
 
-          default:
-            return {
-              tool_call_id: toolCall.id,
-              content: JSON.stringify({ error: 'Unknown tool' })
-            };
-        }
-      })
-    );
+      // Call AI again with tool results (streaming this time)
+      const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+            firstChoice.message,
+            ...toolResults.map(result => ({
+              role: 'tool',
+              tool_call_id: result.tool_call_id,
+              content: result.content
+            }))
+          ],
+          stream: true
+        }),
+      });
 
-    // Call AI again with tool results
-    const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      return new Response(finalResponse.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      });
+    }
+
+    // No tool calls, stream direct response
+    const streamResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,
@@ -421,22 +388,13 @@ serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...messages,
-          {
-            role: 'assistant',
-            tool_calls: toolCalls
-          },
-          ...toolResults.map(result => ({
-            role: 'tool',
-            tool_call_id: result.tool_call_id,
-            content: result.content
-          }))
+          ...messages
         ],
         stream: true
       }),
     });
 
-    return new Response(finalResponse.body, {
+    return new Response(streamResponse.body, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
     });
 
