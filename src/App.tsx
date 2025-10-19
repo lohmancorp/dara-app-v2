@@ -18,7 +18,7 @@ import ViewPromptTemplate from "./pages/ViewPromptTemplate";
 import ViewJobTemplate from "./pages/ViewJobTemplate";
 import EditPromptTemplate from "./pages/EditPromptTemplate";
 import EditJobTemplate from "./pages/EditJobTemplate";
-import ActiveJobs from "./pages/ActiveJobs";
+import Jobs from "./pages/Jobs";
 import Connections from "./pages/Connections";
 import NewConnection from "./pages/NewConnection";
 import EditConnection from "./pages/EditConnection";
@@ -48,7 +48,7 @@ const App = () => (
               <Route path="/templates/prompt/:id/edit" element={<ProtectedRoute><AppLayout><EditPromptTemplate /></AppLayout></ProtectedRoute>} />
               <Route path="/templates/job/:id/view" element={<ProtectedRoute><AppLayout><ViewJobTemplate /></AppLayout></ProtectedRoute>} />
               <Route path="/templates/job/:id/edit" element={<ProtectedRoute><AppLayout><EditJobTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/active-jobs" element={<ProtectedRoute><AppLayout><ActiveJobs /></AppLayout></ProtectedRoute>} />
+              <Route path="/jobs" element={<ProtectedRoute><AppLayout><Jobs /></AppLayout></ProtectedRoute>} />
               <Route path="/connections" element={<ProtectedRoute><AppLayout><Connections /></AppLayout></ProtectedRoute>} />
               <Route path="/connections/new/:type" element={<ProtectedRoute><AppLayout><NewConnection /></AppLayout></ProtectedRoute>} />
               <Route path="/connections/edit/:id" element={<ProtectedRoute><AppLayout><EditConnection /></AppLayout></ProtectedRoute>} />

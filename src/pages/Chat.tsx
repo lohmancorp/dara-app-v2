@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocation } from "react-router-dom";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -28,6 +29,7 @@ const Chat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { session, user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
   const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
@@ -37,6 +39,7 @@ const Chat = () => {
   const mouseStartPos = useRef<{ x: number; y: number } | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const jobLoadedRef = useRef<boolean>(false);
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -79,6 +82,70 @@ const Chat = () => {
     fetchUserProfile();
     fetchConnection();
   }, [user]);
+
+  // Handle incoming job from Jobs page
+  useEffect(() => {
+    const loadJobFromState = async () => {
+      const state = location.state as { jobId?: string; jobQuery?: string };
+      if (!state?.jobId || !session || jobLoadedRef.current) return;
+      
+      jobLoadedRef.current = true;
+      
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-chat-job-status`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ jobId: state.jobId }),
+          }
+        );
+
+        if (response.ok) {
+          const jobData = await response.json();
+          
+          // Add user message with the original query
+          const userMessage: Message = {
+            role: 'user',
+            content: state.jobQuery || jobData.query || 'Previous query',
+          };
+
+          // Add assistant message with job status
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: jobData.status === 'completed' 
+              ? jobData.result || 'Job completed successfully'
+              : jobData.status === 'failed'
+              ? `Job failed: ${jobData.error || 'Unknown error'}`
+              : 'Job is processing in the background...',
+            jobId: state.jobId,
+            jobStatus: jobData.status,
+            jobProgress: jobData.progress || 0,
+            jobProgressMessage: jobData.progress_message,
+          };
+
+          setMessages([userMessage, assistantMessage]);
+
+          // Start polling if job is still running
+          if (jobData.status === 'running' || jobData.status === 'pending') {
+            pollJobStatus(state.jobId, 1);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading job:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load job details",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadJobFromState();
+  }, [location.state, session, toast]);
 
   const handleAdvancedClick = () => {
     setShowAdvanced((prev) => !prev);
