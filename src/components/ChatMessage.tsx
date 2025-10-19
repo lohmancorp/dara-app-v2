@@ -12,9 +12,10 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   userAvatarUrl?: string;
   ticketBaseUrl?: string;
+  jobId?: string;
 }
 
-export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketBaseUrl }: ChatMessageProps) => {
+export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketBaseUrl, jobId }: ChatMessageProps) => {
   const isUser = role === 'user';
 
   // Parse markdown tables for sortable rendering
@@ -153,6 +154,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
         "flex gap-4 p-4 sm:p-6",
         isUser ? "flex-row-reverse" : ""
       )}
+      data-job-id={jobId}
     >
       <div
         className={cn(

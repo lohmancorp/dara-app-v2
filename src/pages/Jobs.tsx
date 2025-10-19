@@ -190,8 +190,14 @@ const Jobs = () => {
   };
 
   const handleOpenChat = (job: Job) => {
-    // Navigate to chat with the job context
-    navigate('/chat', { state: { jobId: job.id, jobQuery: job.query } });
+    // Navigate to chat with the job context and session ID
+    navigate('/chat', { 
+      state: { 
+        jobId: job.id, 
+        jobQuery: job.query,
+        sessionId: job.chat_session_id 
+      } 
+    });
   };
 
   const filteredCompletedJobs = completedJobs.filter(job =>

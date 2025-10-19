@@ -84,7 +84,7 @@ const Chat = () => {
     initSession();
   }, [user?.id, location.state]);
 
-  // Load session messages
+  // Load session messages and check for stale jobs
   const loadSession = async (sessionId: string) => {
     const { data, error } = await supabase
       .from('chat_messages')
@@ -103,6 +103,70 @@ const Chat = () => {
     }));
 
     setMessages(loadedMessages);
+
+    // Check for any jobs referenced in this session that might have completed
+    await checkStaleJobs(sessionId);
+  };
+
+  // Check for completed jobs that weren't updated in the chat
+  const checkStaleJobs = async (sessionId: string) => {
+    if (!session?.access_token) return;
+
+    try {
+      // Get all jobs for this session
+      const { data: jobs, error } = await supabase
+        .from('chat_jobs')
+        .select('id, status, progress, progress_message, result, error')
+        .eq('chat_session_id', sessionId)
+        .in('status', ['completed', 'failed']);
+
+      if (error || !jobs || jobs.length === 0) return;
+
+      // For each completed job, check if we need to update the message
+      for (const job of jobs) {
+        setMessages((prev) => {
+          const jobMessageIndex = prev.findIndex(m => 
+            m.content.includes(`Job ID: ${job.id}`) && 
+            (m.jobStatus === 'pending' || m.jobStatus === 'processing' || !m.jobStatus)
+          );
+
+          if (jobMessageIndex === -1) return prev;
+
+          const newMessages = [...prev];
+          
+          if (job.status === 'completed' && job.result) {
+            const result = job.result as { tickets?: any[]; total?: number };
+            const tickets = result.tickets || [];
+            const total = result.total || 0;
+            
+            let tableContent = `Found ${total} tickets:\n\n`;
+            tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+            tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+            
+            tickets.forEach((ticket: any) => {
+              tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+            });
+
+            newMessages[jobMessageIndex] = {
+              ...newMessages[jobMessageIndex],
+              content: tableContent,
+              jobStatus: 'completed',
+              jobProgress: 100
+            };
+          } else if (job.status === 'failed') {
+            newMessages[jobMessageIndex] = {
+              ...newMessages[jobMessageIndex],
+              content: `Job failed: ${job.error || 'Unknown error'}`,
+              jobStatus: 'failed'
+            };
+          }
+
+          return newMessages;
+        });
+      }
+    } catch (error) {
+      console.error('Error checking stale jobs:', error);
+    }
   };
 
   // Check for active jobs
@@ -158,10 +222,25 @@ const Chat = () => {
   // Handle incoming job from Jobs page
   useEffect(() => {
     const loadJobFromState = async () => {
-      const state = location.state as { jobId?: string; jobQuery?: string };
+      const state = location.state as { jobId?: string; jobQuery?: string; sessionId?: string };
       if (!state?.jobId || !session || jobLoadedRef.current) return;
       
       jobLoadedRef.current = true;
+
+      // If we have a sessionId, load the full chat first
+      if (state.sessionId && state.sessionId !== sessionId) {
+        setSessionId(state.sessionId);
+        await loadSession(state.sessionId);
+        
+        // Scroll to the job message after a brief delay
+        setTimeout(() => {
+          const jobElement = document.querySelector(`[data-job-id="${state.jobId}"]`);
+          if (jobElement) {
+            jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+        return;
+      }
       
       try {
         const response = await fetch(
@@ -707,6 +786,7 @@ const Chat = () => {
                           isStreaming={isLoading && index === messages.length - 1 && !message.content}
                           userAvatarUrl={userAvatarUrl}
                           ticketBaseUrl={ticketBaseUrl}
+                          jobId={message.jobId}
                         />
                         {message.jobId && message.jobStatus !== 'completed' && message.jobStatus !== 'failed' && (
                           <div className="mt-2 p-3 bg-muted rounded-lg border border-border relative">
