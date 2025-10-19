@@ -1,4 +1,4 @@
-import { MessageSquare, Send, User } from "lucide-react";
+import { MessageSquare, Send, User, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,11 @@ interface Message {
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { setAdvancedControls } = useFloatingAction();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Load messages from localStorage on init
+    const stored = localStorage.getItem('chat-messages');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { session, user } = useAuth();
@@ -40,6 +44,11 @@ const Chat = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const jobLoadedRef = useRef<boolean>(false);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('chat-messages', JSON.stringify(messages));
+  }, [messages]);
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -107,31 +116,37 @@ const Chat = () => {
         if (response.ok) {
           const jobData = await response.json();
           
-          // Add user message with the original query
-          const userMessage: Message = {
-            role: 'user',
-            content: state.jobQuery || jobData.query || 'Previous query',
-          };
+          // Check if this job is already in messages
+          const existingJobMessage = messages.findIndex(m => m.jobId === state.jobId);
+          
+          if (existingJobMessage === -1) {
+            // Add user message with the original query
+            const userMessage: Message = {
+              role: 'user',
+              content: state.jobQuery || jobData.query || 'Previous query',
+            };
 
-          // Add assistant message with job status
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: jobData.status === 'completed' 
-              ? jobData.result || 'Job completed successfully'
-              : jobData.status === 'failed'
-              ? `Job failed: ${jobData.error || 'Unknown error'}`
-              : 'Job is processing in the background...',
-            jobId: state.jobId,
-            jobStatus: jobData.status,
-            jobProgress: jobData.progress || 0,
-            jobProgressMessage: jobData.progress_message,
-          };
+            // Add assistant message with job status
+            const assistantMessage: Message = {
+              role: 'assistant',
+              content: jobData.status === 'completed' 
+                ? jobData.result || 'Job completed successfully'
+                : jobData.status === 'failed'
+                ? `Job failed: ${jobData.error || 'Unknown error'}`
+                : 'Job is processing in the background...',
+              jobId: state.jobId,
+              jobStatus: jobData.status,
+              jobProgress: jobData.progress || 0,
+              jobProgressMessage: jobData.progress_message,
+            };
 
-          setMessages([userMessage, assistantMessage]);
+            setMessages((prev) => [...prev, userMessage, assistantMessage]);
+          }
 
           // Start polling if job is still running
           if (jobData.status === 'running' || jobData.status === 'pending') {
-            pollJobStatus(state.jobId, 1);
+            const messageIndex = messages.length + 1;
+            pollJobStatus(state.jobId, messageIndex);
           }
         }
       } catch (error) {
@@ -411,6 +426,16 @@ const Chat = () => {
     }
   };
 
+  const handleClearChat = () => {
+    setMessages([]);
+    localStorage.removeItem('chat-messages');
+    jobLoadedRef.current = false;
+    toast({
+      title: "Chat cleared",
+      description: "All messages have been removed",
+    });
+  };
+
   return (
     <>
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
@@ -419,6 +444,19 @@ const Chat = () => {
           icon={MessageSquare}
           title="Research"
           description="Get learnings and outcomes from your research."
+          action={
+            messages.length > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearChat}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear Chat
+              </Button>
+            ) : undefined
+          }
         />
 
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">

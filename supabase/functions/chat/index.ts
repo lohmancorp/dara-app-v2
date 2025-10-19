@@ -356,19 +356,24 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const { mcp_service_id, department, status, exclude_status, created_after, priority, limit } = args;
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority, limit });
 
+              // Get the user's original query from the last message
+              const userQuery = messages[messages.length - 1]?.content || 'Ticket search query';
+
               // Check if this should be an async job (large query)
               const requestedLimit = limit || 200;
-              const shouldUseAsyncJob = requestedLimit > 200 || exclude_status?.length === 0 || (!status && !exclude_status);
+              const hasMultipleStatuses = status && status.length > 5;
+              const hasNoFilters = !department && !created_after && !priority && (!status || status.length > 5);
+              const shouldUseAsyncJob = requestedLimit > 200 || hasMultipleStatuses || hasNoFilters;
               
               if (shouldUseAsyncJob) {
                 console.log('Creating async job for large query');
                 
-                // Create async job
+                // Create async job with actual user query
                 const { data: job, error: jobError } = await supabase
                   .from('chat_jobs')
                   .insert({
                     user_id: user.id,
-                    query: JSON.stringify(args),
+                    query: userQuery,
                     filters: {
                       department,
                       status,
