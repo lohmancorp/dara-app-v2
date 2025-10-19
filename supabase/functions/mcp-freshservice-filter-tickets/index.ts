@@ -178,30 +178,57 @@ serve(async (req) => {
 
     console.log('FreshService Query:', queryString);
 
-    // Execute the filter query
-    const filterUrl = `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(queryString)}"`;
+    // Execute the filter query with pagination
+    let allTickets: any[] = [];
+    let page = 1;
+    const perPage = 100;
+    let hasMorePages = true;
     
-    const ticketsResponse = await fetch(filterUrl, {
-      headers: {
-        'Authorization': authHeaderValue,
-        'Content-Type': 'application/json'
-      }
-    });
+    console.log('Starting paginated fetch with per_page:', perPage);
+    
+    while (hasMorePages) {
+      const filterUrl = `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(queryString)}"&per_page=${perPage}&page=${page}`;
+      
+      console.log(`Fetching page ${page}:`, filterUrl);
+      
+      const ticketsResponse = await fetch(filterUrl, {
+        headers: {
+          'Authorization': authHeaderValue,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    if (!ticketsResponse.ok) {
-      const errorText = await ticketsResponse.text();
-      console.error('FreshService filter error:', errorText);
-      throw new Error(`FreshService API error: ${ticketsResponse.status} ${ticketsResponse.statusText}`);
+      if (!ticketsResponse.ok) {
+        const errorText = await ticketsResponse.text();
+        console.error('FreshService filter error:', errorText);
+        throw new Error(`FreshService API error: ${ticketsResponse.status} ${ticketsResponse.statusText}`);
+      }
+
+      const ticketsData = await ticketsResponse.json();
+      const tickets = ticketsData.tickets || [];
+      
+      console.log(`Page ${page}: Retrieved ${tickets.length} tickets`);
+      
+      allTickets = allTickets.concat(tickets);
+      
+      // Check if there are more pages
+      hasMorePages = tickets.length === perPage;
+      page++;
+      
+      // Add a small delay between requests to respect rate limits
+      if (hasMorePages && mcpService.call_delay_ms) {
+        await new Promise(resolve => setTimeout(resolve, mcpService.call_delay_ms));
+      }
     }
 
-    const ticketsData = await ticketsResponse.json();
+    console.log(`Total tickets retrieved across all pages: ${allTickets.length}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         query: queryString,
-        tickets: ticketsData.tickets || [],
-        total: ticketsData.total || 0
+        tickets: allTickets,
+        total: allTickets.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
