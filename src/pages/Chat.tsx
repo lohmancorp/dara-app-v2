@@ -533,7 +533,7 @@ const Chat = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
+                                onClick={async () => {
                                   // Stop polling for this job
                                   if (message.jobId) {
                                     const interval = pollingIntervalsRef.current.get(message.jobId);
@@ -541,6 +541,16 @@ const Chat = () => {
                                       clearInterval(interval);
                                       pollingIntervalsRef.current.delete(message.jobId);
                                     }
+                                    
+                                    // Update job in database
+                                    await supabase
+                                      .from('chat_jobs')
+                                      .update({ 
+                                        status: 'failed',
+                                        error: 'Stopped by user',
+                                        completed_at: new Date().toISOString()
+                                      })
+                                      .eq('id', message.jobId);
                                   }
                                   // Update message to show as stopped
                                   setMessages((prev) => {

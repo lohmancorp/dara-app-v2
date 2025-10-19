@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle } from "lucide-react";
+import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -223,11 +223,32 @@ const Jobs = () => {
 
         {(job.status === 'running' || job.status === 'processing' || job.status === 'pending') && (
           <div className="space-y-2">
-            <div className="flex justify-between text-xs sm:text-sm">
-              <span className="text-muted-foreground">
+            <div className="flex justify-between items-center gap-2 text-xs sm:text-sm">
+              <span className="text-muted-foreground flex-1">
                 {job.progress_message || 'Processing...'}
               </span>
               <span className="font-semibold text-foreground">{job.progress || 0}%</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await supabase
+                    .from('chat_jobs')
+                    .update({ 
+                      status: 'failed',
+                      error: 'Stopped by user',
+                      completed_at: new Date().toISOString()
+                    })
+                    .eq('id', job.id);
+                  
+                  toast.success("Job stopped");
+                  fetchJobs();
+                }}
+                className="h-7 px-2"
+              >
+                <XCircle className="h-3 w-3" />
+              </Button>
             </div>
             <Progress value={job.progress || 0} className="h-2" />
           </div>

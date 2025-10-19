@@ -43,14 +43,29 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
-
     const body: FilterTicketsRequest = await req.json();
     const { serviceId, ownerType, ownerId, filters } = body;
+    
+    let user;
+    
+    // Check if this is service role authentication (from background job)
+    if (token === supabaseKey) {
+      // Service role key - validate that ownerId was provided
+      if (!ownerId) {
+        throw new Error('User ID required for service role authentication');
+      }
+      // Create a minimal user object for service role calls
+      user = { id: ownerId };
+      console.log('Service role authentication for user:', ownerId);
+    } else {
+      // Regular user authentication
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !authUser) {
+        throw new Error('Unauthorized');
+      }
+      user = authUser;
+    }
 
     console.log('FreshService Filter Tickets:', { serviceId, filters });
 
