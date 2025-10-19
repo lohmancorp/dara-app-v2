@@ -123,23 +123,40 @@ serve(async (req) => {
 
       if (departmentField) {
         console.log('Found department field with', departmentField.choices?.length || 0, 'choices');
-        let departmentId = filters.department;
+        let departmentId: string | null = null;
         
-        // If department is not a number, try to find it in choices
-        if (isNaN(Number(filters.department))) {
-          const choice = departmentField.choices?.find((c: any) => 
+        // If department is a number, use it directly
+        if (!isNaN(Number(filters.department))) {
+          departmentId = filters.department;
+        } else {
+          // Try to find department by exact name match (case-insensitive)
+          let choice = departmentField.choices?.find((c: any) => 
             c.value?.toLowerCase() === filters.department?.toLowerCase()
           );
+          
+          // If not found, try partial match
+          if (!choice) {
+            choice = departmentField.choices?.find((c: any) => 
+              c.value?.toLowerCase().includes(filters.department?.toLowerCase())
+            );
+          }
+          
           if (choice) {
             console.log('Resolved department:', filters.department, '-> ID:', choice.id);
             departmentId = choice.id.toString();
           } else {
             console.log('Department not found in choices. Available:', 
               departmentField.choices?.map((c: any) => c.value).slice(0, 10) || []);
+            console.log('Skipping department filter - could not resolve to valid ID');
           }
         }
 
-        queryParts.push(`department_id:${departmentId}`);
+        // Only add the filter if we have a valid numeric department ID
+        if (departmentId && !isNaN(Number(departmentId))) {
+          queryParts.push(`department_id:${departmentId}`);
+        } else {
+          console.log('Warning: Could not add department filter - no valid numeric ID found');
+        }
       } else {
         console.log('Department field not found in ticket_form_fields');
       }
@@ -299,8 +316,8 @@ serve(async (req) => {
       queryParts.push(filters.customQuery);
     }
 
-    // Combine query parts with AND
-    const queryString = queryParts.join(' AND ');
+    // Combine query parts with AND (note: FreshService requires TWO spaces around operators)
+    const queryString = queryParts.join('  AND  ');
     
     if (!queryString) {
       throw new Error('No filter criteria provided');
