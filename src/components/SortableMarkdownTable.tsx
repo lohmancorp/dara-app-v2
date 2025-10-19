@@ -1,9 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download, Settings2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { utils, writeFile } from "xlsx";
 
 interface SortableMarkdownTableProps {
   headers: string[];
@@ -21,6 +26,33 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
   const [columnWidths, setColumnWidths] = useState<number[]>(headers.map(() => 150));
   const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+  
+  // Download dialog state
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [downloadFileName, setDownloadFileName] = useState("tickets");
+  
+  // Column selection state
+  const [showColumnDialog, setShowColumnDialog] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<boolean[]>(headers.map(() => true));
+  
+  // Find description column index
+  const descriptionIndex = headers.findIndex(h => h.toLowerCase() === 'description');
+  const subjectIndex = headers.findIndex(h => h.toLowerCase() === 'subject');
+  
+  // Hide description column by default
+  useEffect(() => {
+    if (descriptionIndex !== -1) {
+      setVisibleColumns(prev => {
+        const newVisible = [...prev];
+        newVisible[descriptionIndex] = false;
+        return newVisible;
+      });
+    }
+  }, [descriptionIndex]);
+  
+  // Filter headers and adjust column widths based on visible columns
+  const visibleHeaders = headers.filter((_, index) => visibleColumns[index]);
+  const visibleColumnWidths = columnWidths.filter((_, index) => visibleColumns[index]);
 
   const sortedRows = useMemo(() => {
     if (sortColumn === null || sortDirection === null) {
@@ -45,23 +77,28 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         : bVal.localeCompare(aVal);
     });
   }, [rows, sortColumn, sortDirection]);
+  
+  // Filter rows to only include visible columns
+  const filteredRows = useMemo(() => {
+    return sortedRows.map(row => row.filter((_, index) => visibleColumns[index]));
+  }, [sortedRows, visibleColumns]);
 
-  const totalResults = sortedRows.length;
+  const totalResults = filteredRows.length;
   const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(totalResults / itemsPerPage);
   
   const paginatedRows = useMemo(() => {
-    if (itemsPerPage === -1) return sortedRows;
+    if (itemsPerPage === -1) return filteredRows;
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedRows.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedRows, currentPage, itemsPerPage]);
+    return filteredRows.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredRows, currentPage, itemsPerPage]);
 
   // Calculate empty rows needed to maintain consistent table height
   const emptyRowsCount = useMemo(() => {
     if (itemsPerPage === -1) return 0;
     // Use the minimum of itemsPerPage and total rows as the target height
-    const targetRowCount = Math.min(itemsPerPage, sortedRows.length);
+    const targetRowCount = Math.min(itemsPerPage, filteredRows.length);
     return Math.max(0, targetRowCount - paginatedRows.length);
-  }, [itemsPerPage, paginatedRows.length, sortedRows.length]);
+  }, [itemsPerPage, paginatedRows.length, filteredRows.length]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -160,6 +197,24 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     
     return pages;
   };
+  
+  const handleDownload = () => {
+    // Create worksheet from visible data
+    const wsData = [headers.filter((_, i) => visibleColumns[i]), ...filteredRows];
+    const ws = utils.aoa_to_sheet(wsData);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Tickets");
+    writeFile(wb, `${downloadFileName}.xlsx`);
+    setShowDownloadDialog(false);
+  };
+  
+  const toggleColumn = (index: number) => {
+    setVisibleColumns(prev => {
+      const newVisible = [...prev];
+      newVisible[index] = !newVisible[index];
+      return newVisible;
+    });
+  };
 
   return (
     <TooltipProvider>
@@ -169,6 +224,24 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
             Showing {itemsPerPage === -1 ? totalResults : Math.min((currentPage - 1) * itemsPerPage + 1, totalResults)} to {itemsPerPage === -1 ? totalResults : Math.min(currentPage * itemsPerPage, totalResults)} of {totalResults} results
           </div>
           <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setShowColumnDialog(true)}>
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Select Columns</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setShowDownloadDialog(true)}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download XLSX</TooltipContent>
+            </Tooltip>
+            
             <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
             <Select value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
               <SelectTrigger className="w-[100px]">
@@ -188,73 +261,92 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
           <Table className="w-full min-w-[600px]">
             <TableHeader>
               <TableRow>
-                {headers.map((header, index) => (
-                  <TableHead 
-                    key={index}
-                    className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4"
-                    style={{ width: columnWidths[index], minWidth: columnWidths[index] }}
-                    onClick={() => handleSort(index)}
-                  >
-                    <div className="flex items-center">
-                      {header}
-                      {getSortIcon(index)}
-                    </div>
-                    <div
-                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-primary/30"
-                      onMouseDown={(e) => handleStartResize(index, e)}
-                    />
-                  </TableHead>
-                ))}
+                {visibleHeaders.map((header, displayIndex) => {
+                  // Map display index back to original index
+                  const originalIndex = headers.findIndex((h, i) => visibleColumns[i] && headers.filter((_, j) => j <= i && visibleColumns[j]).length === displayIndex + 1);
+                  return (
+                    <TableHead 
+                      key={displayIndex}
+                      className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4"
+                      style={{ width: visibleColumnWidths[displayIndex], minWidth: visibleColumnWidths[displayIndex] }}
+                      onClick={() => handleSort(originalIndex)}
+                    >
+                      <div className="flex items-center">
+                        {header}
+                        {getSortIcon(originalIndex)}
+                      </div>
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-primary/30"
+                        onMouseDown={(e) => handleStartResize(displayIndex, e)}
+                      />
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedRows.map((row, rowIndex) => (
-                <TableRow 
-                  key={rowIndex}
-                  className="hover:bg-muted/50 transition-colors"
-                >
-                  {row.map((cell, cellIndex) => {
-                    const isTicketId = /^\d+$/.test(cell) && cell.length > 3;
-                    const needsTooltip = cell.length > 50;
-                    
-                    if (isTicketId && ticketBaseUrl) {
+              {paginatedRows.map((row, rowIndex) => {
+                // Get the full row from sortedRows to access description
+                const fullRow = sortedRows[(currentPage - 1) * (itemsPerPage === -1 ? sortedRows.length : itemsPerPage) + rowIndex];
+                
+                return (
+                  <TableRow 
+                    key={rowIndex}
+                    className="hover:bg-muted/50 transition-colors"
+                  >
+                    {row.map((cell, cellIndex) => {
+                      // Map cellIndex back to original column index
+                      const visibleIndices = visibleColumns.map((v, i) => v ? i : -1).filter(i => i !== -1);
+                      const originalIndex = visibleIndices[cellIndex];
+                      
+                      const isTicketId = /^\d+$/.test(cell) && cell.length > 3;
+                      const isSubject = originalIndex === subjectIndex;
+                      const needsTooltip = cell.length > 50 || isSubject;
+                      
+                      if (isTicketId && ticketBaseUrl) {
+                        return (
+                          <TableCell key={cellIndex} className="max-w-[150px] text-xs sm:text-sm px-2 sm:px-4">
+                            <a
+                              href={`${ticketBaseUrl}/helpdesk/tickets/${cell}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline font-medium"
+                            >
+                              {cell}
+                            </a>
+                          </TableCell>
+                        );
+                      }
+                      
+                      if (needsTooltip) {
+                        // For subject column, include description in tooltip
+                        const tooltipContent = isSubject && descriptionIndex !== -1 && fullRow
+                          ? `${fullRow[subjectIndex]}\n\n${fullRow[descriptionIndex]?.substring(0, 500) || ''}`
+                          : cell.substring(0, 500);
+                        
+                        return (
+                          <TableCell key={cellIndex} className="max-w-[300px] text-xs sm:text-sm px-2 sm:px-4">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate cursor-help block">{cell}</span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md whitespace-pre-wrap">
+                                <p className="text-sm">{tooltipContent}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                        );
+                      }
+                      
                       return (
-                        <TableCell key={cellIndex} className="max-w-[150px] text-xs sm:text-sm px-2 sm:px-4">
-                          <a
-                            href={`${ticketBaseUrl}/helpdesk/tickets/${cell}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline font-medium"
-                          >
-                            {cell}
-                          </a>
+                        <TableCell key={cellIndex} className="max-w-[300px] truncate text-xs sm:text-sm px-2 sm:px-4">
+                          {cell}
                         </TableCell>
                       );
-                    }
-                    
-                    if (needsTooltip) {
-                      return (
-                        <TableCell key={cellIndex} className="max-w-[300px] text-xs sm:text-sm px-2 sm:px-4">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate cursor-help block">{cell}</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md">
-                              <p className="text-sm">{cell.substring(0, 500)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                      );
-                    }
-                    
-                    return (
-                      <TableCell key={cellIndex} className="max-w-[300px] truncate text-xs sm:text-sm px-2 sm:px-4">
-                        {cell}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
+                    })}
+                  </TableRow>
+                );
+              })}
               {Array.from({ length: emptyRowsCount }).map((_, index) => {
                 const rowIndex = paginatedRows.length + index;
                 const isEven = rowIndex % 2 === 0;
@@ -263,7 +355,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                     key={`empty-${index}`}
                     className={`pointer-events-none ${isEven ? 'bg-transparent' : 'bg-muted/30'}`}
                   >
-                    {headers.map((_, cellIndex) => (
+                    {visibleHeaders.map((_, cellIndex) => (
                       <TableCell key={cellIndex} className="border-0 text-xs sm:text-sm px-2 sm:px-4">
                         &nbsp;
                       </TableCell>
@@ -318,6 +410,71 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
             </Button>
           </div>
         )}
+        
+        {/* Download Dialog */}
+        <Dialog open={showDownloadDialog} onOpenChange={setShowDownloadDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Download Table</DialogTitle>
+              <DialogDescription>
+                Enter a name for your Excel file. The file will include all visible columns.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="filename">File Name</Label>
+                <Input
+                  id="filename"
+                  value={downloadFileName}
+                  onChange={(e) => setDownloadFileName(e.target.value)}
+                  placeholder="tickets"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDownloadDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleDownload}>
+                Download
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Column Selection Dialog */}
+        <Dialog open={showColumnDialog} onOpenChange={setShowColumnDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select Columns</DialogTitle>
+              <DialogDescription>
+                Choose which columns to display in the table.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">
+              {headers.map((header, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${index}`}
+                    checked={visibleColumns[index]}
+                    onCheckedChange={() => toggleColumn(index)}
+                  />
+                  <Label
+                    htmlFor={`col-${index}`}
+                    className="text-sm font-normal cursor-pointer flex-1"
+                  >
+                    {header}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowColumnDialog(false)}>
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
