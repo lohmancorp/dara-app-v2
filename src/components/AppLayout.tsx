@@ -9,8 +9,19 @@ interface FloatingActionContextType {
   advancedControls: {
     onClick?: () => void;
     isPressed?: boolean;
+    clearChatAction?: {
+      onClick: () => void;
+      label: string;
+    };
   } | null;
-  setAdvancedControls: (controls: { onClick?: () => void; isPressed?: boolean } | null) => void;
+  setAdvancedControls: (controls: { 
+    onClick?: () => void; 
+    isPressed?: boolean;
+    clearChatAction?: {
+      onClick: () => void;
+      label: string;
+    };
+  } | null) => void;
 }
 
 const FloatingActionContext = createContext<FloatingActionContextType | undefined>(undefined);
@@ -29,7 +40,14 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [actionButton, setActionButton] = useState<ReactNode | null>(null);
-  const [advancedControls, setAdvancedControls] = useState<{ onClick?: () => void; isPressed?: boolean } | null>(null);
+  const [advancedControls, setAdvancedControls] = useState<{ 
+    onClick?: () => void; 
+    isPressed?: boolean;
+    clearChatAction?: {
+      onClick: () => void;
+      label: string;
+    };
+  } | null>(null);
 
   return (
     <FloatingActionContext.Provider value={{ actionButton, setActionButton, advancedControls, setAdvancedControls }}>
@@ -47,6 +65,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             actionButton={actionButton}
             onAdvancedClick={advancedControls?.onClick}
             advancedPressed={advancedControls?.isPressed}
+            clearChatAction={advancedControls?.clearChatAction}
           />
         </div>
       </SidebarProvider>

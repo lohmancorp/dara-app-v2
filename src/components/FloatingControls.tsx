@@ -1,4 +1,4 @@
-import { Bell, User, Settings2 } from "lucide-react";
+import { Bell, User, Settings2, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { ProfileDropdown } from "./ProfileDropdown";
@@ -9,9 +9,13 @@ interface FloatingControlsProps {
   actionButton?: React.ReactNode;
   onAdvancedClick?: () => void;
   advancedPressed?: boolean;
+  clearChatAction?: {
+    onClick: () => void;
+    label: string;
+  };
 }
 
-export function FloatingControls({ actionButton, onAdvancedClick, advancedPressed }: FloatingControlsProps) {
+export function FloatingControls({ actionButton, onAdvancedClick, advancedPressed, clearChatAction }: FloatingControlsProps) {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -67,6 +71,17 @@ export function FloatingControls({ actionButton, onAdvancedClick, advancedPresse
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-3 pointer-events-auto">
           {actionButton && <div>{actionButton}</div>}
+
+          {clearChatAction && (
+            <button
+              onClick={clearChatAction.onClick}
+              className="h-11 w-11 rounded-full bg-destructive/10 text-destructive border-2 border-border shadow-lg hover:shadow-xl hover:bg-destructive/20 transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              aria-label={clearChatAction.label}
+              title={clearChatAction.label}
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          )}
 
           {onAdvancedClick && (
             <button

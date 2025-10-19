@@ -1,5 +1,5 @@
-import { MessageSquare, Send, User, Trash2, StopCircle } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { MessageSquare, Send, User, StopCircle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AdvancedPanel } from "@/components/AdvancedPanel";
@@ -174,13 +174,27 @@ const Chat = () => {
     setShowAdvanced((prev) => !prev);
   };
 
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+    localStorage.removeItem('chat-messages');
+    jobLoadedRef.current = false;
+    toast({
+      title: "Chat cleared",
+      description: "All messages have been removed",
+    });
+  }, [toast]);
+
   useEffect(() => {
     setAdvancedControls({
       onClick: handleAdvancedClick,
       isPressed: showAdvanced,
+      clearChatAction: messages.length > 0 ? {
+        onClick: handleClearChat,
+        label: "Clear Chat"
+      } : undefined
     });
     return () => setAdvancedControls(null);
-  }, [showAdvanced, setAdvancedControls]);
+  }, [showAdvanced, setAdvancedControls, messages.length, handleClearChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -462,16 +476,6 @@ const Chat = () => {
     }
   };
 
-  const handleClearChat = () => {
-    setMessages([]);
-    localStorage.removeItem('chat-messages');
-    jobLoadedRef.current = false;
-    toast({
-      title: "Chat cleared",
-      description: "All messages have been removed",
-    });
-  };
-
   return (
     <>
       <AdvancedPanel open={showAdvanced} onClose={() => setShowAdvanced(false)} />
@@ -480,19 +484,6 @@ const Chat = () => {
           icon={MessageSquare}
           title="Research"
           description="Get learnings and outcomes from your research."
-          action={
-            messages.length > 0 ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearChat}
-                className="gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear Chat
-              </Button>
-            ) : undefined
-          }
         />
 
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
