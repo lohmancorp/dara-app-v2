@@ -255,7 +255,7 @@ Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const { mcp_service_id, department, status, exclude_status, created_after, priority } = args;
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority });
 
-              // Call the MCP FreshService filter function
+              // Call the MCP FreshService filter function with auth header
               const filters: any = {};
               
               if (department) filters.department = department;
@@ -264,23 +264,31 @@ Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (created_after) filters.createdAfter = created_after;
               if (priority && priority.length > 0) filters.priority = priority;
 
-              const { data: mcpResult, error: mcpError } = await supabase.functions.invoke('mcp-freshservice-filter-tickets', {
-                body: {
+              // Pass the auth header to the MCP function
+              const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': req.headers.get('Authorization') || '',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                   serviceId: mcp_service_id,
                   filters,
                   ownerType: 'user',
                   ownerId: user.id
-                }
+                })
               });
 
-              if (mcpError) {
-                console.error('MCP filter error:', mcpError);
+              if (!mcpResponse.ok) {
+                const errorText = await mcpResponse.text();
+                console.error('MCP filter error:', mcpResponse.status, errorText);
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Failed to search tickets', details: mcpError })
+                  content: JSON.stringify({ error: 'Failed to search tickets', details: errorText })
                 };
               }
 
+              const mcpResult = await mcpResponse.json();
               console.log('MCP returned', mcpResult.total, 'tickets');
 
               const formattedTickets = mcpResult.tickets.map((t: any) => ({
