@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ const Jobs = () => {
   const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -57,8 +58,57 @@ const Jobs = () => {
 
     return () => {
       supabase.removeChannel(channel);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
   }, [user]);
+
+  // Poll active jobs for progress updates
+  useEffect(() => {
+    if (activeJobs.length === 0) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start polling for active jobs
+    const pollActiveJobs = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('chat_jobs')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'processing', 'running']);
+
+        if (error) throw error;
+
+        if (data) {
+          setActiveJobs(data);
+          
+          // If all jobs are done, refetch to update completed list
+          if (data.length === 0) {
+            fetchJobs();
+          }
+        }
+      } catch (error) {
+        console.error('Error polling jobs:', error);
+      }
+    };
+
+    // Poll every 2 seconds
+    pollingIntervalRef.current = setInterval(pollActiveJobs, 2000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [activeJobs.length, user]);
 
   const fetchJobs = async () => {
     if (!user) return;
