@@ -195,15 +195,26 @@ When a user asks for tickets:
 
 Always format results as a clear, readable markdown table. 
 
-**Default columns to show:** Ticket ID, Company, Subject, Description (first 500 chars), Priority, Status
+**CRITICAL TABLE FORMATTING RULES:**
+1. ALWAYS escape pipe characters in cell values by replacing "|" with "\\|"
+2. ALWAYS escape backslashes in cell values by replacing "\\" with "\\\\"
+3. Keep cell values on a single line - replace newlines with spaces
+4. Ensure proper column alignment by checking your data before generating the table
+5. Do NOT include description_text in default columns unless specifically requested
 
-**All available ticket fields you can reference:**
-- id, company, subject, description_text, priority, status, department, group, source, type
-- created_at, updated_at, due_by, fr_due_by
-- requester_id, responder_id, workspace_id
-- category, sub_category, item_category
-- is_escalated, fr_escalated
-- Plus any custom_fields that are present in the tickets
+**Default columns to show:** Ticket ID, Company, Subject, Priority, Status
+
+**Additional available columns (not shown by default, but available on request):**
+- description_text: First 500 characters of ticket description
+- created_at, updated_at: Date/time when ticket was created/updated
+- type: Ticket type (Incident, Service Request, etc.)
+- escalated, module, score, ticket_type: Important custom fields
+- department, group, source: Organizational fields
+- due_by, fr_due_by: Due date fields
+- requester_id, responder_id, workspace_id: ID fields
+- category, sub_category, item_category: Categorization fields
+- is_escalated, fr_escalated: Boolean escalation flags
+- Plus any other custom_fields that are present in the tickets
 
 When the user asks to see specific fields or "add columns", include those additional fields in the markdown table.
 Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
@@ -363,12 +374,12 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   company: typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
                   subject: t.subject,
                   description_text: t.description_text?.substring(0, 500) || 'No Description Available',
-                  priority: typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority,
-                  status: typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status,
+                  priority: typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : (t.priority || 'N/A'),
+                  status: typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : (t.status || 'N/A'),
                   department: typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
                   group: typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : (t.group_id || 'N/A'),
-                  source: typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source,
-                  type: t.type,
+                  source: typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : (t.source || 'N/A'),
+                  type: t.type || 'N/A',
                   created_at: t.created_at,
                   updated_at: t.updated_at,
                   due_by: t.due_by,
@@ -380,13 +391,18 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   sub_category: t.sub_category,
                   item_category: t.item_category,
                   is_escalated: t.is_escalated,
-                  fr_escalated: t.fr_escalated
+                  fr_escalated: t.fr_escalated,
+                  // Additional custom fields explicitly mapped
+                  escalated: t.custom_fields?.escalated || null,
+                  module: t.custom_fields?.module || null,
+                  score: t.custom_fields?.score || null,
+                  ticket_type: t.custom_fields?.ticket_type || null
                 };
                 
-                // Include custom fields if present
+                // Include all other custom fields if present
                 if (t.custom_fields) {
                   Object.keys(t.custom_fields).forEach(key => {
-                    if (t.custom_fields[key] !== null && t.custom_fields[key] !== undefined) {
+                    if (!mapped.hasOwnProperty(key) && t.custom_fields[key] !== null && t.custom_fields[key] !== undefined) {
                       mapped[key] = t.custom_fields[key];
                     }
                   });
