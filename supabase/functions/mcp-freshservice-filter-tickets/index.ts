@@ -404,7 +404,8 @@ serve(async (req) => {
         success: true,
         query: queryString,
         tickets: allTickets,
-        total: allTickets.length
+        total: allTickets.length,
+        ticket_form_fields: ticketFields
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

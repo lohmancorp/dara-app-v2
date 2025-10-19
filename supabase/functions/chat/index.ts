@@ -7,35 +7,69 @@ const corsHeaders = {
 };
 
 // Helper function to map status IDs to names
-function getStatusName(statusId: number): string {
+function getStatusName(statusId: number, ticketFields: any[]): string {
+  const statusField = ticketFields.find((f: any) => f.name === 'status');
+  if (statusField?.choices) {
+    const choice = statusField.choices.find((c: any) => c.id === statusId);
+    if (choice) return choice.value;
+  }
+  // Fallback mapping
   const statusMap: Record<number, string> = {
-    2: 'Open',
-    3: 'Pending',
-    4: 'Resolved',
-    5: 'Closed',
-    6: 'New',
-    7: 'Pending access',
-    8: 'Waiting for RnD',
-    9: 'Pending other ticket',
-    10: 'Waiting for maintenance',
-    11: 'Waiting for bugfix',
-    12: 'Service request triage',
-    15: 'Awaiting validation',
-    16: 'Conditional Hold',
-    17: 'Waiting for 3rd Party'
+    2: 'Open', 3: 'Pending', 4: 'Resolved', 5: 'Closed', 6: 'New',
+    7: 'Pending access', 8: 'Waiting for RnD', 9: 'Pending other ticket',
+    10: 'Waiting for maintenance', 11: 'Waiting for bugfix',
+    12: 'Service request triage', 15: 'Awaiting validation',
+    16: 'Conditional Hold', 17: 'Waiting for 3rd Party'
   };
   return statusMap[statusId] || `Status ${statusId}`;
 }
 
 // Helper function to map priority IDs to names
-function getPriorityName(priorityId: number): string {
+function getPriorityName(priorityId: number, ticketFields: any[]): string {
+  const priorityField = ticketFields.find((f: any) => f.name === 'priority');
+  if (priorityField?.choices) {
+    const choice = priorityField.choices.find((c: any) => c.id === priorityId);
+    if (choice) return choice.value;
+  }
+  // Fallback mapping
   const priorityMap: Record<number, string> = {
-    1: 'Low',
-    2: 'Medium',
-    3: 'High',
-    4: 'Urgent'
+    1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent'
   };
   return priorityMap[priorityId] || `Priority ${priorityId}`;
+}
+
+// Helper function to map department IDs to names
+function getDepartmentName(deptId: number, ticketFields: any[]): string {
+  const deptField = ticketFields.find((f: any) => f.name === 'department_id');
+  if (deptField?.choices) {
+    const choice = deptField.choices.find((c: any) => c.id === deptId);
+    if (choice) return choice.value;
+  }
+  return `Department ${deptId}`;
+}
+
+// Helper function to map group IDs to names
+function getGroupName(groupId: number, ticketFields: any[]): string {
+  const groupField = ticketFields.find((f: any) => f.name === 'group_id');
+  if (groupField?.choices) {
+    const choice = groupField.choices.find((c: any) => c.id === groupId);
+    if (choice) return choice.value;
+  }
+  return `Group ${groupId}`;
+}
+
+// Helper function to map source IDs to names
+function getSourceName(sourceId: number, ticketFields: any[]): string {
+  const sourceField = ticketFields.find((f: any) => f.name === 'source');
+  if (sourceField?.choices) {
+    const choice = sourceField.choices.find((c: any) => c.id === sourceId);
+    if (choice) return choice.value;
+  }
+  // Common source mappings
+  const sourceMap: Record<number, string> = {
+    1: 'Email', 2: 'Portal', 3: 'Phone', 7: 'Chat', 8: 'Feedback Widget', 9: 'Yammer', 10: 'AWS Cloudwatch', 11: 'Pagerduty', 12: 'Walkup', 13: 'Slack'
+  };
+  return sourceMap[sourceId] || `Source ${sourceId}`;
 }
 
 serve(async (req) => {
@@ -153,8 +187,20 @@ When a user asks for tickets:
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
 
-Always format results as a clear, readable markdown table with columns: Ticket ID, Subject, Description, Priority, Status.
-Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
+Always format results as a clear, readable markdown table. 
+
+**Default columns to show:** Ticket ID, Subject, Description (first 500 chars), Priority, Status
+
+**All available ticket fields you can reference:**
+- id, subject, description_text, priority, status, department, group, source, type
+- created_at, updated_at, due_by, fr_due_by
+- requester_id, responder_id, workspace_id
+- category, sub_category, item_category
+- is_escalated, fr_escalated
+- Plus any custom_fields that are present in the tickets
+
+When the user asks to see specific fields or "add columns", include those additional fields in the markdown table.
+Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
 
     // Build conversation with tool call loop
@@ -301,21 +347,54 @@ Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
               const mcpResult = await mcpResponse.json();
               console.log('MCP returned', mcpResult.total, 'tickets');
+              
+              const ticketFields = mcpResult.ticket_form_fields || [];
 
-              const formattedTickets = mcpResult.tickets.map((t: any) => ({
-                id: t.id,
-                subject: t.subject,
-                description: t.description_text?.substring(0, 500) || 'No Description Available',
-                priority: typeof t.priority === 'number' ? getPriorityName(t.priority) : t.priority,
-                status: typeof t.status === 'number' ? getStatusName(t.status) : t.status
-              }));
+              // Map all ticket fields with proper name resolution
+              const formattedTickets = mcpResult.tickets.map((t: any) => {
+                const mapped: any = {
+                  id: t.id,
+                  subject: t.subject,
+                  description_text: t.description_text?.substring(0, 500) || 'No Description Available',
+                  priority: typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority,
+                  status: typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status,
+                  department: typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : t.department_id,
+                  group: typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id,
+                  source: typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source,
+                  type: t.type,
+                  created_at: t.created_at,
+                  updated_at: t.updated_at,
+                  due_by: t.due_by,
+                  fr_due_by: t.fr_due_by,
+                  requester_id: t.requester_id,
+                  responder_id: t.responder_id,
+                  workspace_id: t.workspace_id,
+                  category: t.category,
+                  sub_category: t.sub_category,
+                  item_category: t.item_category,
+                  is_escalated: t.is_escalated,
+                  fr_escalated: t.fr_escalated
+                };
+                
+                // Include custom fields if present
+                if (t.custom_fields) {
+                  Object.keys(t.custom_fields).forEach(key => {
+                    if (t.custom_fields[key] !== null && t.custom_fields[key] !== undefined) {
+                      mapped[key] = t.custom_fields[key];
+                    }
+                  });
+                }
+                
+                return mapped;
+              });
 
               console.log('Formatted tickets:', formattedTickets.length);
               return {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({
                   total: formattedTickets.length,
-                  tickets: formattedTickets
+                  tickets: formattedTickets,
+                  available_fields: Object.keys(formattedTickets[0] || {})
                 })
               };
             }
