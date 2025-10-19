@@ -125,23 +125,77 @@ const Chat = () => {
           const jobData = await response.json();
           
           // Check if this job is already in messages
-          const existingJobMessage = messages.findIndex(m => m.jobId === state.jobId);
+          const existingJobIndex = messages.findIndex(m => m.jobId === state.jobId);
           
-          if (existingJobMessage === -1) {
-            // Add user message with the original query
+          if (existingJobIndex !== -1) {
+            // Update existing message with completed results
+            if (jobData.status === 'completed' && jobData.result) {
+              const tickets = jobData.result.tickets || [];
+              const total = jobData.result.total || 0;
+              
+              // Generate markdown table
+              let tableContent = `Found ${total} tickets:\n\n`;
+              tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+              tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+              
+              tickets.forEach((ticket: any) => {
+                tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+              });
+
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[existingJobIndex] = {
+                  ...newMessages[existingJobIndex],
+                  content: tableContent,
+                  jobStatus: 'completed',
+                  jobProgress: 100
+                };
+                return newMessages;
+              });
+
+              toast({
+                title: "Job Results Loaded",
+                description: `Successfully loaded ${total} tickets`,
+              });
+            } else if (jobData.status === 'failed') {
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[existingJobIndex] = {
+                  ...newMessages[existingJobIndex],
+                  content: `Job failed: ${jobData.error || 'Unknown error'}`,
+                  jobStatus: 'failed'
+                };
+                return newMessages;
+              });
+            }
+          } else {
+            // Add new messages for this job
             const userMessage: Message = {
               role: 'user',
               content: state.jobQuery || jobData.query || 'Previous query',
             };
 
-            // Add assistant message with job status
+            let assistantContent = '';
+            if (jobData.status === 'completed' && jobData.result) {
+              const tickets = jobData.result.tickets || [];
+              const total = jobData.result.total || 0;
+              
+              assistantContent = `Found ${total} tickets:\n\n`;
+              assistantContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+              assistantContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+              
+              tickets.forEach((ticket: any) => {
+                assistantContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+              });
+            } else if (jobData.status === 'failed') {
+              assistantContent = `Job failed: ${jobData.error || 'Unknown error'}`;
+            } else {
+              assistantContent = 'Job is processing in the background...';
+            }
+
             const assistantMessage: Message = {
               role: 'assistant',
-              content: jobData.status === 'completed' 
-                ? jobData.result || 'Job completed successfully'
-                : jobData.status === 'failed'
-                ? `Job failed: ${jobData.error || 'Unknown error'}`
-                : 'Job is processing in the background...',
+              content: assistantContent,
               jobId: state.jobId,
               jobStatus: jobData.status,
               jobProgress: jobData.progress || 0,
@@ -153,7 +207,7 @@ const Chat = () => {
 
           // Start polling if job is still running
           if (jobData.status === 'processing' || jobData.status === 'pending') {
-            const messageIndex = messages.length + 1;
+            const messageIndex = messages.length + (existingJobIndex === -1 ? 1 : 0);
             pollJobStatus(state.jobId, messageIndex);
           }
         }
