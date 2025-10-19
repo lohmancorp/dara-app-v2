@@ -72,10 +72,6 @@ export const ConnectionConfigForm = ({
   const [formData, setFormData] = useState({
     name: existingConnection?.name || '',
     endpoint: existingConnection?.endpoint || DEFAULT_ENDPOINTS[connectionType || ''] || '',
-    auth_type: existingConnection?.auth_type || (connectionType ? DEFAULT_AUTH_TYPES[connectionType] : 'token'),
-    call_delay_ms: existingConnection?.call_delay_ms || 600,
-    retry_delay_sec: existingConnection?.retry_delay_sec || 60,
-    max_retries: existingConnection?.max_retries || 5,
   });
 
   const [authConfig, setAuthConfig] = useState({
@@ -102,16 +98,16 @@ export const ConnectionConfigForm = ({
     if (!user || !connectionType) return;
 
     try {
+      // Determine auth_type based on connection type (managed by MCP)
+      const auth_type = connectionType ? DEFAULT_AUTH_TYPES[connectionType] : 'token';
+
       const data = {
         user_id: user.id,
         connection_type: connectionType,
         name: formData.name,
         endpoint: formData.endpoint,
-        auth_type: formData.auth_type,
+        auth_type,
         auth_config: authConfig,
-        call_delay_ms: formData.call_delay_ms,
-        retry_delay_sec: formData.retry_delay_sec,
-        max_retries: formData.max_retries,
         connection_config: connectionConfig,
         is_active: true,
       };
@@ -191,24 +187,7 @@ export const ConnectionConfigForm = ({
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Authentication</h3>
         
-        <div>
-          <Label htmlFor="auth_type">Auth Type</Label>
-          <Select
-            value={formData.auth_type}
-            onValueChange={(value: AuthType) => setFormData({ ...formData, auth_type: value })}
-          >
-            <SelectTrigger id="auth_type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="token">API Token</SelectItem>
-              <SelectItem value="basic_auth">Basic Auth</SelectItem>
-              <SelectItem value="oauth">OAuth</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {formData.auth_type === 'token' && (
+        {connectionType && DEFAULT_AUTH_TYPES[connectionType] === 'token' && (
           <div>
             <Label htmlFor="api_key">{connectionType === 'freshservice' ? 'FreshService API Key' : 'API Key'} <span className="text-destructive">*</span></Label>
             <div className="relative">
@@ -236,7 +215,7 @@ export const ConnectionConfigForm = ({
           </div>
         )}
 
-        {formData.auth_type === 'basic_auth' && (
+        {connectionType && DEFAULT_AUTH_TYPES[connectionType] === 'basic_auth' && (
           <>
             <div>
               <Label htmlFor="username">Username <span className="text-destructive">*</span></Label>
@@ -273,7 +252,7 @@ export const ConnectionConfigForm = ({
           </>
         )}
 
-        {formData.auth_type === 'oauth' && (
+        {connectionType && DEFAULT_AUTH_TYPES[connectionType] === 'oauth' && (
           <>
             <div>
               <Label htmlFor="client_id">Client ID <span className="text-destructive">*</span></Label>
@@ -344,54 +323,6 @@ export const ConnectionConfigForm = ({
         </>
       )}
 
-      {/* API Throttling */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">API Throttling</h3>
-        
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="call_delay_ms">Call Delay (ms)</Label>
-            <Input
-              id="call_delay_ms"
-              type="number"
-              value={formData.call_delay_ms}
-              onChange={(e) => setFormData({ ...formData, call_delay_ms: parseInt(e.target.value) || 0 })}
-              min="0"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Delay between each {connectionType === 'freshservice' ? 'FreshService' : ''} API call.
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="retry_delay_sec">Retry Delay (sec)</Label>
-            <Input
-              id="retry_delay_sec"
-              type="number"
-              value={formData.retry_delay_sec}
-              onChange={(e) => setFormData({ ...formData, retry_delay_sec: parseInt(e.target.value) || 0 })}
-              min="0"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              How long to wait after hitting a rate limit.
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="max_retries">Max Retries</Label>
-            <Input
-              id="max_retries"
-              type="number"
-              value={formData.max_retries}
-              onChange={(e) => setFormData({ ...formData, max_retries: parseInt(e.target.value) || 0 })}
-              min="0"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Attempts before failing a request.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-4">
