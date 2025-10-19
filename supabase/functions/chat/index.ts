@@ -200,23 +200,24 @@ Always format results as a clear, readable markdown table.
 2. ALWAYS escape backslashes in cell values by replacing "\\" with "\\\\"
 3. Keep cell values on a single line - replace newlines with spaces
 4. Ensure proper column alignment by checking your data before generating the table
-5. Do NOT include description_text in default columns unless specifically requested
 
-**Default columns to show:** Ticket ID, Company, Subject, Priority, Status
+**REQUIRED: Include ALL of these columns in every ticket table:**
+| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |
 
-**Additional available columns (not shown by default, but available on request):**
-- description_text: First 500 characters of ticket description
-- created_at, updated_at: Date/time when ticket was created/updated
-- type: Ticket type (Incident, Service Request, etc.)
-- escalated, module, score, ticket_type: Important custom fields
-- department, group, source: Organizational fields
-- due_by, fr_due_by: Due date fields
-- requester_id, responder_id, workspace_id: ID fields
-- category, sub_category, item_category: Categorization fields
-- is_escalated, fr_escalated: Boolean escalation flags
-- Plus any other custom_fields that are present in the tickets
+- Ticket ID: The ticket number
+- Company: The department/company name
+- Subject: The ticket subject line
+- Priority: Mapped name (Low, Medium, High, Urgent)
+- Status: Mapped status name
+- created_at: ISO date when ticket was created
+- updated_at: ISO date when ticket was last updated
+- type: Ticket type (e.g., "Service Request", "Incident")
+- escalated: Custom field for escalation status (or "N/A" if null)
+- module: Custom field for module name (or "N/A" if null)
+- score: Custom field for score value (or "N/A" if null)
+- ticket_type: Custom field for ticket type classification (or "N/A" if null)
 
-When the user asks to see specific fields or "add columns", include those additional fields in the markdown table.
+The UI table component will handle column visibility settings, but you MUST include all columns in the markdown.
 Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
 

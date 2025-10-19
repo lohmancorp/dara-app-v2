@@ -39,16 +39,39 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
   const descriptionIndex = headers.findIndex(h => h.toLowerCase() === 'description');
   const subjectIndex = headers.findIndex(h => h.toLowerCase() === 'subject');
   
-  // Hide description column by default
+  // Define which columns should be hidden by default
+  const hiddenByDefaultColumns = [
+    'description', 
+    'description_text',
+    'created_at', 
+    'updated_at', 
+    'type', 
+    'escalated', 
+    'module', 
+    'score', 
+    'ticket_type',
+    'department',
+    'group',
+    'source',
+    'due_by',
+    'fr_due_by',
+    'requester_id',
+    'responder_id',
+    'workspace_id',
+    'category',
+    'sub_category',
+    'item_category',
+    'is_escalated',
+    'fr_escalated'
+  ];
+  
+  // Hide specified columns by default
   useEffect(() => {
-    if (descriptionIndex !== -1) {
-      setVisibleColumns(prev => {
-        const newVisible = [...prev];
-        newVisible[descriptionIndex] = false;
-        return newVisible;
-      });
-    }
-  }, [descriptionIndex]);
+    const newVisible = headers.map((header) => 
+      !hiddenByDefaultColumns.some(hidden => header.toLowerCase().includes(hidden.toLowerCase()))
+    );
+    setVisibleColumns(newVisible);
+  }, [headers.join(',')]); // Depend on headers changing
   
   // Filter headers and adjust column widths based on visible columns
   const visibleHeaders = headers.filter((_, index) => visibleColumns[index]);
