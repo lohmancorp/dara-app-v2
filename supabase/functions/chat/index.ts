@@ -253,6 +253,9 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       ...messages
     ];
 
+    // Track async job info across tool calls
+    let asyncJobInfo: any = null;
+
     // Keep calling AI until no more tool calls (max 10 iterations to prevent infinite loops)
     let iterations = 0;
     const maxIterations = 10;
@@ -572,6 +575,19 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
         console.log('Tool results:', JSON.stringify(toolResults, null, 2));
 
+        // Check if any tool result contains async job info
+        for (const result of toolResults) {
+          try {
+            const parsed = JSON.parse(result.content);
+            if (parsed.async_job && parsed.job_id) {
+              asyncJobInfo = parsed;
+              break;
+            }
+          } catch (e) {
+            // Not JSON, skip
+          }
+        }
+
         // Add tool results to conversation
         for (const result of toolResults) {
           conversationMessages.push({
@@ -587,6 +603,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
       // No more tool calls - stream final response
       console.log('No more tool calls, streaming final response');
+      
       const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -604,6 +621,42 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
         const errorText = await finalResponse.text();
         console.error('Final AI response error:', finalResponse.status, errorText);
         throw new Error('AI gateway error on final response');
+      }
+
+      // If there's async job info, inject it into the stream
+      if (asyncJobInfo) {
+        console.log('Emitting async job metadata in stream');
+        
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+
+        // Emit job metadata first
+        await writer.write(encoder.encode(`data: ${JSON.stringify({
+          async_job: true,
+          job_id: asyncJobInfo.job_id,
+          message: asyncJobInfo.message,
+          estimated_time: asyncJobInfo.estimated_time
+        })}\n\n`));
+
+        // Then pipe the AI response
+        (async () => {
+          try {
+            const reader = finalResponse.body!.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              await writer.write(value);
+            }
+          } finally {
+            writer.close();
+          }
+        })();
+
+        console.log('Streaming final response with job metadata to client');
+        return new Response(readable, {
+          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+        });
       }
 
       console.log('Streaming final response to client');
