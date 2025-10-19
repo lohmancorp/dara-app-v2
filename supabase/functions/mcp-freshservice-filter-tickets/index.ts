@@ -201,33 +201,46 @@ serve(async (req) => {
     }
 
     // Handle status exclusion filter
+    // FreshService doesn't support negation (!), so we need to include all OTHER statuses instead
     if (filters.excludeStatus && filters.excludeStatus.length > 0) {
       const statusField = ticketFields.find((f: any) => 
         f.name === 'status' || f.label === 'Status'
       );
 
-      if (statusField) {
-        const excludeStatusIds: string[] = [];
+      if (statusField && statusField.choices) {
+        const excludeStatusIds = new Set<string>();
 
+        // Resolve excluded status names/IDs to numeric IDs
         for (const statusValue of filters.excludeStatus) {
-          let statusId = statusValue;
-          
-          if (isNaN(Number(statusValue))) {
-            const choice = statusField.choices?.find((c: any) => 
+          if (!isNaN(Number(statusValue))) {
+            excludeStatusIds.add(statusValue);
+          } else {
+            const choice = statusField.choices.find((c: any) => 
               c.value?.toLowerCase() === statusValue.toLowerCase()
             );
             if (choice) {
-              statusId = choice.id.toString();
+              excludeStatusIds.add(choice.id.toString());
             }
           }
-
-          excludeStatusIds.push(statusId);
         }
 
-        // Build NOT status conditions
-        if (excludeStatusIds.length > 0) {
-          const excludeConditions = excludeStatusIds.map(id => `status:!${id}`);
-          excludeConditions.forEach(cond => queryParts.push(cond));
+        // Get all status IDs that are NOT excluded
+        const includedStatusIds = statusField.choices
+          .filter((c: any) => !excludeStatusIds.has(c.id.toString()))
+          .map((c: any) => c.id.toString());
+
+        console.log('Exclude status filter:', Array.from(excludeStatusIds));
+        console.log('Including statuses:', includedStatusIds);
+
+        // Build OR conditions for included statuses (FreshService format)
+        if (includedStatusIds.length > 0) {
+          const statusConditions = includedStatusIds.map((id: string) => `status:${id}`);
+          if (statusConditions.length === 1) {
+            queryParts.push(statusConditions[0]);
+          } else {
+            // Use parentheses for OR conditions
+            queryParts.push(`(${statusConditions.join(' OR ')})`);
+          }
         }
       }
     }
