@@ -6,6 +6,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to map status IDs to names
+function getStatusName(statusId: number): string {
+  const statusMap: Record<number, string> = {
+    2: 'Open',
+    3: 'Pending',
+    4: 'Resolved',
+    5: 'Closed',
+    6: 'Waiting on Customer',
+    7: 'Waiting on Third Party',
+    8: 'In Progress',
+    9: 'On Hold',
+    10: 'Scheduled',
+    11: 'Awaiting Approval',
+    12: 'Reopened',
+    15: 'Waiting for Customer Response',
+    16: 'Customer Response Received',
+    17: 'Escalated'
+  };
+  return statusMap[statusId] || `Status ${statusId}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -51,53 +72,79 @@ serve(async (req) => {
       {
         type: "function",
         function: {
-          name: "get_department_id",
-          description: "Look up a department ID by name from FreshService ticket form fields",
-          parameters: {
-            type: "object",
-            properties: {
-              connection_id: {
-                type: "string",
-                description: "The FreshService connection ID"
-              },
-              department_name: {
-                type: "string",
-                description: "The department name to look up (e.g., 'Engineering', 'Sales')"
-              }
-            },
-            required: ["connection_id", "department_name"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets by department and status. Returns ticket ID, subject, description (up to 500 chars), priority (1=Low, 2=Medium, 3=High, 4=Urgent), and status.",
+          description: "Search FreshService tickets using flexible filters. Common status IDs: 2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=Waiting on Customer, 7=Waiting on Third Party, 8=In Progress. Returns ticket ID, subject, description, priority, and status.",
           parameters: {
             type: "object",
             properties: {
-              connection_id: {
+              mcp_service_id: {
                 type: "string",
-                description: "The FreshService connection ID"
+                description: "The MCP service ID for FreshService"
               },
-              department_id: {
+              department: {
                 type: "string",
-                description: "The department ID to filter by"
+                description: "Department name or ID to filter by (optional)"
               },
-              status_names: {
+              status: {
                 type: "array",
                 items: { type: "string" },
-                description: "Array of status names (e.g., ['Open', 'Pending', 'In Progress'])"
+                description: "Array of status IDs to INCLUDE (e.g., ['2', '3', '8'] for Open, Pending, In Progress). Uses OR logic."
+              },
+              exclude_status: {
+                type: "array",
+                items: { type: "string" },
+                description: "Array of status IDs to EXCLUDE (e.g., ['4', '5'] to exclude Resolved and Closed)"
+              },
+              created_after: {
+                type: "string",
+                description: "ISO date string to filter tickets created after this date (e.g., '2024-01-01T00:00:00Z')"
+              },
+              priority: {
+                type: "array",
+                items: { type: "string" },
+                description: "Array of priority IDs (1=Low, 2=Medium, 3=High, 4=Urgent)"
               }
             },
-            required: ["connection_id", "department_id"]
+            required: ["mcp_service_id"]
           }
         }
       }
     ];
 
-    const systemPrompt = "You are a helpful AI assistant that can search FreshService tickets.\n\nWhen a user asks for tickets for a company/department:\n1. First call get_freshservice_connections to get their FreshService connection\n2. Then call get_department_id with the company/department name to get the ID\n3. Finally call search_freshservice_tickets with the department_id to get tickets\n4. Format the results as a clear, readable markdown table with these columns: Ticket ID, Subject, Description, Priority, Status\n5. Priority should be converted to text: 1=Low, 2=Medium, 3=High, 4=Urgent\n\nIf the user doesn't specify status, search for all open statuses: Open, Pending, In Progress, Waiting on Customer, Waiting on Third Party.\n\nAlways be helpful and clear in your responses.";
+    const systemPrompt = `You are a helpful AI assistant that can search FreshService tickets.
+
+When a user asks for tickets:
+1. First call get_freshservice_connections to get their MCP service configuration
+2. Use the mcp_service_id (NOT connection_id) from the response
+3. Call search_freshservice_tickets with appropriate filters
+
+**Important Status IDs:**
+- 2 = Open
+- 3 = Pending  
+- 4 = Resolved
+- 5 = Closed
+- 6 = Waiting on Customer
+- 7 = Waiting on Third Party
+- 8 = In Progress
+- 9 = On Hold
+- 10 = Scheduled
+- 11 = Awaiting Approval
+- 12 = Reopened
+- 15 = Waiting for Customer Response
+- 16 = Customer Response Received
+- 17 = Escalated
+
+**How to handle requests:**
+- "not closed" or "not resolved" → use exclude_status: ['4', '5']
+- "unresolved" → use status: ['6', '2', '3', '7', '8', '9', '10', '11', '17', '12', '16']
+- "waiting on customer" → use status: ['15', '3', '7', '16']
+- "last month" → use created_after with date 1 month ago
+- "last N days" → use created_after with date N days ago
+- If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
+
+Always format results as a clear, readable markdown table with columns: Ticket ID, Subject, Description, Priority, Status.
+Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
+
 
     // Build conversation with tool call loop
     const conversationMessages: any[] = [
@@ -168,261 +215,90 @@ serve(async (req) => {
 
           switch (name) {
             case 'get_freshservice_connections': {
-              console.log('Fetching FreshService connections for user:', user.id);
-              const { data, error } = await supabase
-                .from('connections')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('connection_type', 'freshservice')
-                .eq('is_active', true);
-
-              if (error) {
-                console.error('Error fetching connections:', error);
-                throw error;
-              }
+              console.log('Fetching FreshService MCP service for user:', user.id);
               
-              console.log('Found connections:', data?.length || 0);
+              // Get the FreshService MCP service
+              const { data: mcpServices, error: mcpError } = await supabase
+                .from('mcp_services')
+                .select('*')
+                .eq('service_type', 'freshservice');
+
+              if (mcpError) {
+                console.error('Error fetching MCP service:', mcpError);
+                throw mcpError;
+              }
+
+              if (!mcpServices || mcpServices.length === 0) {
+                console.error('No FreshService MCP service configured');
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'No FreshService service configured' })
+                };
+              }
+
+              const mcpService = mcpServices[0];
+              console.log('Found MCP service:', mcpService.id);
+              
               const result = {
                 tool_call_id: toolCall.id,
-                content: JSON.stringify(data || [])
+                content: JSON.stringify([{ 
+                  mcp_service_id: mcpService.id,
+                  service_name: mcpService.service_name,
+                  service_type: mcpService.service_type
+                }])
               };
-              console.log('Returning connection result:', result);
+              console.log('Returning MCP service result:', result);
               return result;
             }
 
-            case 'get_department_id': {
-              const { connection_id, department_name } = args;
-              console.log('Looking up department:', department_name, 'for connection:', connection_id);
-
-              const { data: connection } = await supabase
-                .from('connections')
-                .select('*')
-                .eq('id', connection_id)
-                .eq('user_id', user.id)
-                .single();
-
-              if (!connection) {
-                console.error('Connection not found:', connection_id);
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Connection not found' })
-                };
-              }
-
-              console.log('Found connection:', connection.name);
-
-              let endpoint = connection.endpoint;
-              // Ensure endpoint has protocol
-              if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
-                endpoint = `https://${endpoint}`;
-              }
-              const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
-              const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
-
-              console.log('Fetching ticket fields from:', endpoint);
-              const fieldsResponse = await fetch(
-                `${endpoint}/api/v2/ticket_form_fields`,
-                {
-                  headers: {
-                    'Authorization': authHeaderValue,
-                    'Content-Type': 'application/json'
-                  }
-                }
-              );
-
-              if (!fieldsResponse.ok) {
-                console.error('Failed to fetch fields:', fieldsResponse.status, await fieldsResponse.text());
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Failed to fetch ticket fields' })
-                };
-              }
-
-              const fieldsData = await fieldsResponse.json();
-              const ticketFields = fieldsData.ticket_fields || [];
-              console.log('Found ticket fields:', ticketFields.length);
-
-              const departmentField = ticketFields.find((f: any) => 
-                f.name === 'department_id' || f.label === 'Department'
-              );
-
-              if (!departmentField) {
-                console.error('Department field not found in fields');
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Department field not found' })
-                };
-              }
-
-              console.log('Department field choices:', departmentField.choices?.length || 0);
-              const department = departmentField.choices?.find((c: any) =>
-                c.value?.toLowerCase().includes(department_name.toLowerCase()) ||
-                department_name.toLowerCase().includes(c.value?.toLowerCase())
-              );
-
-              if (!department) {
-                const available = departmentField.choices?.map((c: any) => c.value) || [];
-                console.error('Department not found:', department_name, 'Available:', available);
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ 
-                    error: `Department "${department_name}" not found`,
-                    available
-                  })
-                };
-              }
-
-              console.log('Found department:', department.value, 'ID:', department.id);
-              return {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({ 
-                  department_id: department.id,
-                  department_name: department.value
-                })
-              };
-            }
-
             case 'search_freshservice_tickets': {
-              const { connection_id, department_id, status_names } = args;
-              console.log('Searching tickets - Connection:', connection_id, 'Department:', department_id, 'Statuses:', status_names);
+              const { mcp_service_id, department, status, exclude_status, created_after, priority } = args;
+              console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority });
 
-              const { data: connection } = await supabase
-                .from('connections')
-                .select('*')
-                .eq('id', connection_id)
-                .eq('user_id', user.id)
-                .single();
+              // Call the MCP FreshService filter function
+              const filters: any = {};
+              
+              if (department) filters.department = department;
+              if (status && status.length > 0) filters.status = status;
+              if (exclude_status && exclude_status.length > 0) filters.excludeStatus = exclude_status;
+              if (created_after) filters.createdAfter = created_after;
+              if (priority && priority.length > 0) filters.priority = priority;
 
-              if (!connection) {
-                console.error('Connection not found for ticket search:', connection_id);
+              const { data: mcpResult, error: mcpError } = await supabase.functions.invoke('mcp-freshservice-filter-tickets', {
+                body: {
+                  serviceId: mcp_service_id,
+                  filters,
+                  ownerType: 'user',
+                  ownerId: user.id
+                }
+              });
+
+              if (mcpError) {
+                console.error('MCP filter error:', mcpError);
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Connection not found' })
+                  content: JSON.stringify({ error: 'Failed to search tickets', details: mcpError })
                 };
               }
 
-              console.log('Using connection:', connection.name);
+              console.log('MCP returned', mcpResult.total, 'tickets');
 
-              let endpoint = connection.endpoint;
-              // Ensure endpoint has protocol
-              if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
-                endpoint = `https://${endpoint}`;
-              }
-              const apiKey = connection.auth_config?.api_key || connection.auth_config?.password;
-              const authHeaderValue = `Basic ${btoa(apiKey + ':X')}`;
-
-              const statuses = status_names || ['Open', 'Pending', 'In Progress', 'Waiting on Customer', 'Waiting on Third Party'];
-              console.log('Status names to search:', statuses);
-
-              const fieldsResponse = await fetch(
-                `${endpoint}/api/v2/ticket_form_fields`,
-                {
-                  headers: {
-                    'Authorization': authHeaderValue,
-                    'Content-Type': 'application/json'
-                  }
-                }
-              );
-
-              const fieldsData = await fieldsResponse.json();
-              const ticketFields = fieldsData.ticket_fields || [];
-
-              const statusField = ticketFields.find((f: any) => f.name === 'status');
-              const statusIds: string[] = [];
-
-              if (statusField) {
-                console.log('Status field found with', statusField.choices?.length || 0, 'choices');
-                for (const statusName of statuses) {
-                  const choice = statusField.choices?.find((c: any) =>
-                    c.value?.toLowerCase() === statusName.toLowerCase()
-                  );
-                  if (choice) {
-                    console.log('Mapped status:', statusName, '-> ID:', choice.id);
-                    statusIds.push(choice.id.toString());
-                  } else {
-                    console.log('Status not found:', statusName);
-                  }
-                }
-              } else {
-                console.error('Status field not found in ticket fields');
-              }
-
-              const statusQuery = statusIds.map(id => `status:${id}`).join(' OR ');
-              const query = `department_id:${department_id} AND (${statusQuery})`;
-
-              console.log('FreshService query:', query);
-              console.log('Searching tickets at:', `${endpoint}/api/v2/tickets/filter`);
-
-              // Implement pagination to fetch all results (100 per page)
-              let allTickets: any[] = [];
-              let page = 1;
-              const perPage = 100;
-              let hasMorePages = true;
-
-              while (hasMorePages) {
-                console.log(`Fetching page ${page} (${perPage} results per page)...`);
-                
-                const ticketsResponse = await fetch(
-                  `${endpoint}/api/v2/tickets/filter?per_page=${perPage}&page=${page}&query="${encodeURIComponent(query)}"`,
-                  {
-                    headers: {
-                      'Authorization': authHeaderValue,
-                      'Content-Type': 'application/json'
-                    }
-                  }
-                );
-
-                if (!ticketsResponse.ok) {
-                  const errorText = await ticketsResponse.text();
-                  console.error('FreshService tickets error:', ticketsResponse.status, errorText);
-                  return {
-                    tool_call_id: toolCall.id,
-                    content: JSON.stringify({ error: 'Failed to fetch tickets', details: errorText })
-                  };
-                }
-
-                const ticketsData = await ticketsResponse.json();
-                const pageTickets = ticketsData.tickets || [];
-                
-                console.log(`Page ${page}: Retrieved ${pageTickets.length} tickets`);
-                
-                allTickets = allTickets.concat(pageTickets);
-
-                // Check if there are more pages
-                // If we got fewer tickets than requested, we've reached the last page
-                if (pageTickets.length < perPage) {
-                  hasMorePages = false;
-                  console.log('Last page reached');
-                } else {
-                  page++;
-                }
-              }
-
-              const tickets = allTickets;
-              console.log('Total tickets retrieved across all pages:', tickets.length);
-
-              const statusMap = new Map(
-                statusField?.choices?.map((c: any) => [c.id.toString(), c.value]) || []
-              );
-
-              const formattedTickets = tickets.map((t: any) => ({
+              const formattedTickets = mcpResult.tickets.map((t: any) => ({
                 id: t.id,
                 subject: t.subject,
                 description: t.description_text?.substring(0, 500) || 'No Description Available',
                 priority: t.priority,
-                status: statusMap.get(t.status?.toString()) || t.status
+                status: typeof t.status === 'number' ? getStatusName(t.status) : t.status
               }));
 
               console.log('Formatted tickets:', formattedTickets.length);
-              const result = {
+              return {
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({
-                  total: tickets.length,
+                  total: formattedTickets.length,
                   tickets: formattedTickets
                 })
               };
-              console.log('Returning ticket search result');
-              return result;
             }
 
             default:
