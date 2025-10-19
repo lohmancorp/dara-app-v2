@@ -171,10 +171,10 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
         )}
       </div>
       <div className={cn(
-        "flex-1 space-y-2 overflow-visible rounded-lg p-4",
+        "flex-1 space-y-2 overflow-hidden rounded-lg p-4",
         isUser ? "bg-muted/50 text-left" : ""
       )}>
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-visible">
+        <div className="prose prose-sm dark:prose-invert max-w-none break-words">
           {isStreaming && !content ? (
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm text-muted-foreground">Thinking</span>

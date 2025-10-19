@@ -280,8 +280,8 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
           </div>
         </div>
         
-        <div ref={tableRef} className="w-full overflow-x-auto overflow-y-visible rounded-md border">
-          <Table className="min-w-max">
+        <div ref={tableRef} className="w-full overflow-x-auto rounded-md border">
+          <Table className="w-full min-w-[600px]">
             <TableHeader>
               <TableRow>
                 {visibleHeaders.map((header, displayIndex) => {
