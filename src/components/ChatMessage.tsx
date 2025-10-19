@@ -156,8 +156,8 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
     >
       <div
         className={cn(
-          "flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-lg overflow-hidden",
-          isUser ? "bg-primary" : "bg-muted"
+          "flex h-11 w-11 shrink-0 select-none items-center justify-center overflow-hidden",
+          isUser ? "bg-primary rounded-full" : "bg-muted rounded-lg"
         )}
       >
         {isUser ? (

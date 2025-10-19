@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { format, parseISO } from "https://esm.sh/date-fns@3.6.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +48,21 @@ function getDepartmentName(deptId: number | null, ticketFields: any[]): string {
     if (choice) return choice.value;
   }
   return `Department ${deptId}`;
+}
+
+// Helper function to format dates
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return 'N/A';
+  try {
+    const date = parseISO(dateString);
+    // Check if the date includes time (has 'T' in the string)
+    if (dateString.includes('T')) {
+      return format(date, 'MMM d, yyyy h:mm a');
+    }
+    return format(date, 'MMM d, yyyy');
+  } catch (error) {
+    return dateString; // Return original if parsing fails
+  }
 }
 
 // Helper function to get company name (same as department, labeled as "Company" for customers)
@@ -387,8 +403,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   group: safeString(typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id),
                   source: safeString(typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source),
                   type: safeString(t.type),
-                  created_at: safeString(t.created_at),
-                  updated_at: safeString(t.updated_at),
+                  created_at: safeString(formatDate(t.created_at)),
+                  updated_at: safeString(formatDate(t.updated_at)),
                   due_by: t.due_by,
                   fr_due_by: t.fr_due_by,
                   requester_id: t.requester_id,
