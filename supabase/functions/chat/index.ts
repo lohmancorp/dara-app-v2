@@ -394,14 +394,46 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 }
 
                 // Start background processing (non-blocking)
-                fetch(`${supabaseUrl}/functions/v1/process-chat-job`, {
+                const backgroundJobPromise = fetch(`${supabaseUrl}/functions/v1/process-chat-job`, {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${supabaseKey}`,
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({ jobId: job.id })
-                }).catch(err => console.error('Failed to trigger background job:', err));
+                });
+
+                // Log if background job fails to start but don't block the response
+                backgroundJobPromise.catch(async (err) => {
+                  console.error('Failed to trigger background job:', err);
+                  // Mark job as failed
+                  await supabase
+                    .from('chat_jobs')
+                    .update({ 
+                      status: 'failed',
+                      error: 'Failed to start background processing: ' + (err instanceof Error ? err.message : String(err)),
+                      completed_at: new Date().toISOString()
+                    })
+                    .eq('id', job.id);
+                });
+
+                // Also check if the fetch succeeded
+                backgroundJobPromise.then(async (response) => {
+                  if (!response.ok) {
+                    console.error('Background job trigger failed with status:', response.status);
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    await supabase
+                      .from('chat_jobs')
+                      .update({ 
+                        status: 'failed',
+                        error: `Background processing failed to start: ${response.status} - ${errorText}`,
+                        completed_at: new Date().toISOString()
+                      })
+                      .eq('id', job.id);
+                  } else {
+                    console.log('Background job triggered successfully for job:', job.id);
+                  }
+                }).catch(err => console.error('Error checking background job response:', err));
 
                 return {
                   tool_call_id: toolCall.id,
