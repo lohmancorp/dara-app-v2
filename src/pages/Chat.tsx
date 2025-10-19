@@ -1,4 +1,4 @@
-import { MessageSquare, Send, User, Trash2 } from "lucide-react";
+import { MessageSquare, Send, User, Trash2, StopCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,11 +44,19 @@ const Chat = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const jobLoadedRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [hasActiveJob, setHasActiveJob] = useState(false);
 
   // Persist messages to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('chat-messages', JSON.stringify(messages));
-  }, [messages]);
+    
+    // Check if there's an active job in messages
+    const activeJob = messages.some(m => 
+      m.jobId && (m.jobStatus === 'pending' || m.jobStatus === 'processing')
+    );
+    setHasActiveJob(activeJob || isLoading);
+  }, [messages, isLoading]);
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -144,7 +152,7 @@ const Chat = () => {
           }
 
           // Start polling if job is still running
-          if (jobData.status === 'running' || jobData.status === 'pending') {
+          if (jobData.status === 'processing' || jobData.status === 'pending') {
             const messageIndex = messages.length + 1;
             pollJobStatus(state.jobId, messageIndex);
           }
@@ -274,8 +282,27 @@ const Chat = () => {
     pollingIntervalsRef.current.set(jobId, pollInterval);
   };
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Clear all polling intervals
+    pollingIntervalsRef.current.forEach(interval => clearInterval(interval));
+    pollingIntervalsRef.current.clear();
+    
+    setIsLoading(false);
+    setHasActiveJob(false);
+    
+    toast({
+      title: "Stopped",
+      description: "Request has been stopped",
+    });
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || hasActiveJob) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -283,6 +310,7 @@ const Chat = () => {
     setIsTyping(false);
     setIsThinking(false);
     setIsLoading(true);
+    setHasActiveJob(true);
 
     try {
       // Check if user is authenticated
@@ -295,6 +323,7 @@ const Chat = () => {
 
       // Create an abort controller with 3 minute timeout
       const controller = new AbortController();
+      abortControllerRef.current = controller;
       const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
 
       try {
@@ -402,6 +431,11 @@ const Chat = () => {
     } catch (error: any) {
       console.error('Chat error:', error);
       
+      // Don't show error if request was aborted by user
+      if (error.name === 'AbortError' && !abortControllerRef.current) {
+        return; // User stopped the request
+      }
+      
       let errorMessage = error.message || "Failed to send message";
       if (error.name === 'AbortError') {
         errorMessage = 'Request timed out after 3 minutes. Try using more specific filters to narrow your search (e.g., specific department, date range, or status).';
@@ -415,7 +449,9 @@ const Chat = () => {
       // Remove the empty assistant message on error
       setMessages((prev) => prev.slice(0, -1));
     } finally {
+      abortControllerRef.current = null;
       setIsLoading(false);
+      setHasActiveJob(false);
     }
   };
 
@@ -606,17 +642,28 @@ const Chat = () => {
                   }
                 }}
                 onKeyDown={handleKeyDown}
-                disabled={isLoading}
+                disabled={isLoading || hasActiveJob}
               />
-              <Button 
-                size="icon" 
-                className="h-[60px] w-[60px] rounded-full flex-shrink-0" 
-                variant="accent"
-                onClick={handleSend}
-                disabled={isLoading || !input.trim()}
-              >
-                <Send className="h-6 w-6" />
-              </Button>
+              {isLoading || hasActiveJob ? (
+                <Button 
+                  size="icon" 
+                  className="h-[60px] w-[60px] rounded-full flex-shrink-0" 
+                  variant="destructive"
+                  onClick={handleStop}
+                >
+                  <StopCircle className="h-6 w-6" />
+                </Button>
+              ) : (
+                <Button 
+                  size="icon" 
+                  className="h-[60px] w-[60px] rounded-full flex-shrink-0" 
+                  variant="accent"
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                >
+                  <Send className="h-6 w-6" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

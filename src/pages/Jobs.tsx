@@ -73,7 +73,7 @@ const Jobs = () => {
       if (error) throw error;
 
       const active = data?.filter(job => 
-        job.status === 'pending' || job.status === 'running'
+        job.status === 'pending' || job.status === 'processing' || job.status === 'running'
       ) || [];
       
       const completed = data?.filter(job => 
@@ -93,6 +93,7 @@ const Jobs = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "running":
+      case "processing":
       case "pending":
         return <Activity className="h-4 w-4 animate-pulse" />;
       case "completed":
@@ -107,6 +108,7 @@ const Jobs = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "running":
+      case "processing":
       case "pending":
         return "default";
       case "completed":
@@ -152,7 +154,7 @@ const Jobs = () => {
           </Badge>
         </div>
 
-        {(job.status === 'running' || job.status === 'pending') && (
+        {(job.status === 'running' || job.status === 'processing' || job.status === 'pending') && (
           <div className="space-y-2">
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-muted-foreground">
