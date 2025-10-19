@@ -39,13 +39,19 @@ function getPriorityName(priorityId: number, ticketFields: any[]): string {
 }
 
 // Helper function to map department IDs to names
-function getDepartmentName(deptId: number, ticketFields: any[]): string {
-  const deptField = ticketFields.find((f: any) => f.name === 'department_id');
+function getDepartmentName(deptId: number | null, ticketFields: any[]): string {
+  if (!deptId) return 'N/A';
+  const deptField = ticketFields.find((f: any) => f.name === 'department');
   if (deptField?.choices) {
     const choice = deptField.choices.find((c: any) => c.id === deptId);
     if (choice) return choice.value;
   }
   return `Department ${deptId}`;
+}
+
+// Helper function to get company name (same as department, labeled as "Company" for customers)
+function getCompanyName(deptId: number | null, ticketFields: any[]): string {
+  return getDepartmentName(deptId, ticketFields);
 }
 
 // Helper function to map group IDs to names
@@ -189,10 +195,10 @@ When a user asks for tickets:
 
 Always format results as a clear, readable markdown table. 
 
-**Default columns to show:** Ticket ID, Subject, Description (first 500 chars), Priority, Status
+**Default columns to show:** Ticket ID, Company, Subject, Description (first 500 chars), Priority, Status
 
 **All available ticket fields you can reference:**
-- id, subject, description_text, priority, status, department, group, source, type
+- id, company, subject, description_text, priority, status, department, group, source, type
 - created_at, updated_at, due_by, fr_due_by
 - requester_id, responder_id, workspace_id
 - category, sub_category, item_category
@@ -354,12 +360,13 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const formattedTickets = mcpResult.tickets.map((t: any) => {
                 const mapped: any = {
                   id: t.id,
+                  company: typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
                   subject: t.subject,
                   description_text: t.description_text?.substring(0, 500) || 'No Description Available',
                   priority: typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority,
                   status: typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status,
-                  department: typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : t.department_id,
-                  group: typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id,
+                  department: typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
+                  group: typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : (t.group_id || 'N/A'),
                   source: typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source,
                   type: t.type,
                   created_at: t.created_at,
