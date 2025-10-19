@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -24,16 +24,13 @@ interface Message {
 const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { setAdvancedControls } = useFloatingAction();
-  const [messages, setMessages] = useState<Message[]>(() => {
-    // Load messages from localStorage on init
-    const stored = localStorage.getItem('chat-messages');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { session, user } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
   const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
@@ -46,12 +43,70 @@ const Chat = () => {
   const jobLoadedRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hasActiveJob, setHasActiveJob] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Persist messages to localStorage whenever they change
+  // Create or load session on mount
   useEffect(() => {
-    localStorage.setItem('chat-messages', JSON.stringify(messages));
-    
-    // Check if there's an active job in messages
+    const initSession = async () => {
+      if (!user?.id) return;
+
+      // Check if we're loading an existing session from location state
+      const stateSessionId = location.state?.sessionId;
+      if (stateSessionId) {
+        setSessionId(stateSessionId);
+        await loadSession(stateSessionId);
+        return;
+      }
+
+      // Create new session
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: user.id,
+          title: 'New Chat'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating session:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create chat session",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSessionId(data.id);
+    };
+
+    initSession();
+  }, [user?.id, location.state]);
+
+  // Load session messages
+  const loadSession = async (sessionId: string) => {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error loading messages:', error);
+      return;
+    }
+
+    const loadedMessages: Message[] = data.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+
+    setMessages(loadedMessages);
+  };
+
+  // Check for active jobs
+  useEffect(() => {
     const activeJob = messages.some(m => 
       m.jobId && (m.jobStatus === 'pending' || m.jobStatus === 'processing')
     );
@@ -228,15 +283,33 @@ const Chat = () => {
     setShowAdvanced((prev) => !prev);
   };
 
-  const handleClearChat = useCallback(() => {
+  const handleClearChat = useCallback(async () => {
+    if (!sessionId || !user?.id) return;
+
+    // Create new session
+    const { data, error } = await supabase
+      .from('chat_sessions')
+      .insert({
+        user_id: user.id,
+        title: 'New Chat'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating new session:', error);
+      return;
+    }
+
+    setSessionId(data.id);
     setMessages([]);
-    localStorage.removeItem('chat-messages');
     jobLoadedRef.current = false;
+    
     toast({
       title: "Chat cleared",
-      description: "All messages have been removed",
+      description: "Started a new chat session",
     });
-  }, [toast]);
+  }, [sessionId, user?.id, toast]);
 
   useEffect(() => {
     setAdvancedControls({
@@ -370,10 +443,11 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || hasActiveJob) return;
+    if (!input.trim() || isLoading || hasActiveJob || !sessionId) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const messageContent = input;
+    
     setInput('');
     setIsTyping(false);
     setIsThinking(false);
@@ -385,6 +459,42 @@ const Chat = () => {
       if (!session?.access_token) {
         throw new Error('Please log in to use the chat');
       }
+
+      // Save user message to database first
+      const { error: userMsgError } = await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sessionId,
+          role: 'user',
+          content: messageContent
+        });
+
+      if (userMsgError) {
+        console.error('Error saving user message:', userMsgError);
+      }
+
+      // Update session title if this is the first message
+      if (messages.length === 0) {
+        const title = messageContent.length > 50 
+          ? messageContent.substring(0, 50) + '...' 
+          : messageContent;
+        
+        await supabase
+          .from('chat_sessions')
+          .update({ 
+            title,
+            last_message_at: new Date().toISOString()
+          })
+          .eq('id', sessionId);
+      } else {
+        // Update last_message_at
+        await supabase
+          .from('chat_sessions')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', sessionId);
+      }
+
+      setMessages((prev) => [...prev, userMessage]);
 
       // Add assistant message placeholder
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
@@ -404,6 +514,7 @@ const Chat = () => {
               Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
+              sessionId,
               messages: [...messages, userMessage].map(m => ({
                 role: m.role,
                 content: m.content
@@ -468,13 +579,15 @@ const Chat = () => {
             // Check for async job response
             if (parsed.async_job && parsed.job_id) {
               const jobId = parsed.job_id;
-              const messageIndex = messages.length + 1; // +1 for the assistant message we just added
+              const messageIndex = messages.length + 1;
+              
+              assistantContent = `Processing large query in background...\n\n${parsed.message || ''}\n\n${parsed.estimated_time || ''}`;
               
               setMessages((prev) => {
                 const newMessages = [...prev];
                 newMessages[newMessages.length - 1] = {
                   role: 'assistant',
-                  content: `Processing large query in background...\n\n${parsed.message || ''}\n\n${parsed.estimated_time || ''}`,
+                  content: assistantContent,
                   jobId,
                   jobStatus: 'pending',
                   jobProgress: 0
@@ -482,13 +595,33 @@ const Chat = () => {
                 return newMessages;
               });
 
+              // Save assistant message with job info
+              await supabase
+                .from('chat_messages')
+                .insert({
+                  session_id: sessionId,
+                  role: 'assistant',
+                  content: assistantContent
+                });
+
               // Start polling for job status
               pollJobStatus(jobId, messageIndex);
             }
           } catch (e) {
-            // Ignore parse errors
+            console.error('Error parsing SSE:', e);
           }
         }
+      }
+
+      // Save final assistant message if not a job
+      if (assistantContent && !messages[messages.length]?.jobId) {
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: assistantContent
+          });
       }
 
       } catch (fetchError: any) {

@@ -100,24 +100,48 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    
+    if (!supabaseUrl || !supabaseKey || !lovableApiKey) {
+      console.error('Missing environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const { messages } = await req.json();
+    const body = await req.json();
+    const { messages, sessionId } = body;
+    
+    if (!sessionId) {
+      return new Response(
+        JSON.stringify({ error: 'Session ID required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Chat request from user:', user.id);
     console.log('User messages:', JSON.stringify(messages, null, 2));
@@ -371,13 +395,22 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (shouldUseAsyncJob) {
                 console.log('Creating async job for large query');
                 
-                // Create async job with actual user query
+                // Get next job sequence for this session
+                const { data: seqData } = await supabase.rpc('get_next_job_sequence', {
+                  p_session_id: sessionId
+                });
+                const jobSequence = seqData || 1;
+                
+                // Create async job with actual user query and session link
                 const { data: job, error: jobError } = await supabase
                   .from('chat_jobs')
                   .insert({
                     user_id: user.id,
+                    chat_session_id: sessionId,
+                    job_sequence: jobSequence,
                     query: userQuery,
                     filters: {
+                      mcp_service_id,
                       department,
                       status,
                       excludeStatus: exclude_status,
@@ -438,12 +471,16 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   }
                 }).catch(err => console.error('Error checking background job response:', err));
 
+                // Generate job name
+                const jobName = `${sessionId.substring(0, 8)}-${String(jobSequence).padStart(3, '0')}`;
+
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({
                     async_job: true,
                     job_id: job.id,
-                    message: 'Large query detected. Processing in background. Job ID: ' + job.id,
+                    job_name: jobName,
+                    message: `Large query detected. Processing in background. Job: ${jobName}`,
                     estimated_time: 'This may take 1-20 minutes depending on the dataset size.'
                   })
                 };

@@ -23,6 +23,8 @@ interface Job {
   completed_at: string | null;
   total_tickets: number | null;
   error: string | null;
+  chat_session_id: string | null;
+  job_sequence: number | null;
 }
 
 const Jobs = () => {
@@ -196,12 +198,19 @@ const Jobs = () => {
     job.query.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const renderJob = (job: Job) => (
+  const renderJob = (job: Job) => {
+    // Generate display name
+    const jobName = job.chat_session_id && job.job_sequence 
+      ? `${job.chat_session_id.substring(0, 8)}-${String(job.job_sequence).padStart(3, '0')}`
+      : job.id.substring(0, 8);
+
+    return (
     <Card key={job.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent hover:border-l-primary group cursor-pointer">
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0">
           <div className="space-y-1 flex-1">
             <h3 className="font-semibold text-base sm:text-lg text-foreground">{job.query}</h3>
+            <p className="text-xs text-muted-foreground font-mono">{jobName}</p>
             <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <Clock className="h-3 w-3" />
               {job.created_at && formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
@@ -273,7 +282,8 @@ const Jobs = () => {
         </div>
       </div>
     </Card>
-  );
+    );
+  };
 
   if (loading) {
     return (

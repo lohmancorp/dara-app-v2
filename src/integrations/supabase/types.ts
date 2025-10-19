@@ -69,11 +69,13 @@ export type Database = {
       }
       chat_jobs: {
         Row: {
+          chat_session_id: string | null
           completed_at: string | null
           created_at: string
           error: string | null
           filters: Json | null
           id: string
+          job_sequence: number | null
           progress: number | null
           progress_message: string | null
           query: string
@@ -85,11 +87,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          chat_session_id?: string | null
           completed_at?: string | null
           created_at?: string
           error?: string | null
           filters?: Json | null
           id?: string
+          job_sequence?: number | null
           progress?: number | null
           progress_message?: string | null
           query: string
@@ -101,11 +105,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          chat_session_id?: string | null
           completed_at?: string | null
           created_at?: string
           error?: string | null
           filters?: Json | null
           id?: string
+          job_sequence?: number | null
           progress?: number | null
           progress_message?: string | null
           query?: string
@@ -113,6 +119,76 @@ export type Database = {
           started_at?: string | null
           status?: string
           total_tickets?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_jobs_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          last_message_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
@@ -663,6 +739,10 @@ export type Database = {
       get_connection_type_for_mapping: {
         Args: { _connection_id: string }
         Returns: string
+      }
+      get_next_job_sequence: {
+        Args: { p_session_id: string }
+        Returns: number
       }
       has_account_role: {
         Args: {
