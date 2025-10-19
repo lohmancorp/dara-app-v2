@@ -370,19 +370,25 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
               // Map all ticket fields with proper name resolution
               const formattedTickets = mcpResult.tickets.map((t: any) => {
+                // Helper to safely convert any value to string, handling pipes and special chars
+                const safeString = (val: any, fallback = 'N/A'): string => {
+                  if (val === null || val === undefined || val === '') return fallback;
+                  return String(val).replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+                };
+
                 const mapped: any = {
                   id: t.id,
-                  company: typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
-                  subject: t.subject,
-                  description_text: t.description_text?.substring(0, 500) || 'No Description Available',
-                  priority: typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : (t.priority || 'N/A'),
-                  status: typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : (t.status || 'N/A'),
-                  department: typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : (t.department_id || 'N/A'),
-                  group: typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : (t.group_id || 'N/A'),
-                  source: typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : (t.source || 'N/A'),
-                  type: t.type || 'N/A',
-                  created_at: t.created_at,
-                  updated_at: t.updated_at,
+                  company: safeString(typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : t.department_id),
+                  subject: safeString(t.subject, 'No Subject'),
+                  description_text: safeString(t.description_text?.substring(0, 500), 'No Description Available'),
+                  priority: safeString(typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority),
+                  status: safeString(typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status),
+                  department: safeString(typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : t.department_id),
+                  group: safeString(typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id),
+                  source: safeString(typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source),
+                  type: safeString(t.type),
+                  created_at: safeString(t.created_at),
+                  updated_at: safeString(t.updated_at),
                   due_by: t.due_by,
                   fr_due_by: t.fr_due_by,
                   requester_id: t.requester_id,
@@ -394,17 +400,17 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   is_escalated: t.is_escalated,
                   fr_escalated: t.fr_escalated,
                   // Additional custom fields explicitly mapped
-                  escalated: t.custom_fields?.escalated || null,
-                  module: t.custom_fields?.module || null,
-                  score: t.custom_fields?.score || null,
-                  ticket_type: t.custom_fields?.ticket_type || null
+                  escalated: safeString(t.custom_fields?.escalated),
+                  module: safeString(t.custom_fields?.module),
+                  score: safeString(t.custom_fields?.score),
+                  ticket_type: safeString(t.custom_fields?.ticket_type)
                 };
                 
                 // Include all other custom fields if present
                 if (t.custom_fields) {
                   Object.keys(t.custom_fields).forEach(key => {
                     if (!mapped.hasOwnProperty(key) && t.custom_fields[key] !== null && t.custom_fields[key] !== undefined) {
-                      mapped[key] = t.custom_fields[key];
+                      mapped[key] = safeString(t.custom_fields[key]);
                     }
                   });
                 }
