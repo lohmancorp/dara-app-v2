@@ -522,10 +522,44 @@ const Chat = () => {
                           ticketBaseUrl={ticketBaseUrl}
                         />
                         {message.jobId && message.jobStatus !== 'completed' && message.jobStatus !== 'failed' && (
-                          <div className="mt-2 p-3 bg-muted rounded-lg border border-border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                              <span className="text-sm font-medium">Processing in background</span>
+                          <div className="mt-2 p-3 bg-muted rounded-lg border border-border relative">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                <span className="text-sm font-medium">Processing in background</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  // Stop polling for this job
+                                  if (message.jobId) {
+                                    const interval = pollingIntervalsRef.current.get(message.jobId);
+                                    if (interval) {
+                                      clearInterval(interval);
+                                      pollingIntervalsRef.current.delete(message.jobId);
+                                    }
+                                  }
+                                  // Update message to show as stopped
+                                  setMessages((prev) => {
+                                    const newMessages = [...prev];
+                                    newMessages[index] = {
+                                      ...newMessages[index],
+                                      jobStatus: 'failed',
+                                      content: 'Job stopped by user'
+                                    };
+                                    return newMessages;
+                                  });
+                                  toast({
+                                    title: "Job stopped",
+                                    description: "Background processing has been stopped",
+                                  });
+                                }}
+                                className="h-7 px-2 text-xs"
+                              >
+                                <StopCircle className="h-3 w-3 mr-1" />
+                                Stop
+                              </Button>
                             </div>
                             {message.jobProgress !== undefined && (
                               <>

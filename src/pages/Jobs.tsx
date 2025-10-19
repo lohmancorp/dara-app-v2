@@ -85,13 +85,27 @@ const Jobs = () => {
           .eq('user_id', user.id)
           .in('status', ['pending', 'processing', 'running']);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error polling jobs:', error);
+          throw error;
+        }
 
         if (data) {
-          setActiveJobs(data);
+          // Only update if there are actual changes
+          const hasChanges = data.some((newJob, idx) => {
+            const oldJob = activeJobs[idx];
+            return !oldJob || 
+                   oldJob.progress !== newJob.progress || 
+                   oldJob.status !== newJob.status ||
+                   oldJob.progress_message !== newJob.progress_message;
+          });
+
+          if (hasChanges || data.length !== activeJobs.length) {
+            setActiveJobs(data);
+          }
           
           // If all jobs are done, refetch to update completed list
-          if (data.length === 0) {
+          if (data.length === 0 && activeJobs.length > 0) {
             fetchJobs();
           }
         }
@@ -99,6 +113,9 @@ const Jobs = () => {
         console.error('Error polling jobs:', error);
       }
     };
+
+    // Initial poll
+    pollActiveJobs();
 
     // Poll every 2 seconds
     pollingIntervalRef.current = setInterval(pollActiveJobs, 2000);
