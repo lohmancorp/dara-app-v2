@@ -187,7 +187,8 @@ serve(async (req) => {
     // Format tickets
     const safeString = (val: any, fallback = 'N/A'): string => {
       if (val === null || val === undefined || val === '') return fallback;
-      return String(val).replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+      // Escape backslashes first, then pipes, and replace newlines with spaces
+      return String(val).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
     };
 
     const formattedTickets = tickets.map((t: any) => ({
@@ -215,7 +216,7 @@ serve(async (req) => {
       fr_escalated: t.fr_escalated,
       escalated: safeString(t.custom_fields?.escalated),
       module: safeString(t.custom_fields?.module),
-      score: safeString(t.custom_fields?.score),
+      score: safeString(t.score, '0'),
       ticket_type: safeString(t.custom_fields?.ticket_type)
     }));
 
