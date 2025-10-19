@@ -130,27 +130,38 @@ const Chat = () => {
       // Add assistant message placeholder
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage].map(m => ({
-              role: m.role,
-              content: m.content
-            }))
-          }),
-        }
-      );
+      // Create an abort controller with 3 minute timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get response');
-      }
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              messages: [...messages, userMessage].map(m => ({
+                role: m.role,
+                content: m.content
+              }))
+            }),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 504) {
+            throw new Error('Request timed out. Try using more specific filters to narrow your search.');
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to get response');
+        }
 
       if (!response.body) {
         throw new Error('No response body');
@@ -199,11 +210,22 @@ const Chat = () => {
         }
       }
 
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+
     } catch (error: any) {
       console.error('Chat error:', error);
+      
+      let errorMessage = error.message || "Failed to send message";
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out after 3 minutes. Try using more specific filters to narrow your search (e.g., specific department, date range, or status).';
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to send message",
+        description: errorMessage,
         variant: "destructive",
       });
       // Remove the empty assistant message on error

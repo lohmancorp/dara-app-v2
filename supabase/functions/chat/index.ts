@@ -140,7 +140,7 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets using flexible filters. Common status IDs: 2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=Waiting on Customer, 7=Waiting on Third Party, 8=In Progress. Returns ticket ID, subject, description, priority, and status.",
+          description: "Search FreshService tickets using flexible filters. Returns up to 200 tickets max to prevent timeouts. Common status IDs: 2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=Waiting on Customer, 7=Waiting on Third Party, 8=In Progress. Returns ticket ID, subject, description, priority, and status.",
           parameters: {
             type: "object",
             properties: {
@@ -170,6 +170,10 @@ serve(async (req) => {
                 type: "array",
                 items: { type: "string" },
                 description: "Array of priority IDs (1=Low, 2=Medium, 3=High, 4=Urgent)"
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of tickets to return (default: 200, max: 200)"
               }
             },
             required: ["mcp_service_id"]
@@ -208,6 +212,10 @@ When a user asks for tickets:
 - "last month" → use created_after with date 1 month ago
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
+
+**Important: Query Limits**
+- Maximum 200 tickets returned per query to prevent timeouts
+- If the result is limited, inform the user and suggest more specific filters to narrow results
 
 Always format results as a clear, readable markdown table. 
 
@@ -343,8 +351,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
             }
 
             case 'search_freshservice_tickets': {
-              const { mcp_service_id, department, status, exclude_status, created_after, priority } = args;
-              console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority });
+              const { mcp_service_id, department, status, exclude_status, created_after, priority, limit } = args;
+              console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority, limit });
 
               // Call the MCP FreshService filter function with auth header
               const filters: any = {};
@@ -354,6 +362,10 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (exclude_status && exclude_status.length > 0) filters.excludeStatus = exclude_status;
               if (created_after) filters.createdAfter = created_after;
               if (priority && priority.length > 0) filters.priority = priority;
+              
+              // Apply limit with max of 200 to prevent timeouts
+              const maxLimit = Math.min(limit || 200, 200);
+              filters.limit = maxLimit;
 
               // Pass the auth header to the MCP function
               const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
@@ -380,9 +392,15 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               }
 
               const mcpResult = await mcpResponse.json();
-              console.log('MCP returned', mcpResult.total, 'tickets');
+              const totalTickets = mcpResult.total || 0;
+              const totalMatching = mcpResult.total_matching || mcpResult.total || 0;
+              const returnedTickets = mcpResult.tickets?.length || 0;
+              console.log('MCP returned', returnedTickets, 'tickets (total matching:', totalMatching, ')');
               
               const ticketFields = mcpResult.ticket_form_fields || [];
+              
+              // Check if results were limited
+              const wasLimited = mcpResult.limited || (returnedTickets >= maxLimit && totalMatching > maxLimit);
 
               // Map all ticket fields with proper name resolution
               const formattedTickets = mcpResult.tickets.map((t: any) => {
@@ -439,8 +457,14 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 tool_call_id: toolCall.id,
                 content: JSON.stringify({
                   total: formattedTickets.length,
+                  total_matching: totalMatching,
+                  limited: wasLimited,
+                  limit_applied: maxLimit,
                   tickets: formattedTickets,
-                  available_fields: Object.keys(formattedTickets[0] || {})
+                  available_fields: Object.keys(formattedTickets[0] || {}),
+                  message: wasLimited 
+                    ? `Note: Showing ${returnedTickets} of ${totalMatching}+ total matching tickets. Results limited to prevent timeout. Use more specific filters (department, date range, status) to narrow results.`
+                    : undefined
                 })
               };
             }

@@ -23,6 +23,7 @@ interface FilterTicketsRequest {
     updatedBefore?: string; // ISO date string
     customFields?: Record<string, string>; // Custom field filters (field_name: value)
     customQuery?: string; // Additional custom query parameters
+    limit?: number; // Maximum number of tickets to return (default: unlimited, recommended max: 200)
   };
 }
 
@@ -344,10 +345,12 @@ serve(async (req) => {
     let page = 1;
     const perPage = 100;
     let hasMorePages = true;
+    const requestedLimit = filters.limit || Infinity;
+    let totalMatching = 0; // Track total matching tickets (even if we don't fetch them all)
     
-    console.log('Starting paginated fetch with per_page:', perPage);
+    console.log('Starting paginated fetch with per_page:', perPage, 'requested limit:', requestedLimit);
     
-    while (hasMorePages) {
+    while (hasMorePages && allTickets.length < requestedLimit) {
       const filterUrl = `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(queryString)}"&per_page=${perPage}&page=${page}`;
       
       console.log(`Fetching page ${page}:`, filterUrl);
@@ -385,19 +388,37 @@ serve(async (req) => {
       
       console.log(`Page ${page}: Retrieved ${tickets.length} tickets`);
       
-      allTickets = allTickets.concat(tickets);
+      // Add tickets up to the limit
+      const remainingCapacity = requestedLimit - allTickets.length;
+      const ticketsToAdd = tickets.slice(0, remainingCapacity);
+      allTickets = allTickets.concat(ticketsToAdd);
       
       // Check if there are more pages
       hasMorePages = tickets.length === perPage;
+      
+      // If we hit the limit but there are more pages, we know there are more tickets
+      if (allTickets.length >= requestedLimit && hasMorePages) {
+        totalMatching = requestedLimit + 1; // At least one more than limit
+        break;
+      }
+      
       page++;
       
       // Add a small delay between requests to respect rate limits
-      if (hasMorePages && mcpService.call_delay_ms) {
+      if (hasMorePages && allTickets.length < requestedLimit && mcpService.call_delay_ms) {
         await new Promise(resolve => setTimeout(resolve, mcpService.call_delay_ms));
       }
     }
 
+    // If we fetched everything, totalMatching equals allTickets length
+    if (!hasMorePages || allTickets.length < requestedLimit) {
+      totalMatching = allTickets.length;
+    }
+
     console.log(`Total tickets retrieved across all pages: ${allTickets.length}`);
+    if (filters.limit && allTickets.length >= filters.limit) {
+      console.log(`Results limited to ${filters.limit} tickets`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -405,6 +426,8 @@ serve(async (req) => {
         query: queryString,
         tickets: allTickets,
         total: allTickets.length,
+        total_matching: totalMatching,
+        limited: filters.limit ? allTickets.length >= filters.limit : false,
         ticket_form_fields: ticketFields
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
