@@ -27,6 +27,17 @@ function getStatusName(statusId: number): string {
   return statusMap[statusId] || `Status ${statusId}`;
 }
 
+// Helper function to map priority IDs to names
+function getPriorityName(priorityId: number): string {
+  const priorityMap: Record<number, string> = {
+    1: 'Low',
+    2: 'Medium',
+    3: 'High',
+    4: 'Urgent'
+  };
+  return priorityMap[priorityId] || `Priority ${priorityId}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -295,7 +306,7 @@ Priority: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 id: t.id,
                 subject: t.subject,
                 description: t.description_text?.substring(0, 500) || 'No Description Available',
-                priority: t.priority,
+                priority: typeof t.priority === 'number' ? getPriorityName(t.priority) : t.priority,
                 status: typeof t.status === 'number' ? getStatusName(t.status) : t.status
               }));
 
