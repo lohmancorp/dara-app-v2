@@ -13,16 +13,16 @@ function getStatusName(statusId: number): string {
     3: 'Pending',
     4: 'Resolved',
     5: 'Closed',
-    6: 'Waiting on Customer',
-    7: 'Waiting on Third Party',
-    8: 'In Progress',
-    9: 'On Hold',
-    10: 'Scheduled',
-    11: 'Awaiting Approval',
-    12: 'Reopened',
-    15: 'Waiting for Customer Response',
-    16: 'Customer Response Received',
-    17: 'Escalated'
+    6: 'New',
+    7: 'Pending access',
+    8: 'Waiting for RnD',
+    9: 'Pending other ticket',
+    10: 'Waiting for maintenance',
+    11: 'Waiting for bugfix',
+    12: 'Service request triage',
+    15: 'Awaiting validation',
+    16: 'Conditional Hold',
+    17: 'Waiting for 3rd Party'
   };
   return statusMap[statusId] || `Status ${statusId}`;
 }
@@ -131,24 +131,24 @@ When a user asks for tickets:
 
 **Important Status IDs:**
 - 2 = Open
-- 3 = Pending  
+- 3 = Pending
 - 4 = Resolved
 - 5 = Closed
-- 6 = Waiting on Customer
-- 7 = Waiting on Third Party
-- 8 = In Progress
-- 9 = On Hold
-- 10 = Scheduled
-- 11 = Awaiting Approval
-- 12 = Reopened
-- 15 = Waiting for Customer Response
-- 16 = Customer Response Received
-- 17 = Escalated
+- 6 = New
+- 7 = Pending access
+- 8 = Waiting for RnD
+- 9 = Pending other ticket
+- 10 = Waiting for maintenance
+- 11 = Waiting for bugfix
+- 12 = Service request triage
+- 15 = Awaiting validation
+- 16 = Conditional Hold
+- 17 = Waiting for 3rd Party
 
 **How to handle requests:**
 - "not closed" or "not resolved" → use exclude_status: ['4', '5']
-- "unresolved" → use status: ['6', '2', '3', '7', '8', '9', '10', '11', '17', '12', '16']
-- "waiting on customer" → use status: ['15', '3', '7', '16']
+- "unresolved" → use status: ['2', '3', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17']
+- "waiting for RnD" → use status: ['8']
 - "last month" → use created_after with date 1 month ago
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
