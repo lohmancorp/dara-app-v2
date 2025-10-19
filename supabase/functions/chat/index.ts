@@ -214,8 +214,10 @@ When a user asks for tickets:
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
 
 **Important: Query Limits**
-- Maximum 200 tickets returned per query to prevent timeouts
-- If the result is limited, inform the user and suggest more specific filters to narrow results
+- For queries expected to return >200 tickets, automatically use async job processing
+- Async jobs can handle up to 1000+ tickets and run for up to 20 minutes
+- For smaller queries (<200 tickets), use synchronous processing for immediate results
+- If the result is limited in sync mode, inform the user and suggest more specific filters
 
 Always format results as a clear, readable markdown table. 
 
@@ -354,7 +356,60 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const { mcp_service_id, department, status, exclude_status, created_after, priority, limit } = args;
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority, limit });
 
-              // Call the MCP FreshService filter function with auth header
+              // Check if this should be an async job (large query)
+              const requestedLimit = limit || 200;
+              const shouldUseAsyncJob = requestedLimit > 200 || exclude_status?.length === 0 || (!status && !exclude_status);
+              
+              if (shouldUseAsyncJob) {
+                console.log('Creating async job for large query');
+                
+                // Create async job
+                const { data: job, error: jobError } = await supabase
+                  .from('chat_jobs')
+                  .insert({
+                    user_id: user.id,
+                    query: JSON.stringify(args),
+                    filters: {
+                      department,
+                      status,
+                      excludeStatus: exclude_status,
+                      createdAfter: created_after,
+                      priority
+                    }
+                  })
+                  .select()
+                  .single();
+
+                if (jobError || !job) {
+                  console.error('Failed to create job:', jobError);
+                  return {
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify({ error: 'Failed to create async job' })
+                  };
+                }
+
+                // Start background processing (non-blocking)
+                fetch(`${supabaseUrl}/functions/v1/process-chat-job`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ jobId: job.id })
+                }).catch(err => console.error('Failed to trigger background job:', err));
+
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({
+                    async_job: true,
+                    job_id: job.id,
+                    message: 'Large query detected. Processing in background. Job ID: ' + job.id,
+                    estimated_time: 'This may take 1-20 minutes depending on the dataset size.'
+                  })
+                };
+              }
+
+              // Synchronous processing for smaller queries
               const filters: any = {};
               
               if (department) filters.department = department;
@@ -363,8 +418,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (created_after) filters.createdAfter = created_after;
               if (priority && priority.length > 0) filters.priority = priority;
               
-              // Apply limit with max of 200 to prevent timeouts
-              const maxLimit = Math.min(limit || 200, 200);
+              // Apply limit with max of 200 for sync queries
+              const maxLimit = Math.min(requestedLimit, 200);
               filters.limit = maxLimit;
 
               // Pass the auth header to the MCP function

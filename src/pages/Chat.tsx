@@ -14,6 +14,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  jobId?: string;
+  jobStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  jobProgress?: number;
+  jobProgressMessage?: string;
 }
 
 const Chat = () => {
@@ -32,6 +36,7 @@ const Chat = () => {
   const [isFocused, setIsFocused] = useState(false);
   const mouseStartPos = useRef<{ x: number; y: number } | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     // Fetch user profile avatar
@@ -108,8 +113,84 @@ const Chat = () => {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      // Clean up all polling intervals
+      pollingIntervalsRef.current.forEach(interval => clearInterval(interval));
+      pollingIntervalsRef.current.clear();
+    };
   }, []);
+
+  const pollJobStatus = async (jobId: string, messageIndex: number) => {
+    // Clear any existing interval for this job
+    const existingInterval = pollingIntervalsRef.current.get(jobId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-chat-job-status`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ jobId }),
+          }
+        );
+
+        if (response.ok) {
+          const jobData = await response.json();
+          
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            if (newMessages[messageIndex]) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                jobStatus: jobData.status,
+                jobProgress: jobData.progress,
+                jobProgressMessage: jobData.progress_message,
+              };
+
+              // If completed, add results to content
+              if (jobData.status === 'completed' && jobData.result) {
+                const tickets = jobData.result.tickets || [];
+                const total = jobData.result.total || 0;
+                
+                // Generate markdown table
+                let tableContent = `Found ${total} tickets:\n\n`;
+                tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+                tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+                
+                tickets.forEach((ticket: any) => {
+                  tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+                });
+
+                newMessages[messageIndex].content = tableContent;
+              } else if (jobData.status === 'failed') {
+                newMessages[messageIndex].content = `Job failed: ${jobData.error || 'Unknown error'}`;
+              }
+            }
+            return newMessages;
+          });
+
+          // Stop polling if job is done
+          if (jobData.status === 'completed' || jobData.status === 'failed') {
+            clearInterval(pollInterval);
+            pollingIntervalsRef.current.delete(jobId);
+            setIsLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling job status:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    pollingIntervalsRef.current.set(jobId, pollInterval);
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -204,6 +285,27 @@ const Chat = () => {
                 return newMessages;
               });
             }
+            
+            // Check for async job response
+            if (parsed.async_job && parsed.job_id) {
+              const jobId = parsed.job_id;
+              const messageIndex = messages.length + 1; // +1 for the assistant message we just added
+              
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = {
+                  role: 'assistant',
+                  content: `Processing large query in background...\n\n${parsed.message || ''}\n\n${parsed.estimated_time || ''}`,
+                  jobId,
+                  jobStatus: 'pending',
+                  jobProgress: 0
+                };
+                return newMessages;
+              });
+
+              // Start polling for job status
+              pollJobStatus(jobId, messageIndex);
+            }
           } catch (e) {
             // Ignore parse errors
           }
@@ -279,14 +381,34 @@ const Chat = () => {
                 ) : (
                   <div className="p-4 space-y-4">
                     {messages.map((message, index) => (
-                      <ChatMessage
-                        key={index}
-                        role={message.role}
-                        content={message.content}
-                        isStreaming={isLoading && index === messages.length - 1 && !message.content}
-                        userAvatarUrl={userAvatarUrl}
-                        ticketBaseUrl={ticketBaseUrl}
-                      />
+                      <div key={index}>
+                        <ChatMessage
+                          role={message.role}
+                          content={message.content}
+                          isStreaming={isLoading && index === messages.length - 1 && !message.content}
+                          userAvatarUrl={userAvatarUrl}
+                          ticketBaseUrl={ticketBaseUrl}
+                        />
+                        {message.jobId && message.jobStatus !== 'completed' && message.jobStatus !== 'failed' && (
+                          <div className="mt-2 p-3 bg-muted rounded-lg border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                              <span className="text-sm font-medium">Processing in background</span>
+                            </div>
+                            {message.jobProgress !== undefined && (
+                              <>
+                                <div className="w-full bg-background rounded-full h-2 mb-1">
+                                  <div 
+                                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${message.jobProgress}%` }}
+                                  />
+                                </div>
+                                <p className="text-xs text-muted-foreground">{message.jobProgressMessage || `${message.jobProgress}% complete`}</p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ))}
                     {(isTyping || isThinking) && !isLoading && (
                       <div className="flex gap-4 p-4 sm:p-6 pr-[20px] justify-end">

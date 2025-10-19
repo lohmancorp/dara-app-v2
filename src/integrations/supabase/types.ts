@@ -67,6 +67,57 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          filters: Json | null
+          id: string
+          progress: number | null
+          progress_message: string | null
+          query: string
+          result: Json | null
+          started_at: string | null
+          status: string
+          total_tickets: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          filters?: Json | null
+          id?: string
+          progress?: number | null
+          progress_message?: string | null
+          query: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          total_tickets?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          filters?: Json | null
+          id?: string
+          progress?: number | null
+          progress_message?: string | null
+          query?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          total_tickets?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       connection_tokens: {
         Row: {
           auth_config: Json | null
