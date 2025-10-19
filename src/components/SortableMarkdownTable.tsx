@@ -35,8 +35,8 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
   const [showColumnDialog, setShowColumnDialog] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<boolean[]>(headers.map(() => true));
   
-  // Find description column index
-  const descriptionIndex = headers.findIndex(h => h.toLowerCase() === 'description');
+  // Find description column index (check for both 'description' and 'description_text')
+  const descriptionIndex = headers.findIndex(h => h.toLowerCase() === 'description' || h.toLowerCase() === 'description_text');
   const subjectIndex = headers.findIndex(h => h.toLowerCase() === 'subject');
   
   // Define which columns should be hidden by default
