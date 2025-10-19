@@ -307,6 +307,7 @@ serve(async (req) => {
     }
 
     console.log('FreshService Query:', queryString);
+    console.log('Query parts:', JSON.stringify(queryParts, null, 2));
 
     // Execute the filter query with pagination
     let allTickets: any[] = [];
@@ -320,6 +321,8 @@ serve(async (req) => {
       const filterUrl = `${endpoint}/api/v2/tickets/filter?query="${encodeURIComponent(queryString)}"&per_page=${perPage}&page=${page}`;
       
       console.log(`Fetching page ${page}:`, filterUrl);
+      console.log('Full request URL:', filterUrl);
+      console.log('Authorization header type:', authHeaderValue.split(' ')[0]);
       
       const ticketsResponse = await fetch(filterUrl, {
         headers: {
@@ -330,8 +333,21 @@ serve(async (req) => {
 
       if (!ticketsResponse.ok) {
         const errorText = await ticketsResponse.text();
-        console.error('FreshService filter error:', errorText);
-        throw new Error(`FreshService API error: ${ticketsResponse.status} ${ticketsResponse.statusText}`);
+        console.error('FreshService API Error Response:');
+        console.error('Status:', ticketsResponse.status, ticketsResponse.statusText);
+        console.error('Response Body:', errorText);
+        console.error('Query that failed:', queryString);
+        console.error('Encoded query:', encodeURIComponent(queryString));
+        
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = JSON.stringify(errorJson, null, 2);
+        } catch (e) {
+          // Not JSON, use as-is
+        }
+        
+        throw new Error(`FreshService API error: ${ticketsResponse.status} ${ticketsResponse.statusText}. Details: ${errorDetails}`);
       }
 
       const ticketsData = await ticketsResponse.json();
