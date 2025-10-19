@@ -109,16 +109,20 @@ serve(async (req) => {
     const fieldsData = await fieldsResponse.json();
     const ticketFields = fieldsData.ticket_fields || [];
 
+    console.log('Fetched', ticketFields.length, 'ticket fields');
+
     // Build query parts
     const queryParts: string[] = [];
 
     // Handle department filter
     if (filters.department) {
+      console.log('Looking up department:', filters.department);
       const departmentField = ticketFields.find((f: any) => 
         f.name === 'department_id' || f.label === 'Department'
       );
 
       if (departmentField) {
+        console.log('Found department field with', departmentField.choices?.length || 0, 'choices');
         let departmentId = filters.department;
         
         // If department is not a number, try to find it in choices
@@ -127,11 +131,17 @@ serve(async (req) => {
             c.value?.toLowerCase() === filters.department?.toLowerCase()
           );
           if (choice) {
+            console.log('Resolved department:', filters.department, '-> ID:', choice.id);
             departmentId = choice.id.toString();
+          } else {
+            console.log('Department not found in choices. Available:', 
+              departmentField.choices?.map((c: any) => c.value).slice(0, 10) || []);
           }
         }
 
         queryParts.push(`department_id:${departmentId}`);
+      } else {
+        console.log('Department field not found in ticket_form_fields');
       }
     }
 
