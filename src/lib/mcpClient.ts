@@ -74,6 +74,15 @@ export class MCPClient {
     filters: {
       department?: string;
       status?: string[];
+      excludeStatus?: string[];
+      priority?: string[];
+      assignee?: string;
+      requester?: string;
+      createdAfter?: string;
+      createdBefore?: string;
+      updatedAfter?: string;
+      updatedBefore?: string;
+      customFields?: Record<string, string>;
       customQuery?: string;
     },
     ownerType?: 'user' | 'team' | 'account',

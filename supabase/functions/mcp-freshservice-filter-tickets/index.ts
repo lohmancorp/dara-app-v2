@@ -13,6 +13,15 @@ interface FilterTicketsRequest {
   filters: {
     department?: string; // Human-readable department name or ID
     status?: string[]; // Array of human-readable status names or IDs
+    excludeStatus?: string[]; // Array of status names or IDs to exclude
+    priority?: string[]; // Array of priority names or IDs
+    assignee?: string; // Assignee email or ID
+    requester?: string; // Requester email or ID
+    createdAfter?: string; // ISO date string
+    createdBefore?: string; // ISO date string
+    updatedAfter?: string; // ISO date string
+    updatedBefore?: string; // ISO date string
+    customFields?: Record<string, string>; // Custom field filters (field_name: value)
     customQuery?: string; // Additional custom query parameters
   };
 }
@@ -126,7 +135,7 @@ serve(async (req) => {
       }
     }
 
-    // Handle status filter
+    // Handle status filter (include)
     if (filters.status && filters.status.length > 0) {
       const statusField = ticketFields.find((f: any) => 
         f.name === 'status' || f.label === 'Status'
@@ -160,6 +169,117 @@ serve(async (req) => {
             // Use parentheses for OR conditions
             queryParts.push(`(${statusConditions.join(' OR ')})`);
           }
+        }
+      }
+    }
+
+    // Handle status exclusion filter
+    if (filters.excludeStatus && filters.excludeStatus.length > 0) {
+      const statusField = ticketFields.find((f: any) => 
+        f.name === 'status' || f.label === 'Status'
+      );
+
+      if (statusField) {
+        const excludeStatusIds: string[] = [];
+
+        for (const statusValue of filters.excludeStatus) {
+          let statusId = statusValue;
+          
+          if (isNaN(Number(statusValue))) {
+            const choice = statusField.choices?.find((c: any) => 
+              c.value?.toLowerCase() === statusValue.toLowerCase()
+            );
+            if (choice) {
+              statusId = choice.id.toString();
+            }
+          }
+
+          excludeStatusIds.push(statusId);
+        }
+
+        // Build NOT status conditions
+        if (excludeStatusIds.length > 0) {
+          const excludeConditions = excludeStatusIds.map(id => `status:!${id}`);
+          excludeConditions.forEach(cond => queryParts.push(cond));
+        }
+      }
+    }
+
+    // Handle priority filter
+    if (filters.priority && filters.priority.length > 0) {
+      const priorityField = ticketFields.find((f: any) => 
+        f.name === 'priority' || f.label === 'Priority'
+      );
+
+      if (priorityField) {
+        const priorityIds: string[] = [];
+
+        for (const priorityValue of filters.priority) {
+          let priorityId = priorityValue;
+          
+          if (isNaN(Number(priorityValue))) {
+            const choice = priorityField.choices?.find((c: any) => 
+              c.value?.toLowerCase() === priorityValue.toLowerCase()
+            );
+            if (choice) {
+              priorityId = choice.id.toString();
+            }
+          }
+
+          priorityIds.push(priorityId);
+        }
+
+        if (priorityIds.length > 0) {
+          const priorityConditions = priorityIds.map(id => `priority:${id}`);
+          if (priorityConditions.length === 1) {
+            queryParts.push(priorityConditions[0]);
+          } else {
+            queryParts.push(`(${priorityConditions.join(' OR ')})`);
+          }
+        }
+      }
+    }
+
+    // Handle assignee filter
+    if (filters.assignee) {
+      queryParts.push(`agent_id:${filters.assignee}`);
+    }
+
+    // Handle requester filter
+    if (filters.requester) {
+      queryParts.push(`requester_id:${filters.requester}`);
+    }
+
+    // Handle date filters
+    if (filters.createdAfter) {
+      queryParts.push(`created_at:>'${filters.createdAfter}'`);
+    }
+
+    if (filters.createdBefore) {
+      queryParts.push(`created_at:<'${filters.createdBefore}'`);
+    }
+
+    if (filters.updatedAfter) {
+      queryParts.push(`updated_at:>'${filters.updatedAfter}'`);
+    }
+
+    if (filters.updatedBefore) {
+      queryParts.push(`updated_at:<'${filters.updatedBefore}'`);
+    }
+
+    // Handle custom field filters
+    if (filters.customFields) {
+      for (const [fieldName, fieldValue] of Object.entries(filters.customFields)) {
+        // Try to find the field in ticket_fields to get the proper field name
+        const field = ticketFields.find((f: any) => 
+          f.name === fieldName || f.label?.toLowerCase() === fieldName.toLowerCase()
+        );
+        
+        if (field) {
+          queryParts.push(`${field.name}:${fieldValue}`);
+        } else {
+          // If not found, use as-is
+          queryParts.push(`${fieldName}:${fieldValue}`);
         }
       }
     }
