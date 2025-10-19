@@ -62,7 +62,8 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     'sub_category',
     'item_category',
     'is_escalated',
-    'fr_escalated'
+    'fr_escalated',
+    'priority_value'
   ];
   
   // Hide specified columns by default
@@ -82,9 +83,20 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
       return rows;
     }
 
+    // Check if we're sorting by priority column
+    const sortingByPriority = headers[sortColumn]?.toLowerCase() === 'priority';
+    const priorityValueIndex = headers.findIndex(h => h.toLowerCase() === 'priority_value');
+
     return [...rows].sort((a, b) => {
-      const aVal = a[sortColumn] || '';
-      const bVal = b[sortColumn] || '';
+      // If sorting by priority and we have a priority_value column, use that for sorting
+      let aVal, bVal;
+      if (sortingByPriority && priorityValueIndex !== -1) {
+        aVal = a[priorityValueIndex] || '0';
+        bVal = b[priorityValueIndex] || '0';
+      } else {
+        aVal = a[sortColumn] || '';
+        bVal = b[sortColumn] || '';
+      }
       
       // Try to parse as numbers first
       const aNum = parseFloat(aVal);
@@ -99,7 +111,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         ? aVal.localeCompare(bVal)
         : bVal.localeCompare(aVal);
     });
-  }, [rows, sortColumn, sortDirection]);
+  }, [rows, sortColumn, sortDirection, headers]);
   
   // Filter rows to only include visible columns
   const filteredRows = useMemo(() => {

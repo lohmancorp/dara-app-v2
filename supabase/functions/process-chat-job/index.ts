@@ -197,6 +197,7 @@ serve(async (req) => {
       subject: safeString(t.subject, 'No Subject'),
       description_text: safeString(t.description_text?.substring(0, 500), 'No Description Available'),
       priority: safeString(typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority),
+      priority_value: typeof t.priority === 'number' ? t.priority : 0,
       status: safeString(typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status),
       department: safeString(typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : t.department_id),
       group: safeString(typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id),
