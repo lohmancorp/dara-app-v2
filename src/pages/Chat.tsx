@@ -91,7 +91,8 @@ const Chat = () => {
 
     const loadedMessages: Message[] = data.map(msg => ({
       role: msg.role as 'user' | 'assistant',
-      content: msg.content
+      content: msg.content,
+      jobId: msg.job_id || undefined
     }));
 
     setMessages(loadedMessages);
@@ -116,45 +117,62 @@ const Chat = () => {
 
       // For each completed job, check if we need to update the message
       for (const job of jobs) {
+        let tableContent: string | null = null;
+        let failedContent: string | null = null;
+        
+        if (job.status === 'completed' && job.result) {
+          const result = job.result as { tickets?: any[]; total?: number };
+          const tickets = result.tickets || [];
+          const total = result.total || 0;
+          
+          tableContent = `Found ${total} tickets:\n\n`;
+          tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+          tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+          
+          tickets.forEach((ticket: any) => {
+            tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+          });
+        } else if (job.status === 'failed') {
+          failedContent = `Job failed: ${job.error || 'Unknown error'}`;
+        }
+        
         setMessages((prev) => {
-          const jobMessageIndex = prev.findIndex(m => 
-            m.content.includes(`Job ID: ${job.id}`) && 
-            (m.jobStatus === 'pending' || m.jobStatus === 'processing' || !m.jobStatus)
-          );
+          const jobMessageIndex = prev.findIndex(m => m.jobId === job.id);
 
           if (jobMessageIndex === -1) return prev;
 
           const newMessages = [...prev];
           
-          if (job.status === 'completed' && job.result) {
-            const result = job.result as { tickets?: any[]; total?: number };
-            const tickets = result.tickets || [];
-            const total = result.total || 0;
-            
-            let tableContent = `Found ${total} tickets:\n\n`;
-            tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-            tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-            
-            tickets.forEach((ticket: any) => {
-              tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-            });
-
+          if (tableContent) {
             newMessages[jobMessageIndex] = {
               ...newMessages[jobMessageIndex],
               content: tableContent,
               jobStatus: 'completed',
               jobProgress: 100
             };
-          } else if (job.status === 'failed') {
+          } else if (failedContent) {
             newMessages[jobMessageIndex] = {
               ...newMessages[jobMessageIndex],
-              content: `Job failed: ${job.error || 'Unknown error'}`,
+              content: failedContent,
               jobStatus: 'failed'
             };
           }
 
           return newMessages;
         });
+        
+        // Update database with results
+        if (tableContent) {
+          await supabase
+            .from('chat_messages')
+            .update({ content: tableContent })
+            .eq('job_id', job.id);
+        } else if (failedContent) {
+          await supabase
+            .from('chat_messages')
+            .update({ content: failedContent })
+            .eq('job_id', job.id);
+        }
       }
     } catch (error) {
       console.error('Error checking stale jobs:', error);
@@ -434,6 +452,26 @@ const Chat = () => {
         if (response.ok) {
           const jobData = await response.json();
           
+          // Prepare update data outside of setMessages
+          let tableContent: string | null = null;
+          let failedContent: string | null = null;
+          
+          if (jobData.status === 'completed' && jobData.result) {
+            const tickets = jobData.result.tickets || [];
+            const total = jobData.result.total || 0;
+            
+            // Generate markdown table
+            tableContent = `Found ${total} tickets:\n\n`;
+            tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+            tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+            
+            tickets.forEach((ticket: any) => {
+              tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+            });
+          } else if (jobData.status === 'failed') {
+            failedContent = `Job failed: ${jobData.error || 'Unknown error'}`;
+          }
+          
           setMessages((prev) => {
             const newMessages = [...prev];
             // Find the message with this jobId instead of using index
@@ -447,27 +485,28 @@ const Chat = () => {
                 jobProgressMessage: jobData.progress_message,
               };
 
-              // If completed, add results to content
-              if (jobData.status === 'completed' && jobData.result) {
-                const tickets = jobData.result.tickets || [];
-                const total = jobData.result.total || 0;
-                
-                // Generate markdown table
-                let tableContent = `Found ${total} tickets:\n\n`;
-                tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-                tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-                
-                tickets.forEach((ticket: any) => {
-                  tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-                });
-
+              // Update content if job is complete or failed
+              if (tableContent) {
                 newMessages[jobMessageIndex].content = tableContent;
-              } else if (jobData.status === 'failed') {
-                newMessages[jobMessageIndex].content = `Job failed: ${jobData.error || 'Unknown error'}`;
+              } else if (failedContent) {
+                newMessages[jobMessageIndex].content = failedContent;
               }
             }
             return newMessages;
           });
+          
+          // Update database outside of setMessages
+          if (tableContent) {
+            await supabase
+              .from('chat_messages')
+              .update({ content: tableContent })
+              .eq('job_id', jobId);
+          } else if (failedContent) {
+            await supabase
+              .from('chat_messages')
+              .update({ content: failedContent })
+              .eq('job_id', jobId);
+          }
 
           // Stop polling if job is done
           if (jobData.status === 'completed' || jobData.status === 'failed') {
@@ -669,7 +708,8 @@ const Chat = () => {
                 .insert({
                   session_id: currentSessionId,
                   role: 'assistant',
-                  content: assistantContent
+                  content: assistantContent,
+                  job_id: jobId
                 });
 
               // Start polling for job status

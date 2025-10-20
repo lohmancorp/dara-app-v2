@@ -137,6 +137,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          job_id: string | null
           role: string
           session_id: string
         }
@@ -144,6 +145,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          job_id?: string | null
           role: string
           session_id: string
         }
@@ -151,10 +153,18 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          job_id?: string | null
           role?: string
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "chat_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_session_id_fkey"
             columns: ["session_id"]
