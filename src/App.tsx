@@ -26,6 +26,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import AdminConnections from "./pages/admin/Connections";
+import AdminEditConnection from "./pages/admin/EditConnection";
 import AdminAccounts from "./pages/admin/Accounts";
 import AdminUsers from "./pages/admin/Users";
 import AdminRoles from "./pages/admin/Roles";
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AppLayout><Admin /></AppLayout></ProtectedRoute>} />
               <Route path="/admin/connections" element={<ProtectedRoute><AppLayout><AdminConnections /></AppLayout></ProtectedRoute>} />
+              <Route path="/admin/connections/:id" element={<ProtectedRoute><AppLayout><AdminEditConnection /></AppLayout></ProtectedRoute>} />
               <Route path="/admin/accounts" element={<ProtectedRoute><AppLayout><AdminAccounts /></AppLayout></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AppLayout><AdminUsers /></AppLayout></ProtectedRoute>} />
               <Route path="/admin/roles" element={<ProtectedRoute><AppLayout><AdminRoles /></AppLayout></ProtectedRoute>} />

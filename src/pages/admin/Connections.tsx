@@ -1,14 +1,11 @@
-import { Cable } from "lucide-react";
+import { Cable, Settings, CheckCircle, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { TagInput } from "@/components/TagInput";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
@@ -70,10 +67,9 @@ const CONNECTION_CONFIGS: Record<ConnectionType, { name: string; description: st
 
 const AdminConnections = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [services, setServices] = useState<MCPService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingService, setEditingService] = useState<string | null>(null);
-  const [existingTags, setExistingTags] = useState<string[]>([]);
 
   useEffect(() => {
     fetchServices();
@@ -88,15 +84,6 @@ const AdminConnections = () => {
 
       if (error) throw error;
       setServices((data || []) as MCPService[]);
-      
-      // Collect all unique tags from all services
-      if (data && data.length > 0) {
-        const tags = new Set<string>();
-        data.forEach((service: any) => {
-          service.tags?.forEach((tag: string) => tags.add(tag));
-        });
-        setExistingTags(Array.from(tags));
-      }
     } catch (error: any) {
       toast({
         title: "Error fetching services",
@@ -105,31 +92,6 @@ const AdminConnections = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleUpdateService = async (serviceId: string, updates: Partial<MCPService>) => {
-    try {
-      const { error } = await supabase
-        .from('mcp_services')
-        .update(updates)
-        .eq('id', serviceId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Service updated",
-        description: "Configuration saved successfully",
-      });
-
-      await fetchServices();
-      setEditingService(null);
-    } catch (error: any) {
-      toast({
-        title: "Error updating service",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
 
@@ -152,286 +114,6 @@ const AdminConnections = () => {
     return services.find(s => s.service_type === type);
   };
 
-  const renderConnectionCard = (type: ConnectionType) => {
-    const config = CONNECTION_CONFIGS[type];
-    const service = getServiceByType(type);
-
-    if (!service) {
-      return (
-        <Card key={type}>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <img 
-                  src={config.icon} 
-                  alt={`${config.name} icon`}
-                  className="h-5 w-5 object-contain"
-                />
-              </div>
-              <div>
-                <CardTitle>{config.name}</CardTitle>
-                <CardDescription>{config.description}</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Configuration not available</p>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return (
-      <Card key={type}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <img 
-                src={config.icon} 
-                alt={`${config.name} icon`}
-                className="h-5 w-5 object-contain"
-              />
-            </div>
-            <div>
-              <CardTitle>{config.name}</CardTitle>
-              <CardDescription>{config.description}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor={`is-active-${service.id}`}>
-                Enable Connection Globally
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {service.is_active 
-                  ? "This connection is available to all users" 
-                  : "This connection is disabled and unavailable to users"}
-              </p>
-            </div>
-            <Switch
-              id={`is-active-${service.id}`}
-              checked={service.is_active}
-              onCheckedChange={(checked) => 
-                handleUpdateService(service.id, { is_active: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor={`uses-app-token-${service.id}`}>
-                Use App-Level Token
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {service.uses_app_token 
-                  ? "Users will use the app-wide token set by admin" 
-                  : "Users must provide their own credentials"}
-              </p>
-            </div>
-            <Switch
-              id={`uses-app-token-${service.id}`}
-              checked={service.uses_app_token}
-              onCheckedChange={(checked) => 
-                handleUpdateService(service.id, { uses_app_token: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label htmlFor={`endpoint-${service.id}`}>Endpoint Host</Label>
-            <Input
-              id={`endpoint-${service.id}`}
-              type="text"
-              value={editingService === service.id ? undefined : service.endpoint_template || ''}
-              defaultValue={service.endpoint_template || ''}
-              placeholder="https://api.example.com"
-              onFocus={() => setEditingService(service.id)}
-              onBlur={(e) => {
-                const value = e.target.value.trim();
-                if (value !== service.endpoint_template) {
-                  handleUpdateService(service.id, { endpoint_template: value || null });
-                } else {
-                  setEditingService(null);
-                }
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              Default API endpoint for this connection type
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor={`allow-custom-endpoint-${service.id}`}>
-                Allow Custom Endpoint
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {service.allow_custom_endpoint 
-                  ? "Users can define their own endpoint (e.g., customer-specific URLs)" 
-                  : "Users must use the admin-defined endpoint above"}
-              </p>
-            </div>
-            <Switch
-              id={`allow-custom-endpoint-${service.id}`}
-              checked={service.allow_custom_endpoint}
-              onCheckedChange={(checked) => 
-                handleUpdateService(service.id, { allow_custom_endpoint: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label htmlFor={`tags-${service.id}`}>Connection Tags</Label>
-            <TagInput
-              id={`tags-${service.id}`}
-              value={service.tags || []}
-              onChange={(tags) => handleUpdateService(service.id, { tags })}
-              placeholder="Type to search or create tags..."
-              suggestions={existingTags}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-4">API Rate Limits</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`call-delay-${service.id}`}>
-                    Call Delay (ms)
-                  </Label>
-                  <Input
-                    id={`call-delay-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.call_delay_ms}
-                    defaultValue={service.call_delay_ms}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.call_delay_ms) {
-                        handleUpdateService(service.id, { call_delay_ms: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Minimum delay between consecutive API calls in milliseconds
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`retry-delay-${service.id}`}>
-                    Retry Delay (sec)
-                  </Label>
-                  <Input
-                    id={`retry-delay-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.retry_delay_sec}
-                    defaultValue={service.retry_delay_sec}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.retry_delay_sec) {
-                        handleUpdateService(service.id, { retry_delay_sec: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Wait time in seconds before retrying a failed request
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`max-retries-${service.id}`}>
-                    Max Retries
-                  </Label>
-                  <Input
-                    id={`max-retries-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.max_retries}
-                    defaultValue={service.max_retries}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.max_retries) {
-                        handleUpdateService(service.id, { max_retries: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Number of retry attempts when a request fails
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`rate-limit-${service.id}`}>
-                    Calls per Minute
-                  </Label>
-                  <Input
-                    id={`rate-limit-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.rate_limit_per_minute}
-                    defaultValue={service.rate_limit_per_minute}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.rate_limit_per_minute) {
-                        handleUpdateService(service.id, { rate_limit_per_minute: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Maximum number of API calls allowed per minute
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`rate-limit-hour-${service.id}`}>
-                    Calls per Hour
-                  </Label>
-                  <Input
-                    id={`rate-limit-hour-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.rate_limit_per_hour}
-                    defaultValue={service.rate_limit_per_hour}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.rate_limit_per_hour) {
-                        handleUpdateService(service.id, { rate_limit_per_hour: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Maximum number of API calls allowed per hour
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <PageHeader 
@@ -441,13 +123,60 @@ const AdminConnections = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="space-y-6">
-          {renderConnectionCard('freshservice')}
-          {renderConnectionCard('jira')}
-          {renderConnectionCard('confluence')}
-          {renderConnectionCard('gemini')}
-          {renderConnectionCard('openai')}
-          {renderConnectionCard('google_alerts')}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {Object.entries(CONNECTION_CONFIGS).map(([type, config]) => {
+            const service = getServiceByType(type as ConnectionType);
+            if (!service) return null;
+
+            return (
+              <Card 
+                key={type} 
+                className="hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary cursor-pointer"
+                onClick={() => navigate(`/admin/connections/${service.id}`)}
+              >
+                <div className="p-6 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="p-px rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <img 
+                        src={config.icon} 
+                        alt={`${config.name} icon`}
+                        className="h-7 w-7 object-contain"
+                      />
+                    </div>
+                    <Badge
+                      variant={service.is_active ? "default" : "destructive"}
+                      className={`flex items-center gap-1.5 ${
+                        service.is_active 
+                          ? "bg-green-500 hover:bg-green-600" 
+                          : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
+                      }`}
+                    >
+                      {service.is_active ? (
+                        <CheckCircle className="h-3 w-3" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3" />
+                      )}
+                      <span>{service.is_active ? "Enabled" : "Disabled"}</span>
+                    </Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                      {config.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {config.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="text-xs text-muted-foreground">
+                      {service.uses_app_token ? "App Token" : "User Token"}
+                    </div>
+                    <Settings className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>
