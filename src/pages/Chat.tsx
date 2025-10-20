@@ -183,6 +183,109 @@ const Chat = () => {
     }
   };
 
+  // Subscribe to real-time job updates
+  useEffect(() => {
+    if (!chatId || !session?.access_token) return;
+
+    const channel = supabase
+      .channel(`chat_jobs:${chatId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_jobs',
+          filter: `chat_session_id=eq.${chatId}`
+        },
+        async (payload) => {
+          console.log('Job update received:', payload);
+          const job = payload.new as any;
+          
+          if (job.status === 'completed' || job.status === 'failed') {
+            // Update the message with job results
+            let tableContent: string | null = null;
+            let failedContent: string | null = null;
+            
+            if (job.status === 'completed' && job.result) {
+              const result = job.result as { tickets?: any[]; total?: number };
+              const tickets = result.tickets || [];
+              const total = result.total || 0;
+              
+              tableContent = `Found ${total} tickets:\n\n`;
+              tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
+              tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
+              
+              tickets.forEach((ticket: any) => {
+                tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
+              });
+            } else if (job.status === 'failed') {
+              failedContent = `Job failed: ${job.error || 'Unknown error'}`;
+            }
+            
+            setMessages((prev) => {
+              const jobMessageIndex = prev.findIndex(m => m.jobId === job.id);
+              if (jobMessageIndex === -1) return prev;
+
+              const newMessages = [...prev];
+              
+              if (tableContent) {
+                newMessages[jobMessageIndex] = {
+                  ...newMessages[jobMessageIndex],
+                  content: tableContent,
+                  jobStatus: 'completed',
+                  jobProgress: 100
+                };
+              } else if (failedContent) {
+                newMessages[jobMessageIndex] = {
+                  ...newMessages[jobMessageIndex],
+                  content: failedContent,
+                  jobStatus: 'failed'
+                };
+              }
+
+              return newMessages;
+            });
+            
+            // Update database with results
+            if (tableContent) {
+              await supabase
+                .from('chat_messages')
+                .update({ content: tableContent })
+                .eq('job_id', job.id);
+                
+              toast({
+                title: "Job Completed",
+                description: `Successfully processed ${(job.result as any)?.total || 0} tickets`,
+              });
+            } else if (failedContent) {
+              await supabase
+                .from('chat_messages')
+                .update({ content: failedContent })
+                .eq('job_id', job.id);
+                
+              toast({
+                title: "Job Failed",
+                description: job.error || 'Unknown error',
+                variant: "destructive"
+              });
+            }
+            
+            // Clear polling interval for this job
+            const interval = pollingIntervalsRef.current.get(job.id);
+            if (interval) {
+              clearInterval(interval);
+              pollingIntervalsRef.current.delete(job.id);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [chatId, session?.access_token, toast]);
+
   // Check for active jobs
   useEffect(() => {
     const activeJob = messages.some(m => 
