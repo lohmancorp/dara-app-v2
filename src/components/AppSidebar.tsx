@@ -1,6 +1,7 @@
-import { Home, MessageSquare, Library, FileText, Activity, Link2 } from "lucide-react";
+import { Home, MessageSquare, Library, FileText, Activity, Link2, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import daraLogo from "@/assets/dara-logo.png";
+import { useAppAdmin } from "@/hooks/useAppAdmin";
 
 import {
   Sidebar,
@@ -26,9 +27,10 @@ const navItems = [
 
 export function AppSidebar() {
   const { open, setOpenMobile } = useSidebar();
+  const { isAppAdmin, loading } = useAppAdmin();
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="icon" className="border-r-0 flex flex-col">
       <div
         className={`flex items-center p-4 border-b border-sidebar-border ${open ? "justify-between" : "justify-center"}`}
       >
@@ -45,8 +47,8 @@ export function AppSidebar() {
         <SidebarTrigger className="text-foreground hover:text-primary hidden md:flex" />
       </div>
 
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent className="flex flex-col flex-1">
+        <SidebarGroup className="flex-1">
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -72,6 +74,32 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {!loading && isAppAdmin && (
+          <SidebarGroup className="mt-auto border-t border-sidebar-border pt-4">
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin"
+                      onClick={() => setOpenMobile(false)}
+                      className={({ isActive }) =>
+                        isActive
+                          ? `bg-sidebar-accent text-primary font-medium ${open ? "border-l-4 border-primary" : ""}`
+                          : "text-foreground dark:text-white hover:bg-sidebar-accent hover:text-foreground dark:hover:text-primary"
+                      }
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Admin</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
