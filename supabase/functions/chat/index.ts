@@ -874,34 +874,37 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       if (asyncJobInfo) {
         console.log('Emitting async job metadata in stream');
         
-        const { readable, writable } = new TransformStream();
-        const writer = writable.getWriter();
         const encoder = new TextEncoder();
-
-        // Emit job metadata first
-        await writer.write(encoder.encode(`data: ${JSON.stringify({
-          async_job: true,
-          job_id: asyncJobInfo.job_id,
-          message: asyncJobInfo.message,
-          estimated_time: asyncJobInfo.estimated_time
-        })}\n\n`));
-
-        // Then pipe the AI response
-        (async () => {
-          try {
-            const reader = finalResponse.body!.getReader();
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              await writer.write(value);
+        const reader = finalResponse.body!.getReader();
+        
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              // Emit job metadata first
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                async_job: true,
+                job_id: asyncJobInfo.job_id,
+                message: asyncJobInfo.message,
+                estimated_time: asyncJobInfo.estimated_time
+              })}\n\n`));
+              
+              // Then pipe the AI response
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                controller.enqueue(value);
+              }
+            } catch (e) {
+              console.error('Error streaming with job metadata:', e);
+              controller.error(e);
+            } finally {
+              controller.close();
             }
-          } finally {
-            writer.close();
           }
-        })();
+        });
 
         console.log('Streaming final response with job metadata to client');
-        return new Response(readable, {
+        return new Response(stream, {
           headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
         });
       }
