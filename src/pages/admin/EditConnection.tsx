@@ -218,19 +218,8 @@ const AdminEditConnection = () => {
         {/* General Settings Section */}
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <img 
-                  src={config.icon} 
-                  alt={`${config.name} icon`}
-                  className="h-5 w-5 object-contain"
-                />
-              </div>
-              <div>
-                <CardTitle>General Settings</CardTitle>
-                <CardDescription>Basic connection configuration and behavior</CardDescription>
-              </div>
-            </div>
+            <CardTitle>General Settings</CardTitle>
+            <CardDescription>Basic connection configuration and behavior</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -277,6 +266,26 @@ const AdminEditConnection = () => {
 
             <Separator />
 
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="allow-custom-endpoint">
+                  Allow Custom Endpoint
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {service.allow_custom_endpoint 
+                    ? "Users can define their own endpoint (e.g., customer-specific URLs)" 
+                    : "Users must use the admin-defined endpoint above"}
+                </p>
+              </div>
+              <Switch
+                id="allow-custom-endpoint"
+                checked={service.allow_custom_endpoint}
+                onCheckedChange={(checked) => 
+                  handleUpdateService({ allow_custom_endpoint: checked })
+                }
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="endpoint">Endpoint Host</Label>
               <Input
@@ -298,26 +307,6 @@ const AdminEditConnection = () => {
               <p className="text-xs text-muted-foreground">
                 Default API endpoint for this connection type
               </p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="allow-custom-endpoint">
-                  Allow Custom Endpoint
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {service.allow_custom_endpoint 
-                    ? "Users can define their own endpoint (e.g., customer-specific URLs)" 
-                    : "Users must use the admin-defined endpoint above"}
-                </p>
-              </div>
-              <Switch
-                id="allow-custom-endpoint"
-                checked={service.allow_custom_endpoint}
-                onCheckedChange={(checked) => 
-                  handleUpdateService({ allow_custom_endpoint: checked })
-                }
-              />
             </div>
 
             <Separator />
