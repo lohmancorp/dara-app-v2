@@ -17,6 +17,8 @@ import confluenceIcon from "@/assets/connection-icons/confluence.png";
 import geminiIcon from "@/assets/connection-icons/gemini.png";
 import openaiIcon from "@/assets/connection-icons/openai.png";
 import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
+import { SupportedMethodsTable } from "@/components/SupportedMethodsTable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 
@@ -35,6 +37,8 @@ interface MCPService {
   rate_limit_per_minute: number;
   rate_limit_per_hour: number;
   tags: string[];
+  tools_config: any[];
+  resources_config: any[];
 }
 
 const CONNECTION_CONFIGS: Record<ConnectionType, { name: string; description: string; icon: string }> = {
@@ -437,6 +441,42 @@ const AdminEditConnection = () => {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Supported Methods Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Supported Methods</CardTitle>
+            <CardDescription>
+              Available API methods and resources for this connection
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="tools" className="w-full">
+              <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+                <TabsTrigger value="tools">
+                  Tools ({service.tools_config?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="resources">
+                  Resources ({service.resources_config?.length || 0})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="tools" className="mt-6">
+                <SupportedMethodsTable 
+                  methods={service.tools_config || []} 
+                  type="tools" 
+                />
+              </TabsContent>
+              
+              <TabsContent value="resources" className="mt-6">
+                <SupportedMethodsTable 
+                  methods={service.resources_config || []} 
+                  type="resources" 
+                />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
