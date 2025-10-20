@@ -391,9 +391,9 @@ const Chat = () => {
     setAdvancedControls({
       onClick: handleAdvancedClick,
       isPressed: showAdvanced,
-      clearChatAction: messages.length > 0 ? {
+      newChatAction: messages.length > 0 ? {
         onClick: handleClearChat,
-        label: "Clear Chat"
+        label: "New Chat"
       } : undefined
     });
     return () => setAdvancedControls(null);

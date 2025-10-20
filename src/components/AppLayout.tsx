@@ -9,7 +9,7 @@ interface FloatingActionContextType {
   advancedControls: {
     onClick?: () => void;
     isPressed?: boolean;
-    clearChatAction?: {
+    newChatAction?: {
       onClick: () => void;
       label: string;
     };
@@ -17,7 +17,7 @@ interface FloatingActionContextType {
   setAdvancedControls: (controls: { 
     onClick?: () => void; 
     isPressed?: boolean;
-    clearChatAction?: {
+    newChatAction?: {
       onClick: () => void;
       label: string;
     };
@@ -43,7 +43,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [advancedControls, setAdvancedControls] = useState<{ 
     onClick?: () => void; 
     isPressed?: boolean;
-    clearChatAction?: {
+    newChatAction?: {
       onClick: () => void;
       label: string;
     };
@@ -65,7 +65,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             actionButton={actionButton}
             onAdvancedClick={advancedControls?.onClick}
             advancedPressed={advancedControls?.isPressed}
-            clearChatAction={advancedControls?.clearChatAction}
+            newChatAction={advancedControls?.newChatAction}
           />
         </div>
       </SidebarProvider>
