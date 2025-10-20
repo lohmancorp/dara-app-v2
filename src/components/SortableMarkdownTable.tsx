@@ -345,6 +345,10 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                       const isSubject = originalIndex === subjectIndex;
                       const needsTooltip = cell.length > 50 || isSubject;
                       
+                      // Check if this is the score column and handle N/A values
+                      const isScoreColumn = headers[originalIndex]?.toLowerCase() === 'score';
+                      const isEmptyOrNA = !cell || cell.trim() === '' || cell.trim().toUpperCase() === 'N/A';
+                      
                       if (isTicketId && ticketBaseUrl) {
                         return (
                           <TableCell key={cellIndex} className="max-w-[150px] text-xs sm:text-sm px-2 sm:px-4">
@@ -367,7 +371,12 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                           : cell.substring(0, 500);
                         
                         // Clean up trailing backslashes (markdown escape characters)
-                        const cleanCell = cell.replace(/\\\s*$/, '');
+                        let cleanCell = cell.replace(/\\\s*$/, '');
+                        
+                        // Replace N/A with 0 for score column
+                        if (isScoreColumn && isEmptyOrNA) {
+                          cleanCell = '0';
+                        }
                         
                         return (
                           <TableCell key={cellIndex} className="max-w-[300px] text-xs sm:text-sm px-2 sm:px-4">
@@ -384,7 +393,12 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                       }
                       
                       // Clean up trailing backslashes (markdown escape characters)
-                      const cleanCell = cell.replace(/\\\s*$/, '');
+                      let cleanCell = cell.replace(/\\\s*$/, '');
+                      
+                      // Replace N/A with 0 for score column
+                      if (isScoreColumn && isEmptyOrNA) {
+                        cleanCell = '0';
+                      }
                       
                       return (
                         <TableCell key={cellIndex} className="max-w-[300px] truncate text-xs sm:text-sm px-2 sm:px-4">
