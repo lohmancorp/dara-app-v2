@@ -95,13 +95,45 @@ async function callLLM(
   stream: boolean = false
 ) {
   if (connectionType === 'gemini') {
-    // Gemini API call
+    // Gemini API call - need to handle tool results specially
     const geminiMessages = messages
       .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }));
+      .map(m => {
+        if (m.role === 'tool') {
+          // Gemini expects function responses in a specific format
+          return {
+            role: 'user',
+            parts: [{
+              functionResponse: {
+                name: m.name || 'function', // Get function name from message
+                response: {
+                  content: m.content
+                }
+              }
+            }]
+          };
+        } else if (m.role === 'assistant' && m.tool_calls) {
+          // Assistant message with tool calls
+          return {
+            role: 'model',
+            parts: [
+              ...(m.content ? [{ text: m.content }] : []),
+              ...m.tool_calls.map((tc: any) => ({
+                functionCall: {
+                  name: tc.function.name,
+                  args: JSON.parse(tc.function.arguments)
+                }
+              }))
+            ]
+          };
+        } else {
+          // Regular message
+          return {
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content || '' }]
+          };
+        }
+      });
 
     const systemInstruction = messages.find(m => m.role === 'system')?.content;
 
@@ -740,10 +772,11 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
           }
         }
 
-        // Add tool results to conversation
+        // Add tool results to conversation with function name
         for (const result of toolResults) {
           conversationMessages.push({
             role: 'tool',
+            name: toolCalls.find((tc: any) => tc.id === result.tool_call_id)?.function?.name || 'function',
             tool_call_id: result.tool_call_id,
             content: result.content
           });
