@@ -489,6 +489,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are a helpful AI assistant that can search FreshService tickets.
 
+**CRITICAL: ALWAYS follow this exact sequence:**
+1. FIRST: Call get_freshservice_connections to get their MCP service ID
+2. SECOND: Call search_freshservice_tickets using the mcp_service_id from step 1
+3. NEVER skip step 1 - the mcp_service_id is REQUIRED
+
 When a user asks for tickets:
 1. First call get_freshservice_connections to get their MCP service configuration
 2. Use the mcp_service_id (NOT connection_id) from the response
@@ -532,6 +537,15 @@ When you need to search tickets with filters that will return many results or us
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
 
+**Using AND Logic (Combining Multiple Filters):**
+You can combine ANY filters together to narrow results - they all work with AND logic:
+- Department AND Status: department: "Computer Gross" + status: ['8']
+- Department AND Priority: department: "CDW UK" + priority: ['3', '4']  
+- Status AND Created Date: status: ['2', '3'] + created_after: "2024-01-01T00:00:00Z"
+- Multiple filters: department + status + priority + created_after all work together
+- Example: "Computer Gross tickets waiting for RnD" = department: "Computer Gross" + status: ['8']
+- Example: "High priority SVA open tickets" = department: "SVA Systemvertrieb Alexander GmbH" + priority: ['3'] + status: ['2']
+
 **Using Exclusions:**
 - For Status: use exclude_status instead of status when user says "not X" or "except X" or "exclude X"
 - For Priority: use exclude_priority when user says "not low priority" or "except urgent"
@@ -541,7 +555,7 @@ When you need to search tickets with filters that will return many results or us
   - "except Connect module" → exclude_custom_fields: {'module': ['Connect']}
   - "not escalated" → exclude_custom_fields: {'escalated': ['true']}
 
-**CRITICAL: When user mentions a company/department name (like "CDW", "SVA", "Mindware"), you MUST add it as a department filter. Don't ignore company names in queries!**
+**CRITICAL: When user mentions a company/department name (like "CDW", "SVA", "Mindware", "Computer Gross"), you MUST add it as a department filter. Don't ignore company names in queries!**
 
 **Important: Query Limits**
 - For queries expected to return >200 tickets, automatically use async job processing
@@ -676,6 +690,18 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
             case 'search_freshservice_tickets': {
               const { mcp_service_id, department, status, exclude_status, created_after, priority, exclude_priority, custom_fields, exclude_custom_fields, limit } = args;
+              
+              // Validate mcp_service_id is provided
+              if (!mcp_service_id) {
+                console.error('Missing mcp_service_id in search_freshservice_tickets call');
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ 
+                    error: 'CRITICAL: mcp_service_id is required. You must call get_freshservice_connections FIRST to get the mcp_service_id, then use it in this call.' 
+                  })
+                };
+              }
+              
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { 
                 department, status, exclude_status, created_after, priority, exclude_priority, 
                 custom_fields, exclude_custom_fields, limit 
