@@ -285,7 +285,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
             </Tooltip>
             
             <Select value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-              <SelectTrigger className="w-[50px]">
+              <SelectTrigger className="w-[75px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
