@@ -300,15 +300,15 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         
         <div ref={tableRef} className="w-full overflow-x-auto rounded-md border">
           <Table className="w-full min-w-[600px]">
-            <TableHeader className="bg-[#9E9E9E]">
-              <TableRow className="border-b-2 border-border hover:bg-[#9E9E9E]">
+            <TableHeader>
+              <TableRow className="border-b-2 border-border">
                 {visibleHeaders.map((header, displayIndex) => {
                   // Map display index back to original index
                   const originalIndex = headers.findIndex((h, i) => visibleColumns[i] && headers.filter((_, j) => j <= i && visibleColumns[j]).length === displayIndex + 1);
                   return (
                     <TableHead 
                       key={displayIndex}
-                      className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4 text-white"
+                      className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4"
                       style={{ width: visibleColumnWidths[displayIndex], minWidth: visibleColumnWidths[displayIndex] }}
                       onClick={() => handleSort(originalIndex)}
                     >
