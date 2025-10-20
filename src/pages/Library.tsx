@@ -1,4 +1,4 @@
-import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2, ArrowUp, ArrowDown, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,8 @@ const Library = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>("last_message_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   useEffect(() => {
     setActionButton(null);
@@ -98,6 +100,51 @@ const Library = () => {
       });
       loadSessions();
     }
+  };
+
+  const handleStartEdit = (sessionId: string, currentTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSessionId(sessionId);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleSaveTitle = async (sessionId: string) => {
+    if (!editingTitle.trim()) {
+      toast({
+        title: "Error",
+        description: "Title cannot be empty",
+        variant: "destructive",
+      });
+      setEditingSessionId(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('chat_sessions')
+      .update({ title: editingTitle.trim() })
+      .eq('id', sessionId);
+
+    if (error) {
+      console.error('Error updating title:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update chat title",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Updated",
+        description: "Chat title updated successfully",
+      });
+      loadSessions();
+    }
+    
+    setEditingSessionId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSessionId(null);
+    setEditingTitle('');
   };
 
   const filteredSessions = useMemo(() => {
@@ -270,9 +317,33 @@ const Library = () => {
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
-                      {session.title}
-                    </h3>
+                    {editingSessionId === session.id ? (
+                      <Input
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={() => handleSaveTitle(session.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveTitle(session.id);
+                          } else if (e.key === 'Escape') {
+                            handleCancelEdit();
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                        className="font-semibold text-lg mb-2"
+                      />
+                    ) : (
+                      <div 
+                        className="relative group/title cursor-text"
+                        onClick={(e) => handleStartEdit(session.id, session.title, e)}
+                      >
+                        <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem] pr-8">
+                          {session.title}
+                        </h3>
+                        <Pencil className="h-4 w-4 text-muted-foreground absolute top-1 right-0 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       <span>{format(new Date(session.last_message_at), 'MMM d, yyyy h:mm a')}</span>
