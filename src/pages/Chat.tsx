@@ -667,10 +667,15 @@ const Chat = () => {
       const decoder = new TextDecoder();
       let textBuffer = '';
       let assistantContent = '';
+      
+      console.log('Starting to read stream...');
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('Stream complete, assistant content length:', assistantContent.length);
+          break;
+        }
 
         textBuffer += decoder.decode(value, { stream: true });
 
@@ -684,12 +689,16 @@ const Chat = () => {
           if (!line.startsWith('data: ')) continue;
 
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') continue;
+          if (jsonStr === '[DONE]') {
+            console.log('Received [DONE] signal');
+            continue;
+          }
 
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
+              console.log('Received content chunk:', content.substring(0, 50));
               assistantContent += content;
               setMessages((prev) => {
                 const newMessages = [...prev];
@@ -724,7 +733,7 @@ const Chat = () => {
               pollJobStatus(jobId, messageIndex);
             }
           } catch (e) {
-            console.error('Error parsing SSE:', e);
+            console.error('Error parsing SSE:', e, 'Line:', jsonStr);
           }
         }
       }
