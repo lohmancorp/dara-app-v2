@@ -86,15 +86,40 @@ function getSourceName(sourceId: number, ticketFields: any[]): string {
   return sourceMap[sourceId] || `Source ${sourceId}`;
 }
 
-// Helper to call LLM based on connection type
+// Rate limiter to track last call times
+const rateLimiter = {
+  lastCallTimes: new Map<string, number>(),
+  
+  async waitForRateLimit(serviceType: string, callDelayMs: number) {
+    const lastCallTime = this.lastCallTimes.get(serviceType) || 0;
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCallTime;
+    
+    if (timeSinceLastCall < callDelayMs) {
+      const waitTime = callDelayMs - timeSinceLastCall;
+      console.log(`Rate limiting ${serviceType}: waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastCallTimes.set(serviceType, Date.now());
+  }
+};
+
+// Helper to call LLM based on connection type with rate limiting
 async function callLLM(
   connectionType: 'gemini' | 'openai',
   apiKey: string,
   messages: any[],
   tools?: any[],
-  stream: boolean = false
+  stream: boolean = false,
+  rateLimitConfig?: { call_delay_ms: number; max_retries: number; retry_delay_sec: number }
 ) {
   if (connectionType === 'gemini') {
+    // Apply rate limiting
+    if (rateLimitConfig) {
+      await rateLimiter.waitForRateLimit('gemini', rateLimitConfig.call_delay_ms);
+    }
+    
     // Gemini API call - need to handle tool results specially
     const geminiMessages = messages
       .filter(m => m.role !== 'system')
@@ -372,6 +397,23 @@ serve(async (req) => {
     console.log('Chat request from user:', user.id, 'using', connectionType);
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
+    // Load MCP service rate limiting settings for the connection type
+    const { data: mcpService } = await supabase
+      .from('mcp_services')
+      .select('call_delay_ms, max_retries, retry_delay_sec, rate_limit_per_minute')
+      .eq('service_type', connectionType)
+      .single();
+    
+    const rateLimitConfig = mcpService ? {
+      call_delay_ms: mcpService.call_delay_ms || 600,
+      max_retries: mcpService.max_retries || 5,
+      retry_delay_sec: mcpService.retry_delay_sec || 60
+    } : undefined;
+    
+    if (rateLimitConfig) {
+      console.log('Using MCP rate limit config:', rateLimitConfig);
+    }
+
     // Define tools for the AI
     const tools = [
       {
@@ -533,7 +575,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
         apiKey,
         conversationMessages,
         tools,
-        false
+        false,
+        rateLimitConfig
       );
 
       console.log('AI response:', JSON.stringify(aiResponse, null, 2));
@@ -868,7 +911,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
         apiKey,
         conversationMessages,
         undefined,
-        true
+        true,
+        rateLimitConfig
       );
 
       if (!finalResponse.body) {
