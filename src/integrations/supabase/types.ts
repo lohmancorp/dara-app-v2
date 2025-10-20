@@ -439,6 +439,7 @@ export type Database = {
           endpoint_template: string | null
           id: string
           max_retries: number | null
+          rate_limit_per_hour: number | null
           rate_limit_per_minute: number | null
           resources_config: Json | null
           retry_delay_sec: number | null
@@ -455,6 +456,7 @@ export type Database = {
           endpoint_template?: string | null
           id?: string
           max_retries?: number | null
+          rate_limit_per_hour?: number | null
           rate_limit_per_minute?: number | null
           resources_config?: Json | null
           retry_delay_sec?: number | null
@@ -471,6 +473,7 @@ export type Database = {
           endpoint_template?: string | null
           id?: string
           max_retries?: number | null
+          rate_limit_per_hour?: number | null
           rate_limit_per_minute?: number | null
           resources_config?: Json | null
           retry_delay_sec?: number | null

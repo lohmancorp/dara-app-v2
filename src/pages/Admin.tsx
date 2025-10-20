@@ -27,6 +27,7 @@ interface MCPService {
   max_retries: number;
   retry_delay_sec: number;
   rate_limit_per_minute: number;
+  rate_limit_per_hour: number;
 }
 
 const CONNECTION_ICONS: Record<ConnectionType, string> = {
@@ -231,6 +232,27 @@ const Admin = () => {
                         const value = parseInt(e.target.value);
                         if (!isNaN(value) && value !== service.rate_limit_per_minute) {
                           handleUpdateService(service.id, { rate_limit_per_minute: value });
+                        } else {
+                          setEditingService(null);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`rate-limit-hour-${service.id}`}>
+                      Rate Limit (/hour)
+                    </Label>
+                    <Input
+                      id={`rate-limit-hour-${service.id}`}
+                      type="number"
+                      value={editingService === service.id ? undefined : service.rate_limit_per_hour}
+                      defaultValue={service.rate_limit_per_hour}
+                      onFocus={() => setEditingService(service.id)}
+                      onBlur={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (!isNaN(value) && value !== service.rate_limit_per_hour) {
+                          handleUpdateService(service.id, { rate_limit_per_hour: value });
                         } else {
                           setEditingService(null);
                         }
