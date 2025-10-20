@@ -98,7 +98,7 @@ const Admin = () => {
           {filteredAreas.map((area) => (
             <Card
               key={area.id}
-              className="p-6 hover:shadow-lg transition-all cursor-pointer group border-2 hover:border-primary"
+              className="p-6 hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
               onClick={() => handleCardClick(area.route)}
             >
               <div className="flex gap-4">
