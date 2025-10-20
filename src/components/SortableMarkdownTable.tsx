@@ -300,8 +300,8 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         
         <div ref={tableRef} className="w-full overflow-x-auto rounded-md border">
           <Table className="w-full min-w-[600px]">
-            <TableHeader>
-              <TableRow className="border-b-[3px] border-[#9E9E9E]">
+            <TableHeader className="bg-[#E0E0E0]">
+              <TableRow className="border-b-[3px] border-[#9E9E9E] hover:bg-[#E0E0E0]">
                 {visibleHeaders.map((header, displayIndex) => {
                   // Map display index back to original index
                   const originalIndex = headers.findIndex((h, i) => visibleColumns[i] && headers.filter((_, j) => j <= i && visibleColumns[j]).length === displayIndex + 1);
