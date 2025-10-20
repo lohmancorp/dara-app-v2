@@ -528,7 +528,7 @@ const Jobs = () => {
 
                 {/* Rows per page */}
                 <Select value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="w-[50px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
