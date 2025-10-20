@@ -1,4 +1,4 @@
-import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff } from "lucide-react";
+import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,6 +34,7 @@ interface Connection {
   max_retries: number;
   connection_config: any;
   is_active: boolean;
+  is_chat_default: boolean;
 }
 
 const CONNECTION_ICONS: Record<ConnectionType, string> = {
@@ -267,21 +268,29 @@ const Connections = () => {
                           className="h-7 w-7 object-contain"
                         />
                       </div>
-                      <Badge
-                        variant={connection.is_active ? "default" : "destructive"}
-                        className={`flex items-center gap-1.5 ${
-                          connection.is_active 
-                            ? "bg-green-500 hover:bg-green-600" 
-                            : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
-                        }`}
-                      >
-                        {connection.is_active ? (
-                          <CheckCircle className="h-3 w-3" />
-                        ) : (
-                          <AlertCircle className="h-3 w-3" />
+                      <div className="flex items-center gap-2">
+                        {connection.is_chat_default && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" />
+                            <span>Chat Default</span>
+                          </Badge>
                         )}
-                        <span>{connection.is_active ? "Active" : "Deactivated"}</span>
-                      </Badge>
+                        <Badge
+                          variant={connection.is_active ? "default" : "destructive"}
+                          className={`flex items-center gap-1.5 ${
+                            connection.is_active 
+                              ? "bg-green-500 hover:bg-green-600" 
+                              : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
+                          }`}
+                        >
+                          {connection.is_active ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3" />
+                          )}
+                          <span>{connection.is_active ? "Active" : "Deactivated"}</span>
+                        </Badge>
+                      </div>
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">

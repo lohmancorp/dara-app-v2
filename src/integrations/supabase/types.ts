@@ -263,6 +263,7 @@ export type Database = {
           endpoint: string | null
           id: string
           is_active: boolean | null
+          is_chat_default: boolean | null
           is_mcp_managed: boolean | null
           max_retries: number | null
           mcp_service_id: string | null
@@ -283,6 +284,7 @@ export type Database = {
           endpoint?: string | null
           id?: string
           is_active?: boolean | null
+          is_chat_default?: boolean | null
           is_mcp_managed?: boolean | null
           max_retries?: number | null
           mcp_service_id?: string | null
@@ -303,6 +305,7 @@ export type Database = {
           endpoint?: string | null
           id?: string
           is_active?: boolean | null
+          is_chat_default?: boolean | null
           is_mcp_managed?: boolean | null
           max_retries?: number | null
           mcp_service_id?: string | null

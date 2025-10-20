@@ -25,21 +25,19 @@ function getStatusName(statusId: number, ticketFields: any[]): string {
   return statusMap[statusId] || `Status ${statusId}`;
 }
 
-// Helper function to map priority IDs to names
+// Helper to get priority name
 function getPriorityName(priorityId: number, ticketFields: any[]): string {
   const priorityField = ticketFields.find((f: any) => f.name === 'priority');
   if (priorityField?.choices) {
     const choice = priorityField.choices.find((c: any) => c.id === priorityId);
     if (choice) return choice.value;
   }
-  // Fallback mapping
   const priorityMap: Record<number, string> = {
     1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent'
   };
   return priorityMap[priorityId] || `Priority ${priorityId}`;
 }
 
-// Helper function to map department IDs to names
 function getDepartmentName(deptId: number | null, ticketFields: any[]): string {
   if (!deptId) return 'N/A';
   const deptField = ticketFields.find((f: any) => f.name === 'department');
@@ -50,27 +48,23 @@ function getDepartmentName(deptId: number | null, ticketFields: any[]): string {
   return `Department ${deptId}`;
 }
 
-// Helper function to format dates
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A';
   try {
     const date = parseISO(dateString);
-    // Check if the date includes time (has 'T' in the string)
     if (dateString.includes('T')) {
       return format(date, 'MMM d, yyyy h:mm a');
     }
     return format(date, 'MMM d, yyyy');
   } catch (error) {
-    return dateString; // Return original if parsing fails
+    return dateString;
   }
 }
 
-// Helper function to get company name (same as department, labeled as "Company" for customers)
 function getCompanyName(deptId: number | null, ticketFields: any[]): string {
   return getDepartmentName(deptId, ticketFields);
 }
 
-// Helper function to map group IDs to names
 function getGroupName(groupId: number, ticketFields: any[]): string {
   const groupField = ticketFields.find((f: any) => f.name === 'group_id');
   if (groupField?.choices) {
@@ -80,18 +74,127 @@ function getGroupName(groupId: number, ticketFields: any[]): string {
   return `Group ${groupId}`;
 }
 
-// Helper function to map source IDs to names
 function getSourceName(sourceId: number, ticketFields: any[]): string {
   const sourceField = ticketFields.find((f: any) => f.name === 'source');
   if (sourceField?.choices) {
     const choice = sourceField.choices.find((c: any) => c.id === sourceId);
     if (choice) return choice.value;
   }
-  // Common source mappings
   const sourceMap: Record<number, string> = {
     1: 'Email', 2: 'Portal', 3: 'Phone', 7: 'Chat', 8: 'Feedback Widget', 9: 'Yammer', 10: 'AWS Cloudwatch', 11: 'Pagerduty', 12: 'Walkup', 13: 'Slack'
   };
   return sourceMap[sourceId] || `Source ${sourceId}`;
+}
+
+// Helper to call LLM based on connection type
+async function callLLM(
+  connectionType: 'gemini' | 'openai',
+  apiKey: string,
+  messages: any[],
+  tools?: any[],
+  stream: boolean = false
+) {
+  if (connectionType === 'gemini') {
+    // Gemini API call
+    const geminiMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+
+    const systemInstruction = messages.find(m => m.role === 'system')?.content;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: geminiMessages,
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+          tools: tools ? [{
+            functionDeclarations: tools.map(t => ({
+              name: t.function.name,
+              description: t.function.description,
+              parameters: t.function.parameters
+            }))
+          }] : undefined
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    if (stream) {
+      return response;
+    }
+
+    const data = await response.json();
+    
+    // Convert Gemini response to OpenAI format
+    const candidate = data.candidates?.[0];
+    if (!candidate) {
+      throw new Error('No response from Gemini');
+    }
+
+    const functionCalls = candidate.content?.parts
+      ?.filter((p: any) => p.functionCall)
+      .map((p: any) => ({
+        id: `call_${Date.now()}`,
+        type: 'function',
+        function: {
+          name: p.functionCall.name,
+          arguments: JSON.stringify(p.functionCall.args || {})
+        }
+      }));
+
+    const textContent = candidate.content?.parts
+      ?.filter((p: any) => p.text)
+      .map((p: any) => p.text)
+      .join('');
+
+    return {
+      choices: [{
+        message: {
+          role: 'assistant',
+          content: textContent || null,
+          tool_calls: functionCalls && functionCalls.length > 0 ? functionCalls : undefined
+        }
+      }]
+    };
+  } else {
+    // OpenAI API call
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        tools,
+        stream
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    if (stream) {
+      return response;
+    }
+
+    return await response.json();
+  }
 }
 
 serve(async (req) => {
@@ -102,9 +205,8 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!supabaseUrl || !supabaseKey || !lovableApiKey) {
+    if (!supabaseUrl || !supabaseKey) {
       console.error('Missing environment variables');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
@@ -143,7 +245,35 @@ serve(async (req) => {
       );
     }
 
-    console.log('Chat request from user:', user.id);
+    // Get default LLM connection
+    const { data: defaultConnection, error: connError } = await supabase
+      .from('connections')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_chat_default', true)
+      .eq('is_active', true)
+      .in('connection_type', ['gemini', 'openai'])
+      .single();
+
+    if (connError || !defaultConnection) {
+      console.error('No default LLM connection found:', connError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'No default LLM connection configured. Please set up a Gemini or OpenAI connection and mark it as default for chat.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const apiKey = defaultConnection.auth_config?.api_key;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'LLM connection is missing API key' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Chat request from user:', user.id, 'using', defaultConnection.connection_type);
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
     // Define tools for the AI
@@ -264,12 +394,11 @@ Always format results as a clear, readable markdown table.
 - type: Ticket type (e.g., "Service Request", "Incident")
 - escalated: Custom field for escalation status (or "N/A" if null)
 - module: Custom field for module name (or "N/A" if null)
-- score: Custom field for score value (or "N/A" if null)
+- score: Custom field for score value (or "0" if null)
 - ticket_type: Custom field for ticket type classification (or "N/A" if null)
 
 The UI table component will handle column visibility settings, but you MUST include all columns in the markdown.
 Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
-
 
     // Build conversation with tool call loop
     const conversationMessages: any[] = [
@@ -288,39 +417,14 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       iterations++;
       console.log(`AI call iteration ${iterations}`);
 
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: conversationMessages,
-          tools,
-          stream: false
-        }),
-      });
+      const aiResponse = await callLLM(
+        defaultConnection.connection_type,
+        apiKey,
+        conversationMessages,
+        tools,
+        false
+      );
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        if (response.status === 402) {
-          return new Response(JSON.stringify({ error: 'Payment required, please add funds to your Lovable AI workspace.' }), {
-            status: 402,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        const errorText = await response.text();
-        console.error('AI gateway error:', response.status, errorText);
-        throw new Error('AI gateway error');
-      }
-
-      const aiResponse = await response.json();
       console.log('AI response:', JSON.stringify(aiResponse, null, 2));
       const choice = aiResponse.choices?.[0];
 
@@ -345,7 +449,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
             case 'get_freshservice_connections': {
               console.log('Fetching FreshService MCP service for user:', user.id);
               
-              // Get the FreshService MCP service
               const { data: mcpServices, error: mcpError } = await supabase
                 .from('mcp_services')
                 .select('*')
@@ -383,10 +486,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const { mcp_service_id, department, status, exclude_status, created_after, priority, limit } = args;
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority, limit });
 
-              // Get the user's original query from the last message
               const userQuery = messages[messages.length - 1]?.content || 'Ticket search query';
 
-              // Check if this should be an async job (large query)
               const requestedLimit = limit || 200;
               const hasMultipleStatuses = status && status.length > 5;
               const hasNoFilters = !department && !created_after && !priority && (!status || status.length > 5);
@@ -395,13 +496,11 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (shouldUseAsyncJob) {
                 console.log('Creating async job for large query');
                 
-                // Get next job sequence for this session
                 const { data: seqData } = await supabase.rpc('get_next_job_sequence', {
                   p_session_id: sessionId
                 });
                 const jobSequence = seqData || 1;
                 
-                // Create async job with actual user query and session link
                 const { data: job, error: jobError } = await supabase
                   .from('chat_jobs')
                   .insert({
@@ -429,7 +528,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   };
                 }
 
-                // Start background processing (non-blocking)
                 const backgroundJobPromise = fetch(`${supabaseUrl}/functions/v1/process-chat-job`, {
                   method: 'POST',
                   headers: {
@@ -439,10 +537,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   body: JSON.stringify({ jobId: job.id })
                 });
 
-                // Log if background job fails to start but don't block the response
                 backgroundJobPromise.catch(async (err) => {
                   console.error('Failed to trigger background job:', err);
-                  // Mark job as failed
                   await supabase
                     .from('chat_jobs')
                     .update({ 
@@ -453,7 +549,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     .eq('id', job.id);
                 });
 
-                // Also check if the fetch succeeded
                 backgroundJobPromise.then(async (response) => {
                   if (!response.ok) {
                     console.error('Background job trigger failed with status:', response.status);
@@ -471,10 +566,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   }
                 }).catch(err => console.error('Error checking background job response:', err));
 
-                // Generate job name
                 const jobName = `${sessionId.substring(0, 8)}-${String(jobSequence).padStart(3, '0')}`;
 
-                // Create the assistant message in the database so it can be updated when job completes
                 const initialMessage = `Processing large query in background...\n\nJob: ${jobName}\n\nThis may take 1-20 minutes depending on the dataset size.`;
                 
                 const { error: msgError } = await supabase
@@ -490,7 +583,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   console.error('Failed to create assistant message:', msgError);
                 }
 
-                // Store async job info to break out of tool loop
                 asyncJobInfo = {
                   async_job: true,
                   job_id: job.id,
@@ -519,11 +611,9 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (created_after) filters.createdAfter = created_after;
               if (priority && priority.length > 0) filters.priority = priority;
               
-              // Apply limit with max of 200 for sync queries
               const maxLimit = Math.min(requestedLimit, 200);
               filters.limit = maxLimit;
 
-              // Pass the auth header to the MCP function
               const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
                 method: 'POST',
                 headers: {
@@ -555,15 +645,12 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               
               const ticketFields = mcpResult.ticket_form_fields || [];
               
-              // Check if results were limited
               const wasLimited = mcpResult.limited || (returnedTickets >= maxLimit && totalMatching > maxLimit);
 
-              // Map all ticket fields with proper name resolution
               const formattedTickets = mcpResult.tickets.map((t: any) => {
-                // Helper to safely convert any value to string, handling pipes and special chars
                 const safeString = (val: any, fallback = 'N/A'): string => {
                   if (val === null || val === undefined || val === '') return fallback;
-                  return String(val).replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+                  return String(val).replace(/\|/g, '\\|').replace(/\\n/g, ' ').trim();
                 };
 
                 const mapped: any = {
@@ -589,14 +676,12 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   item_category: t.item_category,
                   is_escalated: t.is_escalated,
                   fr_escalated: t.fr_escalated,
-                  // Additional custom fields explicitly mapped
                   escalated: safeString(t.custom_fields?.escalated),
                   module: safeString(t.custom_fields?.module),
-                  score: safeString(t.custom_fields?.score),
+                  score: safeString(t.custom_fields?.score, '0'),
                   ticket_type: safeString(t.custom_fields?.ticket_type)
                 };
                 
-                // Include all other custom fields if present
                 if (t.custom_fields) {
                   Object.keys(t.custom_fields).forEach(key => {
                     if (!mapped.hasOwnProperty(key) && t.custom_fields[key] !== null && t.custom_fields[key] !== undefined) {
@@ -633,7 +718,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
           }
           })
         );
-
         console.log('Tool results:', JSON.stringify(toolResults, null, 2));
 
         // Check if any tool result contains async job info
@@ -665,23 +749,16 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       // No more tool calls - stream final response
       console.log('No more tool calls, streaming final response');
       
-      const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: conversationMessages,
-          stream: true
-        }),
-      });
+      const finalResponse = await callLLM(
+        defaultConnection.connection_type,
+        apiKey,
+        conversationMessages,
+        undefined,
+        true
+      );
 
-      if (!finalResponse.ok) {
-        const errorText = await finalResponse.text();
-        console.error('Final AI response error:', finalResponse.status, errorText);
-        throw new Error('AI gateway error on final response');
+      if (!finalResponse.body) {
+        throw new Error('No response body from LLM');
       }
 
       // If there's async job info, inject it into the stream

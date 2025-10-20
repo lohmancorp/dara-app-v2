@@ -1,4 +1,4 @@
-import { Link2, ArrowLeft } from "lucide-react";
+import { Link2, ArrowLeft, Star } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface Connection {
   max_retries: number;
   connection_config: any;
   is_active: boolean;
+  is_chat_default: boolean;
 }
 
 const CONNECTION_ICONS: Record<ConnectionType, string> = {
@@ -119,6 +120,40 @@ const EditConnection = () => {
   }
 
   const connectionName = CONNECTION_NAMES[connection.connection_type];
+  const isLLMConnection = connection.connection_type === 'gemini' || connection.connection_type === 'openai';
+
+  const handleSetChatDefault = async () => {
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .update({ is_chat_default: true })
+        .eq('id', connection.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Default chat LLM updated",
+        description: `${connection.name} is now the default LLM for chat`,
+      });
+
+      // Refresh connection data
+      const { data } = await supabase
+        .from('connections')
+        .select('*')
+        .eq('id', connection.id)
+        .single();
+      
+      if (data) {
+        setConnection(data as Connection);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error updating default",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,18 +174,32 @@ const EditConnection = () => {
         </Button>
 
         <div className="bg-card rounded-lg border p-6 sm:p-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <img 
-                src={CONNECTION_ICONS[connection.connection_type]} 
-                alt={`${connectionName} icon`}
-                className="h-8 w-8 object-contain"
-              />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <img 
+                  src={CONNECTION_ICONS[connection.connection_type]} 
+                  alt={`${connectionName} icon`}
+                  className="h-8 w-8 object-contain"
+                />
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold">{connection.name}</h2>
+                <p className="text-sm text-muted-foreground">Edit your connection settings</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-semibold">{connection.name}</h2>
-              <p className="text-sm text-muted-foreground">Edit your connection settings</p>
-            </div>
+            
+            {isLLMConnection && (
+              <Button
+                variant={connection.is_chat_default ? "default" : "outline"}
+                onClick={handleSetChatDefault}
+                disabled={connection.is_chat_default}
+                className="gap-2"
+              >
+                <Star className={`h-4 w-4 ${connection.is_chat_default ? "fill-current" : ""}`} />
+                {connection.is_chat_default ? "Default for Chat" : "Set as Chat Default"}
+              </Button>
+            )}
           </div>
 
           <ConnectionConfigForm
