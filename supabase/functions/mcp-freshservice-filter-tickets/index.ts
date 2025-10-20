@@ -178,46 +178,9 @@ serve(async (req) => {
       }
     }
 
-    // Handle status filter (include)
-    if (filters.status && filters.status.length > 0) {
-      const statusField = ticketFields.find((f: any) => 
-        f.name === 'status' || f.label === 'Status'
-      );
-
-      if (statusField) {
-        const statusIds: string[] = [];
-
-        for (const statusValue of filters.status) {
-          let statusId = statusValue;
-          
-          // If status is not a number, try to find it in choices
-          if (isNaN(Number(statusValue))) {
-            const choice = statusField.choices?.find((c: any) => 
-              c.value?.toLowerCase() === statusValue.toLowerCase()
-            );
-            if (choice) {
-              statusId = choice.id.toString();
-            }
-          }
-
-          statusIds.push(statusId);
-        }
-
-        // Build status OR conditions
-        if (statusIds.length > 0) {
-          const statusConditions = statusIds.map(id => `status:${id}`);
-          if (statusConditions.length === 1) {
-            queryParts.push(statusConditions[0]);
-          } else {
-            // Use parentheses for OR conditions
-            queryParts.push(`(${statusConditions.join(' OR ')})`);
-          }
-        }
-      }
-    }
-
-    // Handle status exclusion filter
-    // FreshService doesn't support negation (!), so we need to include all OTHER statuses instead
+    // Handle status filter
+    // CRITICAL: Only use ONE of status (include) OR excludeStatus, not both!
+    // If both are provided, excludeStatus takes precedence as it's more specific
     if (filters.excludeStatus && filters.excludeStatus.length > 0) {
       const statusField = ticketFields.find((f: any) => 
         f.name === 'status' || f.label === 'Status'
@@ -251,6 +214,44 @@ serve(async (req) => {
         // Build OR conditions for included statuses (FreshService format)
         if (includedStatusIds.length > 0) {
           const statusConditions = includedStatusIds.map((id: string) => `status:${id}`);
+          if (statusConditions.length === 1) {
+            queryParts.push(statusConditions[0]);
+          } else {
+            // Use parentheses for OR conditions
+            queryParts.push(`(${statusConditions.join(' OR ')})`);
+          }
+        } else {
+          console.warn('Warning: excludeStatus filter resulted in no valid statuses to include');
+        }
+      }
+    } else if (filters.status && filters.status.length > 0) {
+      // Only process include filter if excludeStatus wasn't provided
+      const statusField = ticketFields.find((f: any) => 
+        f.name === 'status' || f.label === 'Status'
+      );
+
+      if (statusField) {
+        const statusIds: string[] = [];
+
+        for (const statusValue of filters.status) {
+          let statusId = statusValue;
+          
+          // If status is not a number, try to find it in choices
+          if (isNaN(Number(statusValue))) {
+            const choice = statusField.choices?.find((c: any) => 
+              c.value?.toLowerCase() === statusValue.toLowerCase()
+            );
+            if (choice) {
+              statusId = choice.id.toString();
+            }
+          }
+
+          statusIds.push(statusId);
+        }
+
+        // Build status OR conditions
+        if (statusIds.length > 0) {
+          const statusConditions = statusIds.map(id => `status:${id}`);
           if (statusConditions.length === 1) {
             queryParts.push(statusConditions[0]);
           } else {

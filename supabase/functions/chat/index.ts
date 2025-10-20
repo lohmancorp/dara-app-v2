@@ -646,8 +646,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               const userQuery = messages[messages.length - 1]?.content || 'Ticket search query';
 
               const requestedLimit = limit || 200;
-              const hasMultipleStatuses = status && status.length > 5;
-              const hasNoFilters = !department && !created_after && !priority && (!status || status.length > 5);
+              const hasMultipleStatuses = (status && status.length > 5) || (exclude_status && exclude_status.length > 0);
+              const hasNoFilters = !department && !created_after && !priority && !status && !exclude_status;
               const shouldUseAsyncJob = requestedLimit > 200 || hasMultipleStatuses || hasNoFilters;
               
               if (shouldUseAsyncJob) {
