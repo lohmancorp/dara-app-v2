@@ -199,9 +199,12 @@ async function callLLM(
                 if (braceCount === 0 && currentObject.trim()) {
                   try {
                     const geminiData = JSON.parse(currentObject.trim());
+                    console.log('Parsed Gemini data:', JSON.stringify(geminiData, null, 2));
                     
                     // Extract text from Gemini response
                     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    console.log('Extracted text:', text);
+                    
                     if (text) {
                       // Convert to OpenAI SSE format
                       const openaiFormat = {
@@ -214,7 +217,7 @@ async function callLLM(
                       await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
                     }
                   } catch (e) {
-                    console.error('Error parsing Gemini JSON object:', e);
+                    console.error('Error parsing Gemini JSON object:', e, 'Object:', currentObject.trim().substring(0, 200));
                   }
                   currentObject = '';
                 }
