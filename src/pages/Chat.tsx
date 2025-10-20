@@ -809,9 +809,19 @@ const Chat = () => {
                 return newMessages;
               });
 
-              // Message is already created by the server, so just start polling
+              // Save assistant message to database with job_id so it can be updated when job completes
+              await supabase
+                .from('chat_messages')
+                .insert({
+                  session_id: currentSessionId,
+                  role: 'assistant',
+                  content: assistantContent,
+                  job_id: jobId
+                });
+
+              // Start polling for job status
               pollJobStatus(jobId, messageIndex);
-              console.log('Async job message set, waiting for stream end');
+              console.log('Async job message saved to database, polling started');
               continue;
             }
             
