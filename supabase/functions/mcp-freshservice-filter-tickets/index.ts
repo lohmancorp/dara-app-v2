@@ -15,6 +15,7 @@ interface FilterTicketsRequest {
     status?: string[]; // Array of human-readable status names or IDs
     excludeStatus?: string[]; // Array of status names or IDs to exclude
     priority?: string[]; // Array of priority names or IDs
+    excludePriority?: string[]; // Array of priority names or IDs to exclude
     assignee?: string; // Assignee email or ID
     requester?: string; // Requester email or ID
     createdAfter?: string; // ISO date string
@@ -22,6 +23,7 @@ interface FilterTicketsRequest {
     updatedAfter?: string; // ISO date string
     updatedBefore?: string; // ISO date string
     customFields?: Record<string, string>; // Custom field filters (field_name: value)
+    excludeCustomFields?: Record<string, string[]>; // Custom fields to exclude (field_name: [values])
     customQuery?: string; // Additional custom query parameters
     limit?: number; // Maximum number of tickets to return (default: unlimited, recommended max: 200)
   };
@@ -262,8 +264,48 @@ serve(async (req) => {
       }
     }
 
-    // Handle priority filter
-    if (filters.priority && filters.priority.length > 0) {
+    // Handle priority filter (include OR exclude, not both)
+    if (filters.excludePriority && filters.excludePriority.length > 0) {
+      const priorityField = ticketFields.find((f: any) => 
+        f.name === 'priority' || f.label === 'Priority'
+      );
+
+      if (priorityField && priorityField.choices) {
+        const excludePriorityIds = new Set<string>();
+
+        // Resolve excluded priority names/IDs to numeric IDs
+        for (const priorityValue of filters.excludePriority) {
+          if (!isNaN(Number(priorityValue))) {
+            excludePriorityIds.add(priorityValue);
+          } else {
+            const choice = priorityField.choices.find((c: any) => 
+              c.value?.toLowerCase() === priorityValue.toLowerCase()
+            );
+            if (choice) {
+              excludePriorityIds.add(choice.id.toString());
+            }
+          }
+        }
+
+        // Get all priority IDs that are NOT excluded
+        const includedPriorityIds = priorityField.choices
+          .filter((c: any) => !excludePriorityIds.has(c.id.toString()))
+          .map((c: any) => c.id.toString());
+
+        console.log('Exclude priority filter:', Array.from(excludePriorityIds));
+        console.log('Including priorities:', includedPriorityIds);
+
+        if (includedPriorityIds.length > 0) {
+          const priorityConditions = includedPriorityIds.map((id: string) => `priority:${id}`);
+          if (priorityConditions.length === 1) {
+            queryParts.push(priorityConditions[0]);
+          } else {
+            queryParts.push(`(${priorityConditions.join(' OR ')})`);
+          }
+        }
+      }
+    } else if (filters.priority && filters.priority.length > 0) {
+      // Only process include filter if excludePriority wasn't provided
       const priorityField = ticketFields.find((f: any) => 
         f.name === 'priority' || f.label === 'Priority'
       );
@@ -324,7 +366,7 @@ serve(async (req) => {
       queryParts.push(`updated_at:<'${filters.updatedBefore}'`);
     }
 
-    // Handle custom field filters
+    // Handle custom field filters (include)
     if (filters.customFields) {
       for (const [fieldName, fieldValue] of Object.entries(filters.customFields)) {
         // Try to find the field in ticket_fields to get the proper field name
@@ -337,6 +379,52 @@ serve(async (req) => {
         } else {
           // If not found, use as-is
           queryParts.push(`${fieldName}:${fieldValue}`);
+        }
+      }
+    }
+
+    // Handle custom field exclusions
+    if (filters.excludeCustomFields) {
+      for (const [fieldName, excludeValues] of Object.entries(filters.excludeCustomFields)) {
+        // Try to find the field in ticket_fields to get the proper field name and choices
+        const field = ticketFields.find((f: any) => 
+          f.name === fieldName || f.label?.toLowerCase() === fieldName.toLowerCase()
+        );
+        
+        const actualFieldName = field?.name || fieldName;
+        
+        if (field && field.choices && excludeValues.length > 0) {
+          // Convert exclude values to IDs if needed
+          const excludeIds = new Set<string>();
+          for (const value of excludeValues) {
+            if (!isNaN(Number(value))) {
+              excludeIds.add(value);
+            } else {
+              const choice = field.choices.find((c: any) => 
+                c.value?.toLowerCase() === value.toLowerCase()
+              );
+              if (choice) {
+                excludeIds.add(choice.id.toString());
+              }
+            }
+          }
+
+          // Get all choices that are NOT excluded
+          const includedIds = field.choices
+            .filter((c: any) => !excludeIds.has(c.id.toString()))
+            .map((c: any) => c.id.toString());
+
+          console.log(`Exclude ${fieldName} filter:`, Array.from(excludeIds));
+          console.log(`Including ${fieldName} values:`, includedIds);
+
+          if (includedIds.length > 0) {
+            const conditions = includedIds.map((id: string) => `${actualFieldName}:${id}`);
+            if (conditions.length === 1) {
+              queryParts.push(conditions[0]);
+            } else {
+              queryParts.push(`(${conditions.join(' OR ')})`);
+            }
+          }
         }
       }
     }

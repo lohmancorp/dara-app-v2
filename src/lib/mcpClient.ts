@@ -76,6 +76,7 @@ export class MCPClient {
       status?: string[];
       excludeStatus?: string[];
       priority?: string[];
+      excludePriority?: string[];
       assignee?: string;
       requester?: string;
       createdAfter?: string;
@@ -83,6 +84,7 @@ export class MCPClient {
       updatedAfter?: string;
       updatedBefore?: string;
       customFields?: Record<string, string>;
+      excludeCustomFields?: Record<string, string[]>;
       customQuery?: string;
     },
     ownerType?: 'user' | 'team' | 'account',

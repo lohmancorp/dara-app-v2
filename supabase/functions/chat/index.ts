@@ -463,6 +463,19 @@ serve(async (req) => {
                 items: { type: "string" },
                 description: "Array of priority IDs (1=Low, 2=Medium, 3=High, 4=Urgent)"
               },
+              exclude_priority: {
+                type: "array",
+                items: { type: "string" },
+                description: "Array of priority IDs to EXCLUDE (e.g., ['1'] to exclude Low priority)"
+              },
+              custom_fields: {
+                type: "object",
+                description: "Custom field filters - map of field names to values (e.g., {'ticket_type': 'Incident', 'module': 'Connect'})"
+              },
+              exclude_custom_fields: {
+                type: "object",
+                description: "Custom fields to exclude - map of field names to arrays of values (e.g., {'ticket_type': ['TAM Request', 'Change'], 'escalated': ['true']})"
+              },
               limit: {
                 type: "number",
                 description: "Maximum number of tickets to return (default: 200, max: 200)"
@@ -504,9 +517,21 @@ When a user asks for tickets:
 - "not closed" or "not resolved" → use exclude_status: ['4', '5']
 - "unresolved" → use status: ['2', '3', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17']
 - "waiting for RnD" → use status: ['8']
+- "exclude TAM Request" or "not TAM Request" → use exclude_custom_fields: {'ticket_type': ['TAM Request']}
+- "exclude low priority" → use exclude_priority: ['1']
+- "except escalated tickets" → use exclude_custom_fields: {'escalated': ['true']}
 - "last month" → use created_after with date 1 month ago
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
+
+**Using Exclusions:**
+- For Status: use exclude_status instead of status when user says "not X" or "except X" or "exclude X"
+- For Priority: use exclude_priority when user says "not low priority" or "except urgent"
+- For Custom Fields (ticket_type, escalated, module, etc.): use exclude_custom_fields: {'field_name': ['value1', 'value2']}
+- Examples of custom field exclusions:
+  - "not TAM Request" → exclude_custom_fields: {'ticket_type': ['TAM Request']}
+  - "except Connect module" → exclude_custom_fields: {'module': ['Connect']}
+  - "not escalated" → exclude_custom_fields: {'escalated': ['true']}
 
 **CRITICAL: When user mentions a company/department name (like "CDW", "SVA", "Mindware"), you MUST add it as a department filter. Don't ignore company names in queries!**
 
@@ -640,14 +665,17 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
             }
 
             case 'search_freshservice_tickets': {
-              const { mcp_service_id, department, status, exclude_status, created_after, priority, limit } = args;
-              console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { department, status, exclude_status, created_after, priority, limit });
+              const { mcp_service_id, department, status, exclude_status, created_after, priority, exclude_priority, custom_fields, exclude_custom_fields, limit } = args;
+              console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { 
+                department, status, exclude_status, created_after, priority, exclude_priority, 
+                custom_fields, exclude_custom_fields, limit 
+              });
 
               const userQuery = messages[messages.length - 1]?.content || 'Ticket search query';
 
               const requestedLimit = limit || 200;
               const hasMultipleStatuses = (status && status.length > 5) || (exclude_status && exclude_status.length > 0);
-              const hasNoFilters = !department && !created_after && !priority && !status && !exclude_status;
+              const hasNoFilters = !department && !created_after && !priority && !status && !exclude_status && !custom_fields && !exclude_custom_fields;
               const shouldUseAsyncJob = requestedLimit > 200 || hasMultipleStatuses || hasNoFilters;
               
               if (shouldUseAsyncJob) {
@@ -672,8 +700,11 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                       department,
                       status,
                       excludeStatus: exclude_status,
+                      excludePriority: exclude_priority,
                       createdAfter: created_after,
-                      priority
+                      priority,
+                      customFields: custom_fields,
+                      excludeCustomFields: exclude_custom_fields
                     }
                   })
                   .select()
@@ -771,6 +802,9 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               if (exclude_status && exclude_status.length > 0) filters.excludeStatus = exclude_status;
               if (created_after) filters.createdAfter = created_after;
               if (priority && priority.length > 0) filters.priority = priority;
+              if (exclude_priority && exclude_priority.length > 0) filters.excludePriority = exclude_priority;
+              if (custom_fields) filters.customFields = custom_fields;
+              if (exclude_custom_fields) filters.excludeCustomFields = exclude_custom_fields;
               
               const maxLimit = Math.min(requestedLimit, 200);
               filters.limit = maxLimit;
