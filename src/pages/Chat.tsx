@@ -45,10 +45,15 @@ const Chat = () => {
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Load session if coming from navigation state, or load the most recent session
+  // Load session if coming from navigation state
   useEffect(() => {
     const initSession = async () => {
       if (!user?.id) return;
+
+      // Check if we're starting a new chat explicitly
+      if (location.state?.newChat) {
+        return;
+      }
 
       // Check if we're loading an existing session from location state
       const stateSessionId = location.state?.sessionId;
@@ -58,18 +63,20 @@ const Chat = () => {
         return;
       }
 
-      // Load the most recent chat session for this user
-      const { data: recentSession, error } = await supabase
-        .from('chat_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('last_message_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Only load the most recent session if we have no messages and no explicit session
+      if (messages.length === 0 && !sessionId) {
+        const { data: recentSession, error } = await supabase
+          .from('chat_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('last_message_at', { ascending: false })
+          .limit(1)
+          .single();
 
-      if (!error && recentSession) {
-        setSessionId(recentSession.id);
-        await loadSession(recentSession.id);
+        if (!error && recentSession) {
+          setSessionId(recentSession.id);
+          await loadSession(recentSession.id);
+        }
       }
     };
 
@@ -378,12 +385,12 @@ const Chat = () => {
     setMessages([]);
     jobLoadedRef.current = false;
     
-    // Clear location state to prevent reloading the old session
-    navigate('/chat', { replace: true, state: {} });
+    // Set newChat flag to prevent auto-loading the most recent session
+    navigate('/chat', { replace: true, state: { newChat: true } });
     
     toast({
-      title: "Chat cleared",
-      description: "Started a new chat",
+      title: "New chat started",
+      description: "Your previous chat was saved",
     });
   }, [toast, navigate]);
 
