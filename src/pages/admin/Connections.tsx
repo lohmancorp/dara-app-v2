@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Cable } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,11 +121,11 @@ const AdminConnections = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <PageHeader 
-          icon={Settings}
-          title="Connection Management"
-          description="Configure connection settings and API rate limits"
-        />
+      <PageHeader 
+        icon={Cable}
+        title="Connection Management"
+        description="Configure connection settings and API rate limits"
+      />
         <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="text-center">Loading services...</div>
         </div>
@@ -320,7 +320,7 @@ const AdminConnections = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader 
-        icon={Settings}
+        icon={Cable}
         title="Connection Management"
         description="Configure connection settings and API rate limits"
       />
