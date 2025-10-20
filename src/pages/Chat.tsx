@@ -688,7 +688,7 @@ const Chat = () => {
               const jobId = parsed.job_id;
               const messageIndex = messages.length + 1;
               
-              assistantContent = `Processing large query in background...\n\n${parsed.message || ''}\n\n${parsed.estimated_time || ''}`;
+              assistantContent = parsed.message || `Processing large query in background...\n\nJob: ${parsed.job_name || jobId}\n\n${parsed.estimated_time || ''}`;
               
               setMessages((prev) => {
                 const newMessages = [...prev];
@@ -702,17 +702,7 @@ const Chat = () => {
                 return newMessages;
               });
 
-              // Save assistant message with job info
-              await supabase
-                .from('chat_messages')
-                .insert({
-                  session_id: currentSessionId,
-                  role: 'assistant',
-                  content: assistantContent,
-                  job_id: jobId
-                });
-
-              // Start polling for job status
+              // Message is already created by the server, so just start polling
               pollJobStatus(jobId, messageIndex);
             }
           } catch (e) {

@@ -474,6 +474,30 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 // Generate job name
                 const jobName = `${sessionId.substring(0, 8)}-${String(jobSequence).padStart(3, '0')}`;
 
+                // Create the assistant message in the database so it can be updated when job completes
+                const initialMessage = `Processing large query in background...\n\nJob: ${jobName}\n\nThis may take 1-20 minutes depending on the dataset size.`;
+                
+                const { error: msgError } = await supabase
+                  .from('chat_messages')
+                  .insert({
+                    session_id: sessionId,
+                    role: 'assistant',
+                    content: initialMessage,
+                    job_id: job.id
+                  });
+                
+                if (msgError) {
+                  console.error('Failed to create assistant message:', msgError);
+                }
+
+                // Store async job info to break out of tool loop
+                asyncJobInfo = {
+                  async_job: true,
+                  job_id: job.id,
+                  job_name: jobName,
+                  message: initialMessage
+                };
+
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({
