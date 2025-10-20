@@ -383,51 +383,13 @@ serve(async (req) => {
       }
     }
 
-    // Handle custom field exclusions
-    if (filters.excludeCustomFields) {
-      for (const [fieldName, excludeValues] of Object.entries(filters.excludeCustomFields)) {
-        // Try to find the field in ticket_fields to get the proper field name and choices
-        const field = ticketFields.find((f: any) => 
-          f.name === fieldName || f.label?.toLowerCase() === fieldName.toLowerCase()
-        );
-        
-        const actualFieldName = field?.name || fieldName;
-        
-        if (field && field.choices && excludeValues.length > 0) {
-          // Convert exclude values to IDs if needed
-          const excludeIds = new Set<string>();
-          for (const value of excludeValues) {
-            if (!isNaN(Number(value))) {
-              excludeIds.add(value);
-            } else {
-              const choice = field.choices.find((c: any) => 
-                c.value?.toLowerCase() === value.toLowerCase()
-              );
-              if (choice) {
-                excludeIds.add(choice.id.toString());
-              }
-            }
-          }
-
-          // Get all choices that are NOT excluded
-          const includedIds = field.choices
-            .filter((c: any) => !excludeIds.has(c.id.toString()))
-            .map((c: any) => c.id.toString());
-
-          console.log(`Exclude ${fieldName} filter:`, Array.from(excludeIds));
-          console.log(`Including ${fieldName} values:`, includedIds);
-
-          if (includedIds.length > 0) {
-            const conditions = includedIds.map((id: string) => `${actualFieldName}:${id}`);
-            if (conditions.length === 1) {
-              queryParts.push(conditions[0]);
-            } else {
-              queryParts.push(`(${conditions.join(' OR ')})`);
-            }
-          }
-        }
-      }
-    }
+    // Handle custom field exclusions - NOTE: We DON'T add these to the API query
+    // because FreshService doesn't support exclusion filters natively.
+    // Instead, we'll filter these client-side after fetching the tickets.
+    // Store them for later use
+    const clientSideFilters = {
+      excludeCustomFields: filters.excludeCustomFields || {}
+    };
 
     // Add custom query if provided
     if (filters.customQuery) {
@@ -524,12 +486,43 @@ serve(async (req) => {
       console.log(`Results limited to ${filters.limit} tickets`);
     }
 
+    // Apply client-side exclusion filters for custom fields
+    let filteredTickets = allTickets;
+    if (clientSideFilters.excludeCustomFields && Object.keys(clientSideFilters.excludeCustomFields).length > 0) {
+      console.log('Applying client-side exclusion filters:', clientSideFilters.excludeCustomFields);
+      
+      filteredTickets = allTickets.filter((ticket: any) => {
+        // Check each exclusion filter
+        for (const [fieldName, excludeValues] of Object.entries(clientSideFilters.excludeCustomFields)) {
+          const ticketFieldValue = ticket.custom_fields?.[fieldName];
+          
+          if (ticketFieldValue !== null && ticketFieldValue !== undefined) {
+            // Convert to string for comparison
+            const valueStr = String(ticketFieldValue);
+            
+            // Check if this ticket's value is in the exclude list
+            if (excludeValues.some((excludeVal: string) => 
+              String(excludeVal).toLowerCase() === valueStr.toLowerCase()
+            )) {
+              // This ticket should be excluded
+              return false;
+            }
+          }
+        }
+        
+        // Ticket passed all exclusion checks
+        return true;
+      });
+      
+      console.log(`Filtered from ${allTickets.length} to ${filteredTickets.length} tickets after exclusions`);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         query: queryString,
-        tickets: allTickets,
-        total: allTickets.length,
+        tickets: filteredTickets,
+        total: filteredTickets.length,
         total_matching: totalMatching,
         limited: filters.limit ? allTickets.length >= filters.limit : false,
         ticket_form_fields: ticketFields
