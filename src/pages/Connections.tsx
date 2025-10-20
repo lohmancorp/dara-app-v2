@@ -521,36 +521,34 @@ const Connections = () => {
                               className="h-7 w-7 object-contain"
                             />
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="flex items-center gap-2">
-                              {connection.is_chat_default && (
-                                <Badge variant="secondary" className="flex items-center gap-1">
-                                  <Star className="h-3 w-3 fill-current" />
-                                  <span>Chat Default</span>
-                                </Badge>
+                          <div className="flex flex-wrap items-start justify-end gap-2">
+                            {connection.is_chat_default && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Star className="h-3 w-3 fill-current" />
+                                <span>Chat Default</span>
+                              </Badge>
+                            )}
+                            <Badge
+                              variant={connection.is_active ? "default" : "destructive"}
+                              className={`flex items-center gap-1.5 ${
+                                connection.is_active 
+                                  ? "bg-green-500 hover:bg-green-600" 
+                                  : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
+                              }`}
+                            >
+                              {connection.is_active ? (
+                                <CheckCircle className="h-3 w-3" />
+                              ) : (
+                                <AlertCircle className="h-3 w-3" />
                               )}
-                              <Badge
-                                variant={connection.is_active ? "default" : "destructive"}
-                                className={`flex items-center gap-1.5 ${
-                                  connection.is_active 
-                                    ? "bg-green-500 hover:bg-green-600" 
-                                    : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
-                                }`}
-                              >
-                                {connection.is_active ? (
-                                  <CheckCircle className="h-3 w-3" />
-                                ) : (
-                                  <AlertCircle className="h-3 w-3" />
-                                )}
                               <span>{connection.is_active ? "Active" : "Deactivated"}</span>
                             </Badge>
+                            {allConnectionTags.length > 0 && (
+                              <Badge variant="default" className="whitespace-nowrap">
+                                {allConnectionTags[0]}
+                              </Badge>
+                            )}
                           </div>
-                          {allConnectionTags.length > 0 && (
-                            <Badge variant="default" className="whitespace-nowrap">
-                              {allConnectionTags[0]}
-                            </Badge>
-                          )}
-                        </div>
                         </div>
                         <div>
                           <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">

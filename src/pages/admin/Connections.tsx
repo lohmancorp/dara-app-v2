@@ -344,7 +344,7 @@ const AdminConnections = () => {
                         className="h-7 w-7 object-contain"
                       />
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-wrap items-start justify-end gap-2">
                       <Badge
                         variant={service.is_active ? "default" : "destructive"}
                         className={`flex items-center gap-1.5 ${
