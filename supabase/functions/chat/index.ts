@@ -173,6 +173,8 @@ async function callLLM(
           const reader = response.body!.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
+          let braceCount = 0;
+          let currentObject = '';
           
           while (true) {
             const { done, value } = await reader.read();
@@ -182,33 +184,45 @@ async function callLLM(
             }
             
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
             
-            for (const line of lines) {
-              if (!line.trim()) continue;
+            // Process character by character to detect complete JSON objects
+            for (let i = 0; i < buffer.length; i++) {
+              const char = buffer[i];
+              currentObject += char;
               
-              try {
-                // Gemini returns raw JSON chunks
-                const geminiData = JSON.parse(line);
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
                 
-                // Extract text from Gemini response
-                const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                  // Convert to OpenAI SSE format
-                  const openaiFormat = {
-                    choices: [{
-                      delta: {
-                        content: text
-                      }
-                    }]
-                  };
-                  await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                // When braceCount reaches 0, we have a complete JSON object
+                if (braceCount === 0 && currentObject.trim()) {
+                  try {
+                    const geminiData = JSON.parse(currentObject.trim());
+                    
+                    // Extract text from Gemini response
+                    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                      // Convert to OpenAI SSE format
+                      const openaiFormat = {
+                        choices: [{
+                          delta: {
+                            content: text
+                          }
+                        }]
+                      };
+                      await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                    }
+                  } catch (e) {
+                    console.error('Error parsing Gemini JSON object:', e);
+                  }
+                  currentObject = '';
                 }
-              } catch (e) {
-                console.error('Error parsing Gemini stream chunk:', e, 'Line:', line);
               }
             }
+            
+            // Clear the buffer as we've processed all characters
+            buffer = '';
           }
         } catch (error) {
           console.error('Error transforming Gemini stream:', error);
