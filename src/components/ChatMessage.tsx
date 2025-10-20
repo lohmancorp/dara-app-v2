@@ -13,10 +13,34 @@ interface ChatMessageProps {
   userAvatarUrl?: string;
   ticketBaseUrl?: string;
   jobId?: string;
+  previousUserMessage?: string;
 }
 
-export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketBaseUrl, jobId }: ChatMessageProps) => {
+export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketBaseUrl, jobId, previousUserMessage }: ChatMessageProps) => {
   const isUser = role === 'user';
+  
+  // Detect rejection/limitation messages and append contact information
+  const isRejectionMessage = !isUser && (
+    content.includes('I cannot') ||
+    content.includes('I am sorry') ||
+    content.includes('not supported') ||
+    content.includes("I can't") ||
+    content.includes('I am unable') ||
+    content.toLowerCase().includes('i cannot')
+  );
+  
+  // Create email link with prefilled content
+  const createContactEmailLink = () => {
+    const email = 'taylor.m.giddens@gmail.com';
+    const subject = 'DARA Feature Feedback';
+    const body = `User Query:\n${previousUserMessage || '[Your query]'}\n\nYour Reply:\n\n`;
+    return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+  
+  // Append contact info if it's a rejection message
+  const displayContent = isRejectionMessage && content
+    ? `${content}\n\nIf you would like to add support for this, please contact my creator, [Taylor Giddens](${createContactEmailLink()}).`
+    : content;
 
   // Parse markdown tables for sortable rendering
   const parseMarkdownTable = (markdown: string) => {
@@ -211,7 +235,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
             </div>
           ) : (
             <TooltipProvider>
-              {renderContentWithSortableTables(content)}
+              {renderContentWithSortableTables(displayContent)}
             </TooltipProvider>
           )}
         </div>

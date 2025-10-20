@@ -982,6 +982,7 @@ const Chat = () => {
                           userAvatarUrl={userAvatarUrl}
                           ticketBaseUrl={ticketBaseUrl}
                           jobId={message.jobId}
+                          previousUserMessage={message.role === 'assistant' && index > 0 && messages[index - 1].role === 'user' ? messages[index - 1].content : undefined}
                         />
                         {message.jobId && message.jobStatus !== 'completed' && message.jobStatus !== 'failed' && (
                           <div className="mt-2 p-3 bg-muted rounded-lg border border-border relative">
