@@ -601,6 +601,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
     // Keep calling AI until no more tool calls (max 10 iterations to prevent infinite loops)
     let iterations = 0;
     const maxIterations = 10;
+    let hallucinationRetries = 0;
+    const maxHallucinationRetries = 2;
 
     while (iterations < maxIterations) {
       iterations++;
@@ -963,15 +965,42 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       
       if (mentionsJob && !asyncJobInfo) {
         console.error('AI is hallucinating async job response without calling tool');
+        hallucinationRetries++;
         
-        // Force the AI to use the tool by adding a system message
-        conversationMessages.push({
-          role: 'system',
-          content: 'ERROR: You mentioned creating a job but did not call the search_freshservice_tickets tool. You MUST call the tool with the appropriate filters. Do not fabricate job IDs. Call the tool now with the filters from the user\'s request.'
-        });
-        
-        // Retry with the corrected conversation
-        continue;
+        if (hallucinationRetries <= maxHallucinationRetries) {
+          console.log(`Hallucination retry ${hallucinationRetries}/${maxHallucinationRetries}`);
+          
+          // Force the AI to use the tool by adding a system message
+          conversationMessages.push({
+            role: 'system',
+            content: 'ERROR: You mentioned creating a job but did not call the search_freshservice_tickets tool. You MUST call the tool with the appropriate filters. Do not fabricate job IDs. Call the tool now with the filters from the user\'s request.'
+          });
+          
+          // Retry with the corrected conversation
+          continue;
+        } else {
+          console.error('Max hallucination retries reached, returning error to user');
+          
+          // Return an error message to the user
+          const encoder = new TextEncoder();
+          const errorMessage = 'I apologize, but I\'m having trouble processing your query correctly. Please try rephrasing your request or use more specific filters (e.g., include date ranges, specific ticket IDs, or department names).';
+          
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                choices: [{
+                  delta: { content: errorMessage }
+                }]
+              })}\n\n`));
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
+            }
+          });
+          
+          return new Response(stream, {
+            headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' }
+          });
+        }
       }
       
       const finalResponse = await callLLM(
