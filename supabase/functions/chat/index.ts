@@ -604,7 +604,7 @@ The UI table component will handle column visibility settings, but you MUST incl
 Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
     // Build conversation with tool call loop
-    const conversationMessages: any[] = [
+    let conversationMessages: any[] = [
       { role: 'system', content: systemPrompt },
       ...messages
     ];
@@ -998,28 +998,42 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       if (refusesWithoutTools && isTicketQuery && iterations <= 2) {
         console.error('AI refusing ticket query without calling tools - forcing tool use');
         
-        // Remove the refusal message from conversation
-        if (choice?.message) {
-          const lastIndex = conversationMessages.length - 1;
-          if (lastIndex >= 0 && conversationMessages[lastIndex]?.role === 'assistant') {
-            conversationMessages.pop();
+        // AGGRESSIVE CONVERSATION CLEANING - Remove all messages that might poison the AI
+        conversationMessages = conversationMessages.filter((msg, idx) => {
+          // Keep system messages, but we'll add a new override one
+          if (msg.role === 'system' && idx === 0) return true;
+          
+          // Remove any assistant messages mentioning configuration issues or refusals
+          if (msg.role === 'assistant' && msg.content) {
+            const content = msg.content.toLowerCase();
+            if (content.includes('cannot fulfill') || 
+                content.includes('configuration issue') ||
+                content.includes('check the service configuration')) {
+              console.log(`Removing poisoned assistant message at index ${idx}`);
+              return false;
+            }
           }
-        }
+          
+          // Keep everything else
+          return true;
+        });
         
         // Add very forceful system message
         conversationMessages.push({
           role: 'system',
-          content: `CRITICAL OVERRIDE: You MUST process this ticket query by calling tools. DO NOT refuse or say there is a configuration issue.
+          content: `CRITICAL OVERRIDE: The previous attempt failed but this is a NEW request. You MUST process this ticket query by calling tools.
+
+IGNORE any previous failures. The department/company name mentioned by the user is VALID.
 
 REQUIRED ACTIONS NOW:
 1. Call get_freshservice_connections() - no parameters needed
-2. Wait for the mcp_service_id from the response
+2. Extract the mcp_service_id from the response
 3. Call search_freshservice_tickets() with:
    - mcp_service_id: <from step 1>
-   - department: "Computer Gross" (or whatever department user mentioned)
-   - status: ['8'] (or appropriate status)
-   
-DO THIS NOW. No refusals allowed. The department name is valid - just call the tools.`
+   - department: <exact name user mentioned>
+   - Other filters as requested
+
+DO NOT refuse. DO NOT say there is a configuration issue. CALL THE TOOLS NOW.`
         });
         continue;
       }
