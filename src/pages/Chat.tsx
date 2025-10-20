@@ -639,6 +639,23 @@ const Chat = () => {
             throw new Error('Request timed out. Try using more specific filters to narrow your search.');
           }
           const errorData = await response.json().catch(() => ({}));
+          
+          // Check if this is a setup required error
+          if (errorData.requiresSetup && errorData.setupUrl) {
+            // Remove loading assistant message
+            setMessages((prev) => prev.slice(0, -1));
+            
+            // Add a helpful error message with link
+            setMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: `⚠️ **Configuration Required**\n\n${errorData.error}\n\n[Go to Connections →](${errorData.setupUrl})\n\nYou need to:\n1. Create a Gemini or OpenAI connection\n2. Click the "Set as Chat Default" button on that connection\n3. Return here to start chatting`
+            }]);
+            
+            setIsLoading(false);
+            setHasActiveJob(false);
+            return;
+          }
+          
           throw new Error(errorData.error || 'Failed to get response');
         }
 
