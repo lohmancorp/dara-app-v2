@@ -988,8 +988,23 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       console.log('Connection type:', defaultConnection.connection_type);
       console.log('Conversation has', conversationMessages.length, 'messages');
 
-      // Check if the AI is trying to talk about async jobs without actually creating one
+      // Check if AI is refusing to process without calling tools
       const responseContent = choice?.message?.content || '';
+      const refusesWithoutTools = /cannot fulfill|issue with.*FreshService|check.*service configuration|cannot process|sorry.*cannot/i.test(responseContent);
+      const userMessage = messages[messages.length - 1]?.content || '';
+      const isTicketQuery = /ticket|show me|list|find|search/i.test(userMessage);
+      
+      // If AI refuses a ticket query without calling tools, force it to call tools
+      if (refusesWithoutTools && isTicketQuery && iterations === 1) {
+        console.error('AI refusing ticket query without calling tools - forcing tool use');
+        conversationMessages.push({
+          role: 'system',
+          content: 'ERROR: You are refusing to process a ticket query without calling the required tools. You MUST:\n1. Call get_freshservice_connections to get the mcp_service_id\n2. Call search_freshservice_tickets with the mcp_service_id and appropriate filters\nDo NOT refuse or say there is a configuration issue without attempting these tool calls. Call the tools NOW.'
+        });
+        continue;
+      }
+
+      // Check if the AI is trying to talk about async jobs without actually creating one
       const mentionsJob = /job.*?id.*?[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(responseContent);
       
       if (mentionsJob && !asyncJobInfo) {
