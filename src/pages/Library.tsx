@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFloatingAction } from "@/components/AppLayout";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,7 @@ const Library = () => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const preventBlurSaveRef = useRef(false);
 
   useEffect(() => {
     setActionButton(null);
@@ -153,6 +154,9 @@ const Library = () => {
   const handleGenerateTitle = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // Prevent blur save when clicking generate button
+    preventBlurSaveRef.current = true;
+    
     setIsGenerating(true);
     
     try {
@@ -186,6 +190,10 @@ const Library = () => {
       });
     } finally {
       setIsGenerating(false);
+      // Reset the flag after a brief delay to allow the blur to be ignored
+      setTimeout(() => {
+        preventBlurSaveRef.current = false;
+      }, 100);
     }
   };
 
@@ -341,8 +349,18 @@ const Library = () => {
             {filteredSessions.map((session) => (
               <Card
                 key={session.id}
-                className="hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
-                onClick={() => navigate(`/chat/${session.id}`)}
+                className={`hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary ${
+                  editingSessionId === session.id ? 'cursor-default' : 'cursor-pointer'
+                }`}
+                onClick={(e) => {
+                  // Prevent navigation if editing or generating
+                  if (editingSessionId === session.id) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  navigate(`/chat/${session.id}`);
+                }}
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
@@ -366,8 +384,8 @@ const Library = () => {
                             value={editingTitle}
                             onChange={(e) => setEditingTitle(e.target.value)}
                             onBlur={() => {
-                              // Only save if not generating
-                              if (!isGenerating) {
+                              // Only save if not generating and not clicking generate button
+                              if (!isGenerating && !preventBlurSaveRef.current) {
                                 handleSaveTitle(session.id);
                               }
                             }}
@@ -386,6 +404,10 @@ const Library = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            onMouseDown={(e) => {
+                              // Prevent blur event from triggering
+                              e.preventDefault();
+                            }}
                             onClick={(e) => handleGenerateTitle(session.id, e)}
                             disabled={isGenerating}
                             className="h-10 px-3 shrink-0"
