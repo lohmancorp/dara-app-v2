@@ -249,37 +249,11 @@ const Chat = () => {
               }
             }
             
-            // Then update UI state
-            setMessages((prev) => {
-              const jobMessageIndex = prev.findIndex(m => m.jobId === job.id);
-              console.log('Found job message at index:', jobMessageIndex);
-              
-              if (jobMessageIndex === -1) {
-                console.log('Job message not found in state, reloading session');
-                // If message not found, reload from database
-                loadSession(chatId!);
-                return prev;
-              }
-
-              const newMessages = [...prev];
-              
-              if (tableContent) {
-                newMessages[jobMessageIndex] = {
-                  ...newMessages[jobMessageIndex],
-                  content: tableContent,
-                  jobStatus: 'completed',
-                  jobProgress: 100
-                };
-              } else if (failedContent) {
-                newMessages[jobMessageIndex] = {
-                  ...newMessages[jobMessageIndex],
-                  content: failedContent,
-                  jobStatus: 'failed'
-                };
-              }
-
-              return newMessages;
-            });
+            // Then update UI state - always reload to ensure consistency
+            console.log('Reloading session to show job results');
+            await loadSession(chatId!);
+            
+            setHasActiveJob(false);
             
             // Show toast notification
             if (tableContent) {
@@ -740,10 +714,11 @@ const Chat = () => {
       const decoder = new TextDecoder();
       let textBuffer = '';
       let assistantContent = '';
+      let isAsyncJob = false;
       
       console.log('Starting to read stream...');
 
-      while (true) {
+      outerLoop: while (true) {
         const { done, value } = await reader.read();
         if (done) {
           console.log('Stream complete, assistant content length:', assistantContent.length);
@@ -764,27 +739,20 @@ const Chat = () => {
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') {
             console.log('Received [DONE] signal');
+            if (isAsyncJob) {
+              console.log('Async job stream ended, stopping all processing');
+              break outerLoop;
+            }
             continue;
           }
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              console.log('Received content chunk:', content.substring(0, 50));
-              assistantContent += content;
-              setMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
-                  role: 'assistant',
-                  content: assistantContent
-                };
-                return newMessages;
-              });
-            }
             
-            // Check for async job response
+            // Check for async job response FIRST
             if (parsed.async_job && parsed.job_id) {
+              console.log('Async job detected:', parsed.job_id);
+              isAsyncJob = true;
               const jobId = parsed.job_id;
               const messageIndex = messages.length + 1;
               
@@ -804,10 +772,25 @@ const Chat = () => {
 
               // Message is already created by the server, so just start polling
               pollJobStatus(jobId, messageIndex);
-              
-              // Stop processing stream since job is running in background
-              console.log('Async job detected, stopping stream processing');
-              break;
+              console.log('Async job message set, waiting for stream end');
+              continue;
+            }
+            
+            // Only process regular content if NOT an async job
+            if (!isAsyncJob) {
+              const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+              if (content) {
+                console.log('Received content chunk:', content.substring(0, 50));
+                assistantContent += content;
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1] = {
+                    role: 'assistant',
+                    content: assistantContent
+                  };
+                  return newMessages;
+                });
+              }
             }
           } catch (e) {
             console.error('Error parsing SSE:', e, 'Line:', jsonStr);
