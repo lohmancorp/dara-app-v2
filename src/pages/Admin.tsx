@@ -94,15 +94,15 @@ const Admin = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredAreas.map((area) => (
             <Card
               key={area.id}
-              className="p-4 hover:bg-accent/50 cursor-pointer transition-colors"
+              className="p-6 hover:shadow-lg transition-all cursor-pointer group border-2 hover:border-primary"
               onClick={() => handleCardClick(area.route)}
             >
               <div className="flex gap-4">
-                <div className="flex items-center justify-center p-3 rounded-lg bg-primary/10 h-fit">
+                <div className="flex items-center justify-center p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors h-fit">
                   <area.icon className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
