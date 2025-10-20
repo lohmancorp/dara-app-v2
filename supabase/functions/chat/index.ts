@@ -794,13 +794,16 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   message: initialMessage
                 };
 
+                // Log for troubleshooting but don't show to user
+                console.log(`Job created successfully. Job ID: ${job.id}. Processing in background.`);
+
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({
                     async_job: true,
                     job_id: job.id,
                     job_name: jobName,
-                    message: `Job created successfully. Job ID: ${job.id}. Processing in background.`,
+                    message: '', // Empty message - progress bar will show via realtime
                     estimated_time: '1-20 minutes depending on dataset size'
                   })
                 };
