@@ -23,16 +23,39 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
     const lines = markdown.split('\n');
     const tables: { start: number; end: number; headers: string[]; rows: string[][] }[] = [];
     
+    // Helper function to split table row by pipes, handling escaped pipes
+    const splitTableRow = (line: string): string[] => {
+      // First, replace escaped pipes with a placeholder
+      const placeholder = '\u0000ESCAPED_PIPE\u0000';
+      const processedLine = line.replace(/\\\|/g, placeholder);
+      
+      // Split by unescaped pipes
+      const cells = processedLine.split('|')
+        .filter(c => c.trim())
+        .map(c => {
+          // Restore escaped pipes and clean up
+          let cell = c.replace(new RegExp(placeholder, 'g'), '|');
+          // Remove trailing backslashes that were used for escaping
+          cell = cell.replace(/\\\s*$/, '').trim();
+          return cell;
+        });
+      
+      return cells;
+    };
+    
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('|') && lines[i + 1]?.includes('---')) {
-        const headers = line.split('|').filter(h => h.trim()).map(h => h.trim());
+        const headers = splitTableRow(line);
         const rows: string[][] = [];
         let j = i + 2;
         
         while (j < lines.length && lines[j].trim().startsWith('|')) {
-          const cells = lines[j].split('|').filter(c => c.trim()).map(c => c.trim());
-          rows.push(cells);
+          const cells = splitTableRow(lines[j]);
+          // Only add row if it has the same number of cells as headers
+          if (cells.length === headers.length) {
+            rows.push(cells);
+          }
           j++;
         }
         
