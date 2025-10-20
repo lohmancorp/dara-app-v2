@@ -196,6 +196,7 @@ const AdminEditConnection = () => {
           Back to Connections
         </Button>
 
+        {/* General Settings Section */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -207,8 +208,8 @@ const AdminEditConnection = () => {
                 />
               </div>
               <div>
-                <CardTitle>{config.name}</CardTitle>
-                <CardDescription>{config.description}</CardDescription>
+                <CardTitle>General Settings</CardTitle>
+                <CardDescription>Basic connection configuration and behavior</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -312,133 +313,137 @@ const AdminEditConnection = () => {
                 suggestions={existingTags}
               />
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
+        {/* API Rate Limits Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>API Rate Limits</CardTitle>
+            <CardDescription>
+              Configure rate limiting and retry behavior for API calls
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="call-delay">
+                  Call Delay (ms)
+                </Label>
+                <Input
+                  id="call-delay"
+                  type="number"
+                  value={editingField === 'call_delay' ? undefined : service.call_delay_ms}
+                  defaultValue={service.call_delay_ms}
+                  onFocus={() => setEditingField('call_delay')}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value !== service.call_delay_ms) {
+                      handleUpdateService({ call_delay_ms: value });
+                    } else {
+                      setEditingField(null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minimum delay between consecutive API calls in milliseconds
+                </p>
+              </div>
 
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-4">API Rate Limits</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="call-delay">
-                      Call Delay (ms)
-                    </Label>
-                    <Input
-                      id="call-delay"
-                      type="number"
-                      value={editingField === 'call_delay' ? undefined : service.call_delay_ms}
-                      defaultValue={service.call_delay_ms}
-                      onFocus={() => setEditingField('call_delay')}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.call_delay_ms) {
-                          handleUpdateService({ call_delay_ms: value });
-                        } else {
-                          setEditingField(null);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Minimum delay between consecutive API calls in milliseconds
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="retry-delay">
+                  Retry Delay (sec)
+                </Label>
+                <Input
+                  id="retry-delay"
+                  type="number"
+                  value={editingField === 'retry_delay' ? undefined : service.retry_delay_sec}
+                  defaultValue={service.retry_delay_sec}
+                  onFocus={() => setEditingField('retry_delay')}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value !== service.retry_delay_sec) {
+                      handleUpdateService({ retry_delay_sec: value });
+                    } else {
+                      setEditingField(null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Wait time in seconds before retrying a failed request
+                </p>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="retry-delay">
-                      Retry Delay (sec)
-                    </Label>
-                    <Input
-                      id="retry-delay"
-                      type="number"
-                      value={editingField === 'retry_delay' ? undefined : service.retry_delay_sec}
-                      defaultValue={service.retry_delay_sec}
-                      onFocus={() => setEditingField('retry_delay')}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.retry_delay_sec) {
-                          handleUpdateService({ retry_delay_sec: value });
-                        } else {
-                          setEditingField(null);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Wait time in seconds before retrying a failed request
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="max-retries">
+                  Max Retries
+                </Label>
+                <Input
+                  id="max-retries"
+                  type="number"
+                  value={editingField === 'max_retries' ? undefined : service.max_retries}
+                  defaultValue={service.max_retries}
+                  onFocus={() => setEditingField('max_retries')}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value !== service.max_retries) {
+                      handleUpdateService({ max_retries: value });
+                    } else {
+                      setEditingField(null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of retry attempts when a request fails
+                </p>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="max-retries">
-                      Max Retries
-                    </Label>
-                    <Input
-                      id="max-retries"
-                      type="number"
-                      value={editingField === 'max_retries' ? undefined : service.max_retries}
-                      defaultValue={service.max_retries}
-                      onFocus={() => setEditingField('max_retries')}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.max_retries) {
-                          handleUpdateService({ max_retries: value });
-                        } else {
-                          setEditingField(null);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Number of retry attempts when a request fails
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="rate-limit">
+                  Calls per Minute
+                </Label>
+                <Input
+                  id="rate-limit"
+                  type="number"
+                  value={editingField === 'rate_limit' ? undefined : service.rate_limit_per_minute}
+                  defaultValue={service.rate_limit_per_minute}
+                  onFocus={() => setEditingField('rate_limit')}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value !== service.rate_limit_per_minute) {
+                      handleUpdateService({ rate_limit_per_minute: value });
+                    } else {
+                      setEditingField(null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum number of API calls allowed per minute
+                </p>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="rate-limit">
-                      Calls per Minute
-                    </Label>
-                    <Input
-                      id="rate-limit"
-                      type="number"
-                      value={editingField === 'rate_limit' ? undefined : service.rate_limit_per_minute}
-                      defaultValue={service.rate_limit_per_minute}
-                      onFocus={() => setEditingField('rate_limit')}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.rate_limit_per_minute) {
-                          handleUpdateService({ rate_limit_per_minute: value });
-                        } else {
-                          setEditingField(null);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Maximum number of API calls allowed per minute
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="rate-limit-hour">
-                      Calls per Hour
-                    </Label>
-                    <Input
-                      id="rate-limit-hour"
-                      type="number"
-                      value={editingField === 'rate_limit_hour' ? undefined : service.rate_limit_per_hour}
-                      defaultValue={service.rate_limit_per_hour}
-                      onFocus={() => setEditingField('rate_limit_hour')}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.rate_limit_per_hour) {
-                          handleUpdateService({ rate_limit_per_hour: value });
-                        } else {
-                          setEditingField(null);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Maximum number of API calls allowed per hour
-                    </p>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="rate-limit-hour">
+                  Calls per Hour
+                </Label>
+                <Input
+                  id="rate-limit-hour"
+                  type="number"
+                  value={editingField === 'rate_limit_hour' ? undefined : service.rate_limit_per_hour}
+                  defaultValue={service.rate_limit_per_hour}
+                  onFocus={() => setEditingField('rate_limit_hour')}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value !== service.rate_limit_per_hour) {
+                      handleUpdateService({ rate_limit_per_hour: value });
+                    } else {
+                      setEditingField(null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum number of API calls allowed per hour
+                </p>
               </div>
             </div>
           </CardContent>
