@@ -767,7 +767,7 @@ const Templates = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredTemplates.map((template) => (
-              <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow flex flex-col">
+              <Card key={template.id} className="p-6 hover:shadow-lg transition-all border-2 hover:border-primary flex flex-col group">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
                     {template.type === "prompt" ? (
