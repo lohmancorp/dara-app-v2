@@ -284,7 +284,6 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
               <TooltipContent>Download XLSX</TooltipContent>
             </Tooltip>
             
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
             <Select value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
               <SelectTrigger className="w-[100px]">
                 <SelectValue />
