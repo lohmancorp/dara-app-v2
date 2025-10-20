@@ -40,7 +40,7 @@ interface Job {
   job_sequence: number | null;
 }
 
-type SortField = "query" | "created_at" | "completed_at";
+type SortField = "query" | "completed_at";
 type SortDirection = "asc" | "desc";
 
 const Jobs = () => {
@@ -238,10 +238,6 @@ const Jobs = () => {
           aVal = a.query.toLowerCase();
           bVal = b.query.toLowerCase();
           break;
-        case "created_at":
-          aVal = new Date(a.created_at).getTime();
-          bVal = new Date(b.created_at).getTime();
-          break;
         case "completed_at":
           aVal = a.completed_at ? new Date(a.completed_at).getTime() : 0;
           bVal = b.completed_at ? new Date(b.completed_at).getTime() : 0;
@@ -272,8 +268,7 @@ const Jobs = () => {
 
   const getSortLabel = () => {
     const labels = {
-      query: "Query",
-      created_at: "Created",
+      query: "Name",
       completed_at: "Completed",
     };
     return labels[sortField];
@@ -487,27 +482,13 @@ const Jobs = () => {
                       onClick={() => { setSortField("query"); setSortDirection("asc"); }}
                       className={sortField === "query" && sortDirection === "asc" ? "bg-accent text-white" : ""}
                     >
-                      Query (A-Z)
+                      Name (A-Z)
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => { setSortField("query"); setSortDirection("desc"); }}
                       className={sortField === "query" && sortDirection === "desc" ? "bg-accent text-white" : ""}
                     >
-                      Query (Z-A)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}
-                      className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
-                    >
-                      Created
-                      <ArrowUp className="h-4 w-4 ml-2" />
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}
-                      className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
-                    >
-                      Created
-                      <ArrowDown className="h-4 w-4 ml-2" />
+                      Name (Z-A)
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => { setSortField("completed_at"); setSortDirection("asc"); }}
