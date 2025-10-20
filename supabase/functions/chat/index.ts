@@ -216,7 +216,10 @@ async function callLLM(
       })();
       
       return new Response(readable, {
-        headers: { 'Content-Type': 'text/event-stream' }
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream' 
+        }
       });
     }
 
