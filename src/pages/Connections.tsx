@@ -1,16 +1,24 @@
-import { Cable, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff, Star } from "lucide-react";
+import { Cable, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff, Star, Search, X, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useFloatingAction } from "@/components/AppLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
@@ -21,6 +29,8 @@ import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 type AuthType = 'oauth' | 'token' | 'basic_auth';
+type SortField = "name" | "status";
+type SortDirection = "asc" | "desc";
 
 interface Connection {
   id: string;
@@ -35,6 +45,7 @@ interface Connection {
   connection_config: any;
   is_active: boolean;
   is_chat_default: boolean;
+  tags?: string[];
 }
 
 const CONNECTION_ICONS: Record<ConnectionType, string> = {
@@ -65,6 +76,10 @@ const Connections = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
   const [activeConnectionTypes, setActiveConnectionTypes] = useState<Set<ConnectionType>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   useEffect(() => {
     setActionButton(
@@ -127,6 +142,92 @@ const Connections = () => {
 
   const getConnectionInfo = (type: ConnectionType) => {
     return AVAILABLE_CONNECTIONS.find(c => c.type === type);
+  };
+
+  // Filter and sort connections
+  const filteredAndSortedConnections = useMemo(() => {
+    // Filter by search query
+    let filtered = connections.filter(connection => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      const info = getConnectionInfo(connection.connection_type);
+      return (
+        connection.name.toLowerCase().includes(query) ||
+        info?.name.toLowerCase().includes(query) ||
+        info?.description.toLowerCase().includes(query) ||
+        connection.connection_config?.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+      );
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortField) {
+        case "name":
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case "status":
+          aVal = a.is_active ? 1 : 0;
+          bVal = b.is_active ? 1 : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [connections, searchQuery, sortField, sortDirection]);
+
+  // Get top 5 tags from all connections
+  const allTags = useMemo(() => {
+    const tagCounts = new Map<string, number>();
+    connections.forEach(connection => {
+      const tags = connection.connection_config?.tags || [];
+      tags.forEach((tag: string) => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    });
+
+    return Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag]) => tag);
+  }, [connections]);
+
+  // Filter by selected tags
+  const tagFilteredConnections = useMemo(() => {
+    if (selectedFilters.length === 0) return filteredAndSortedConnections;
+    
+    return filteredAndSortedConnections.filter(connection => {
+      const tags = connection.connection_config?.tags || [];
+      return selectedFilters.every(filter => tags.includes(filter));
+    });
+  }, [filteredAndSortedConnections, selectedFilters]);
+
+  const toggleFilter = (filter: string) => {
+    setSelectedFilters(prev => 
+      prev.includes(filter) 
+        ? prev.filter(f => f !== filter)
+        : [...prev, filter]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedFilters([]);
+  };
+
+  const getSortLabel = () => {
+    const labels = {
+      name: "Name",
+      status: "Status",
+    };
+    return labels[sortField];
   };
 
   const handleTestConnection = async (connection: Connection) => {
@@ -271,115 +372,226 @@ const Connections = () => {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {connections.map((connection) => {
-              const info = getConnectionInfo(connection.connection_type);
-              return (
-                <Card 
-                  key={connection.id} 
-                  className="hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="p-px rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                        <img 
-                          src={CONNECTION_ICONS[connection.connection_type]} 
-                          alt={`${connection.name} icon`}
-                          className="h-7 w-7 object-contain"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {connection.is_chat_default && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-current" />
-                            <span>Chat Default</span>
-                          </Badge>
-                        )}
-                        <Badge
-                          variant={connection.is_active ? "default" : "destructive"}
-                          className={`flex items-center gap-1.5 ${
-                            connection.is_active 
-                              ? "bg-green-500 hover:bg-green-600" 
-                              : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
-                          }`}
-                        >
-                          {connection.is_active ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <AlertCircle className="h-3 w-3" />
-                          )}
-                          <span>{connection.is_active ? "Active" : "Deactivated"}</span>
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                        {connection.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {info?.description || connection.connection_type}
-                      </p>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Auth: {connection.auth_type}
-                    </div>
-                    <TooltipProvider>
-                      <div className="flex gap-1.5 justify-start">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => handleTestConnection(connection)}
-                            disabled={testingConnectionId === connection.id}
-                          >
-                            <Wifi className={`h-4 w-4 ${testingConnectionId === connection.id ? "animate-pulse" : ""}`} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {testingConnectionId === connection.id ? "Testing..." : "Test Connection"}
-                        </TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => handleConfigureConnection(connection.id)}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Configure Connection</TooltipContent>
-                      </Tooltip>
+          <>
+            {/* Search and Sort Controls */}
+            <div className="mb-6 flex gap-2">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search connections..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
 
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={connection.is_active ? "default" : "outline"} 
-                            size="sm"
-                            onClick={() => handleToggleActive(connection)}
-                            disabled={testingConnectionId === connection.id}
-                          >
-                            {connection.is_active ? (
-                              <PowerOff className="h-4 w-4" />
-                            ) : (
-                              <Power className="h-4 w-4" />
+              {/* Sort */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    {getSortLabel()}
+                    {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background z-50">
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("name"); setSortDirection("asc"); }}
+                    className={sortField === "name" && sortDirection === "asc" ? "bg-accent text-white" : ""}
+                  >
+                    Name (A-Z)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("name"); setSortDirection("desc"); }}
+                    className={sortField === "name" && sortDirection === "desc" ? "bg-accent text-white" : ""}
+                  >
+                    Name (Z-A)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("status"); setSortDirection("asc"); }}
+                    className={`justify-between ${sortField === "status" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Status
+                    <ArrowUp className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("status"); setSortDirection("desc"); }}
+                    className={`justify-between ${sortField === "status" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Status
+                    <ArrowDown className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Filter Tags */}
+            {allTags.length > 0 && (
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                {allTags.map(tag => (
+                  <Badge
+                    key={tag}
+                    variant={selectedFilters.includes(tag) ? "default" : "outline"}
+                    className="cursor-pointer py-[2px]"
+                    onClick={() => toggleFilter(tag)}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                {selectedFilters.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-auto min-h-0 px-2.5 py-[2px] text-xs font-semibold gap-1 leading-none"
+                  >
+                    <X className="h-3 w-3" />
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Results count */}
+            <div className="text-sm text-muted-foreground mb-6">
+              Showing {tagFilteredConnections.length} of {connections.length} connections
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {tagFilteredConnections.length === 0 ? (
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                  <Cable className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No connections found matching your search.</p>
+                </div>
+              ) : (
+                tagFilteredConnections.map((connection) => {
+                  const info = getConnectionInfo(connection.connection_type);
+                  const tags = connection.connection_config?.tags || [];
+                  return (
+                    <Card 
+                      key={connection.id} 
+                      className="hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
+                    >
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="p-px rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <img 
+                              src={CONNECTION_ICONS[connection.connection_type]} 
+                              alt={`${connection.name} icon`}
+                              className="h-7 w-7 object-contain"
+                            />
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              {connection.is_chat_default && (
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 fill-current" />
+                                  <span>Chat Default</span>
+                                </Badge>
+                              )}
+                              <Badge
+                                variant={connection.is_active ? "default" : "destructive"}
+                                className={`flex items-center gap-1.5 ${
+                                  connection.is_active 
+                                    ? "bg-green-500 hover:bg-green-600" 
+                                    : "bg-[#9E9E9E] hover:bg-[#9E9E9E] text-white"
+                                }`}
+                              >
+                                {connection.is_active ? (
+                                  <CheckCircle className="h-3 w-3" />
+                                ) : (
+                                  <AlertCircle className="h-3 w-3" />
+                                )}
+                                <span>{connection.is_active ? "Active" : "Deactivated"}</span>
+                              </Badge>
+                            </div>
+                            {tags.length > 0 && (
+                              <Badge variant="default" className="whitespace-nowrap">
+                                {tags[0]}
+                              </Badge>
                             )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {connection.is_active ? "Deactivate Connection" : "Activate Connection"}
-                        </TooltipContent>
-                      </Tooltip>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                            {connection.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {info?.description || connection.connection_type}
+                          </p>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Auth: {connection.auth_type}
+                        </div>
+                        <TooltipProvider>
+                          <div className="flex gap-1.5 justify-start">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleTestConnection(connection)}
+                                disabled={testingConnectionId === connection.id}
+                              >
+                                <Wifi className={`h-4 w-4 ${testingConnectionId === connection.id ? "animate-pulse" : ""}`} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {testingConnectionId === connection.id ? "Testing..." : "Test Connection"}
+                            </TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleConfigureConnection(connection.id)}
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Configure Connection</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant={connection.is_active ? "default" : "outline"} 
+                                size="sm"
+                                onClick={() => handleToggleActive(connection)}
+                                disabled={testingConnectionId === connection.id}
+                              >
+                                {connection.is_active ? (
+                                  <PowerOff className="h-4 w-4" />
+                                ) : (
+                                  <Power className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {connection.is_active ? "Deactivate Connection" : "Activate Connection"}
+                            </TooltipContent>
+                          </Tooltip>
+                          </div>
+                        </TooltipProvider>
                       </div>
-                    </TooltipProvider>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </>
         )}
       </div>
 
