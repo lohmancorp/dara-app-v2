@@ -433,6 +433,7 @@ export type Database = {
       }
       mcp_services: {
         Row: {
+          allow_custom_endpoint: boolean
           call_delay_ms: number | null
           created_at: string
           description: string | null
@@ -452,6 +453,7 @@ export type Database = {
           uses_app_token: boolean
         }
         Insert: {
+          allow_custom_endpoint?: boolean
           call_delay_ms?: number | null
           created_at?: string
           description?: string | null
@@ -471,6 +473,7 @@ export type Database = {
           uses_app_token?: boolean
         }
         Update: {
+          allow_custom_endpoint?: boolean
           call_delay_ms?: number | null
           created_at?: string
           description?: string | null

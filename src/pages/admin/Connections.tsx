@@ -25,6 +25,8 @@ interface MCPService {
   description: string | null;
   uses_app_token: boolean;
   is_active: boolean;
+  endpoint_template: string | null;
+  allow_custom_endpoint: boolean;
   call_delay_ms: number;
   max_retries: number;
   retry_delay_sec: number;
@@ -235,6 +237,51 @@ const AdminConnections = () => {
               checked={service.uses_app_token}
               onCheckedChange={(checked) => 
                 handleUpdateService(service.id, { uses_app_token: checked })
+              }
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label htmlFor={`endpoint-${service.id}`}>Endpoint Host</Label>
+            <Input
+              id={`endpoint-${service.id}`}
+              type="text"
+              value={editingService === service.id ? undefined : service.endpoint_template || ''}
+              defaultValue={service.endpoint_template || ''}
+              placeholder="https://api.example.com"
+              onFocus={() => setEditingService(service.id)}
+              onBlur={(e) => {
+                const value = e.target.value.trim();
+                if (value !== service.endpoint_template) {
+                  handleUpdateService(service.id, { endpoint_template: value || null });
+                } else {
+                  setEditingService(null);
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Default API endpoint for this connection type
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor={`allow-custom-endpoint-${service.id}`}>
+                Allow Custom Endpoint
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {service.allow_custom_endpoint 
+                  ? "Users can define their own endpoint (e.g., customer-specific URLs)" 
+                  : "Users must use the admin-defined endpoint above"}
+              </p>
+            </div>
+            <Switch
+              id={`allow-custom-endpoint-${service.id}`}
+              checked={service.allow_custom_endpoint}
+              onCheckedChange={(checked) => 
+                handleUpdateService(service.id, { allow_custom_endpoint: checked })
               }
             />
           </div>
