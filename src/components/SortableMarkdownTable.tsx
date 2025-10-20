@@ -83,19 +83,26 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
       return rows;
     }
 
+    // Priority ordering map
+    const priorityOrder: Record<string, number> = {
+      'urgent': 4,
+      'high': 3,
+      'medium': 2,
+      'low': 1
+    };
+
     // Check if we're sorting by priority column
     const sortingByPriority = headers[sortColumn]?.toLowerCase() === 'priority';
-    const priorityValueIndex = headers.findIndex(h => h.toLowerCase() === 'priority_value');
 
     return [...rows].sort((a, b) => {
-      // If sorting by priority and we have a priority_value column, use that for sorting
-      let aVal, bVal;
-      if (sortingByPriority && priorityValueIndex !== -1) {
-        aVal = a[priorityValueIndex] || '0';
-        bVal = b[priorityValueIndex] || '0';
-      } else {
-        aVal = a[sortColumn] || '';
-        bVal = b[sortColumn] || '';
+      let aVal = a[sortColumn] || '';
+      let bVal = b[sortColumn] || '';
+      
+      // Special handling for priority column
+      if (sortingByPriority) {
+        const aPriority = priorityOrder[aVal.toLowerCase()] || 0;
+        const bPriority = priorityOrder[bVal.toLowerCase()] || 0;
+        return sortDirection === 'asc' ? aPriority - bPriority : bPriority - aPriority;
       }
       
       // Try to parse as numbers first
@@ -359,11 +366,14 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                           ? `${fullRow[subjectIndex]}\n\n${fullRow[descriptionIndex]?.substring(0, 500) || ''}`
                           : cell.substring(0, 500);
                         
+                        // Clean up trailing backslashes (markdown escape characters)
+                        const cleanCell = cell.replace(/\\\s*$/, '');
+                        
                         return (
                           <TableCell key={cellIndex} className="max-w-[300px] text-xs sm:text-sm px-2 sm:px-4">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="truncate cursor-help block">{cell}</span>
+                                <span className="truncate cursor-help block">{cleanCell}</span>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-md whitespace-pre-wrap">
                                 <p className="text-sm">{tooltipContent}</p>
@@ -373,9 +383,12 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                         );
                       }
                       
+                      // Clean up trailing backslashes (markdown escape characters)
+                      const cleanCell = cell.replace(/\\\s*$/, '');
+                      
                       return (
                         <TableCell key={cellIndex} className="max-w-[300px] truncate text-xs sm:text-sm px-2 sm:px-4">
-                          {cell}
+                          {cleanCell}
                         </TableCell>
                       );
                     })}
