@@ -252,6 +252,25 @@ serve(async (req) => {
       .eq('id', jobId);
 
     console.log('Job completed:', jobId);
+    
+    // Update the chat message with the results
+    const tableContent = `Found ${formattedTickets.length} tickets:\n\n` +
+      '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n' +
+      '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n' +
+      formattedTickets.map((t: any) => 
+        `| ${t.id} | ${t.company} | ${t.subject} | ${t.priority} | ${t.status} | ${t.created_at} | ${t.updated_at} | ${t.type} | ${t.escalated} | ${t.module} | ${t.score} | ${t.ticket_type} |`
+      ).join('\n');
+    
+    const { error: msgUpdateError } = await supabase
+      .from('chat_messages')
+      .update({ content: tableContent })
+      .eq('job_id', jobId);
+      
+    if (msgUpdateError) {
+      console.error('Failed to update chat message:', msgUpdateError);
+    } else {
+      console.log('Chat message updated with results');
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

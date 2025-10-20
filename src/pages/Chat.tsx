@@ -804,6 +804,10 @@ const Chat = () => {
 
               // Message is already created by the server, so just start polling
               pollJobStatus(jobId, messageIndex);
+              
+              // Stop processing stream since job is running in background
+              console.log('Async job detected, stopping stream processing');
+              break;
             }
           } catch (e) {
             console.error('Error parsing SSE:', e, 'Line:', jsonStr);

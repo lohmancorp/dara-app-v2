@@ -926,17 +926,22 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
         throw new Error('No response body from LLM');
       }
 
-      // If there's async job info, inject it into the stream
+      // If there's async job info, only emit the job metadata (don't pipe AI response)
       if (asyncJobInfo) {
-        console.log('Emitting async job metadata in stream');
+        console.log('Emitting async job metadata and ending stream');
         
         const encoder = new TextEncoder();
-        const reader = finalResponse.body!.getReader();
+        
+        // Close the AI response stream since we don't need it
+        if (finalResponse.body) {
+          const reader = finalResponse.body.getReader();
+          reader.cancel();
+        }
         
         const stream = new ReadableStream({
-          async start(controller) {
+          start(controller) {
             try {
-              // Emit job metadata first
+              // Emit job metadata
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 async_job: true,
                 job_id: asyncJobInfo.job_id,
@@ -944,14 +949,10 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 estimated_time: asyncJobInfo.estimated_time
               })}\n\n`));
               
-              // Then pipe the AI response
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                controller.enqueue(value);
-              }
+              // Emit [DONE] signal
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
             } catch (e) {
-              console.error('Error streaming with job metadata:', e);
+              console.error('Error streaming job metadata:', e);
               controller.error(e);
             } finally {
               controller.close();
@@ -959,7 +960,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
           }
         });
 
-        console.log('Streaming final response with job metadata to client');
+        console.log('Streaming job metadata to client (no AI response)');
         return new Response(stream, {
           headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
         });
