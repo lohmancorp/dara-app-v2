@@ -137,24 +137,24 @@ async function callLLM(
 
     const systemInstruction = messages.find(m => m.role === 'system')?.content;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-          tools: tools ? [{
-            functionDeclarations: tools.map(t => ({
-              name: t.function.name,
-              description: t.function.description,
-              parameters: t.function.parameters
-            }))
-          }] : undefined
-        })
-      }
-    );
+    // Add ?alt=sse for streaming to get SSE format
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}${stream ? '&alt=sse' : ''}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: geminiMessages,
+        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+        tools: tools ? [{
+          functionDeclarations: tools.map(t => ({
+            name: t.function.name,
+            description: t.function.description,
+            parameters: t.function.parameters
+          }))
+        }] : undefined
+      })
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -163,7 +163,7 @@ async function callLLM(
     }
 
     if (stream) {
-      // Transform Gemini's streaming format to OpenAI SSE format
+      // With ?alt=sse, Gemini now returns SSE format directly
       const { readable, writable } = new TransformStream();
       const writer = writable.getWriter();
       const encoder = new TextEncoder();
@@ -173,72 +173,40 @@ async function callLLM(
           const reader = response.body!.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
-          let braceDepth = 0;
-          let inString = false;
-          let escape = false;
-          let currentObject = '';
           
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              console.log('Stream done, buffer remaining:', buffer.substring(0, 100));
               await writer.write(encoder.encode('data: [DONE]\n\n'));
               break;
             }
             
             buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
             
-            // Parse character by character to find complete JSON objects
-            for (let i = 0; i < buffer.length; i++) {
-              const char = buffer[i];
-              currentObject += char;
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed.startsWith(':')) continue;
+              if (!trimmed.startsWith('data: ')) continue;
               
-              // Track string boundaries
-              if (char === '"' && !escape) {
-                inString = !inString;
-              }
+              const data = trimmed.slice(6);
+              if (data === '[DONE]') continue;
               
-              // Track escape sequences
-              escape = (char === '\\' && !escape);
-              
-              // Only count braces outside of strings
-              if (!inString) {
-                if (char === '{') {
-                  braceDepth++;
-                } else if (char === '}') {
-                  braceDepth--;
-                  
-                  // When we return to depth 0, we have a complete object
-                  if (braceDepth === 0 && currentObject.trim()) {
-                    try {
-                      const geminiData = JSON.parse(currentObject.trim());
-                      console.log('Successfully parsed Gemini object');
-                      
-                      // Extract text from Gemini's structure
-                      const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                      
-                      if (text) {
-                        console.log('Extracted text:', text.substring(0, 100));
-                        // Convert to OpenAI SSE format
-                        const openaiFormat = {
-                          choices: [{
-                            delta: {
-                              content: text
-                            }
-                          }]
-                        };
-                        await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
-                      }
-                    } catch (e) {
-                      console.error('Error parsing Gemini JSON:', e, 'Object:', currentObject.substring(0, 200));
-                    }
-                    currentObject = '';
-                  }
+              try {
+                const geminiChunk = JSON.parse(data);
+                const text = geminiChunk.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                  const openaiFormat = {
+                    choices: [{ delta: { content: text } }]
+                  };
+                  await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
                 }
+              } catch (e) {
+                console.error('Error parsing Gemini SSE:', e, 'Data:', data.substring(0, 100));
               }
             }
-            
-            buffer = ''; // Clear buffer after processing
           }
         } catch (error) {
           console.error('Error transforming Gemini stream:', error);
