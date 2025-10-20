@@ -141,11 +141,13 @@ const Library = () => {
     }
     
     setEditingSessionId(null);
+    setIsGenerating(false);
   };
 
   const handleCancelEdit = () => {
     setEditingSessionId(null);
     setEditingTitle('');
+    setIsGenerating(false);
   };
 
   const handleGenerateTitle = async (sessionId: string, e: React.MouseEvent) => {
