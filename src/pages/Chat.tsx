@@ -45,7 +45,7 @@ const Chat = () => {
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Load session if coming from navigation state
+  // Load session if coming from navigation state, or load the most recent session
   useEffect(() => {
     const initSession = async () => {
       if (!user?.id) return;
@@ -58,7 +58,19 @@ const Chat = () => {
         return;
       }
 
-      // Don't create session on mount - wait until user sends first message
+      // Load the most recent chat session for this user
+      const { data: recentSession, error } = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('last_message_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && recentSession) {
+        setSessionId(recentSession.id);
+        await loadSession(recentSession.id);
+      }
     };
 
     initSession();
@@ -343,16 +355,19 @@ const Chat = () => {
   };
 
   const handleClearChat = useCallback(async () => {
-    // Just clear the UI state - new session will be created on next send
+    // Clear the UI state and session - new session will be created on next send
     setSessionId(null);
     setMessages([]);
     jobLoadedRef.current = false;
+    
+    // Clear location state to prevent reloading the old session
+    navigate('/chat', { replace: true, state: {} });
     
     toast({
       title: "Chat cleared",
       description: "Started a new chat",
     });
-  }, [toast]);
+  }, [toast, navigate]);
 
   useEffect(() => {
     setAdvancedControls({
@@ -421,9 +436,12 @@ const Chat = () => {
           
           setMessages((prev) => {
             const newMessages = [...prev];
-            if (newMessages[messageIndex]) {
-              newMessages[messageIndex] = {
-                ...newMessages[messageIndex],
+            // Find the message with this jobId instead of using index
+            const jobMessageIndex = newMessages.findIndex(m => m.jobId === jobId);
+            
+            if (jobMessageIndex !== -1) {
+              newMessages[jobMessageIndex] = {
+                ...newMessages[jobMessageIndex],
                 jobStatus: jobData.status,
                 jobProgress: jobData.progress,
                 jobProgressMessage: jobData.progress_message,
@@ -443,9 +461,9 @@ const Chat = () => {
                   tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
                 });
 
-                newMessages[messageIndex].content = tableContent;
+                newMessages[jobMessageIndex].content = tableContent;
               } else if (jobData.status === 'failed') {
-                newMessages[messageIndex].content = `Job failed: ${jobData.error || 'Unknown error'}`;
+                newMessages[jobMessageIndex].content = `Job failed: ${jobData.error || 'Unknown error'}`;
               }
             }
             return newMessages;
@@ -456,6 +474,7 @@ const Chat = () => {
             clearInterval(pollInterval);
             pollingIntervalsRef.current.delete(jobId);
             setIsLoading(false);
+            setHasActiveJob(false);
           }
         }
       } catch (error) {
