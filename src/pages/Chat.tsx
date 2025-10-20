@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -31,6 +31,7 @@ const Chat = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { chatId } = useParams<{ chatId: string }>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
   const [ticketBaseUrl, setTicketBaseUrl] = useState<string>('');
@@ -43,48 +44,41 @@ const Chat = () => {
   const jobLoadedRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hasActiveJob, setHasActiveJob] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Load session if coming from navigation state
+  // Load session based on chatId from URL
   useEffect(() => {
     const initSession = async () => {
       if (!user?.id) return;
 
-      // Check if we're in a new chat state (persisted in sessionStorage)
-      const isNewChat = sessionStorage.getItem('isNewChat') === 'true';
-      if (isNewChat || location.state?.newChat) {
-        sessionStorage.setItem('isNewChat', 'true');
+      // If no chatId in URL, redirect to a new chat with generated UUID
+      if (!chatId) {
+        const newChatId = crypto.randomUUID();
+        navigate(`/chat/${newChatId}`, { replace: true });
         return;
       }
 
-      // Check if we're loading an existing session from location state
-      const stateSessionId = location.state?.sessionId;
-      if (stateSessionId) {
-        sessionStorage.removeItem('isNewChat');
-        setSessionId(stateSessionId);
-        await loadSession(stateSessionId);
+      // Try to load existing session from database
+      const { data: existingSession, error } = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('id', chatId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking session:', error);
         return;
       }
 
-      // Only auto-load the most recent session if not in new chat mode
-      if (messages.length === 0 && !sessionId) {
-        const { data: recentSession, error } = await supabase
-          .from('chat_sessions')
-          .select('id')
-          .eq('user_id', user.id)
-          .order('last_message_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (!error && recentSession) {
-          setSessionId(recentSession.id);
-          await loadSession(recentSession.id);
-        }
+      // If session exists in DB, load its messages
+      if (existingSession) {
+        await loadSession(chatId);
       }
+      // If session doesn't exist, that's fine - it will be created on first message
     };
 
     initSession();
-  }, [user?.id, location.state]);
+  }, [chatId, user?.id]);
 
   // Load session messages and check for stale jobs
   const loadSession = async (sessionId: string) => {
@@ -247,18 +241,9 @@ const Chat = () => {
       
       jobLoadedRef.current = true;
 
-      // If we have a sessionId, load the full chat first
-      if (state.sessionId && state.sessionId !== sessionId) {
-        setSessionId(state.sessionId);
-        await loadSession(state.sessionId);
-        
-        // Scroll to the job message after a brief delay
-        setTimeout(() => {
-          const jobElement = document.querySelector(`[data-job-id="${state.jobId}"]`);
-          if (jobElement) {
-            jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 500);
+      // If we have a sessionId from state, navigate to that chat
+      if (state.sessionId && state.sessionId !== chatId) {
+        navigate(`/chat/${state.sessionId}`, { replace: true, state: { jobId: state.jobId, jobQuery: state.jobQuery } });
         return;
       }
       
@@ -383,16 +368,13 @@ const Chat = () => {
   };
 
   const handleClearChat = useCallback(async () => {
-    // Clear the UI state and session - new session will be created on next send
-    setSessionId(null);
+    // Generate new chat ID and navigate to it
+    const newChatId = crypto.randomUUID();
+    navigate(`/chat/${newChatId}`, { replace: true });
+    
+    // Clear local state
     setMessages([]);
     jobLoadedRef.current = false;
-    
-    // Mark as new chat in sessionStorage to persist across navigation
-    sessionStorage.setItem('isNewChat', 'true');
-    
-    // Set newChat flag to prevent auto-loading the most recent session
-    navigate('/chat', { replace: true, state: { newChat: true } });
     
     toast({
       title: "New chat started",
@@ -574,28 +556,31 @@ const Chat = () => {
         throw new Error('Please log in to use the chat');
       }
 
-      // Create session if this is the first message
-      let currentSessionId = sessionId;
-      if (!currentSessionId) {
-        const { data, error } = await supabase
+      // Create session if this is the first message (use chatId from URL)
+      let currentSessionId = chatId;
+      
+      // Check if session exists in database
+      const { data: existingSession } = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('id', currentSessionId!)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // If session doesn't exist in database, create it
+      if (!existingSession) {
+        const { error } = await supabase
           .from('chat_sessions')
           .insert({
+            id: currentSessionId,
             user_id: user.id,
             title: 'New Chat' // Temporary title, will be updated after assistant responds
-          })
-          .select()
-          .single();
+          });
 
         if (error) {
           console.error('Error creating session:', error);
           throw new Error('Failed to create chat session');
         }
-
-        currentSessionId = data.id;
-        setSessionId(currentSessionId);
-        
-        // Clear new chat flag since we now have a saved session
-        sessionStorage.removeItem('isNewChat');
       }
 
       // Save user message to database

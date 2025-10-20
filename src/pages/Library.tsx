@@ -136,7 +136,7 @@ const Library = () => {
               <Card
                 key={session.id}
                 className="hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
-                onClick={() => navigate('/chat', { state: { sessionId: session.id } })}
+                onClick={() => navigate(`/chat/${session.id}`)}
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
