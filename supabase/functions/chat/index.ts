@@ -510,6 +510,14 @@ When a user asks for tickets:
 - 16 = Conditional Hold
 - 17 = Waiting for 3rd Party
 
+**CRITICAL INSTRUCTIONS FOR ASYNC JOBS:**
+When you need to search tickets with filters that will return many results or use exclusion filters:
+1. You MUST call the search_freshservice_tickets tool with the appropriate parameters
+2. The tool will automatically create an async job and return job information if needed
+3. DO NOT fabricate or make up job IDs - they come from the tool response only
+4. DO NOT tell the user about a job unless the tool returned async_job: true
+5. If you mention a job ID without calling the tool first, you will receive an error and must retry
+
 **How to handle requests:**
 - "CDW tickets" or "CDW UK tickets" → use department: "CDW UK"
 - "SVA tickets" → use department: "SVA Systemvertrieb Alexander GmbH"
@@ -944,10 +952,27 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
         continue;
       }
 
-      // No more tool calls - stream final response
+      // No more tool calls - validate response before streaming
       console.log('No more tool calls, streaming final response');
       console.log('Connection type:', defaultConnection.connection_type);
       console.log('Conversation has', conversationMessages.length, 'messages');
+
+      // Check if the AI is trying to talk about async jobs without actually creating one
+      const responseContent = choice?.message?.content || '';
+      const mentionsJob = /job.*?id.*?[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(responseContent);
+      
+      if (mentionsJob && !asyncJobInfo) {
+        console.error('AI is hallucinating async job response without calling tool');
+        
+        // Force the AI to use the tool by adding a system message
+        conversationMessages.push({
+          role: 'system',
+          content: 'ERROR: You mentioned creating a job but did not call the search_freshservice_tickets tool. You MUST call the tool with the appropriate filters. Do not fabricate job IDs. Call the tool now with the filters from the user\'s request.'
+        });
+        
+        // Retry with the corrected conversation
+        continue;
+      }
       
       const finalResponse = await callLLM(
         defaultConnection.connection_type,
