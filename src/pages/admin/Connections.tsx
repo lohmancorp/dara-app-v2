@@ -206,110 +206,130 @@ const AdminConnections = () => {
 
           <Separator />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor={`call-delay-${service.id}`}>
-                Call Delay (ms)
-              </Label>
-              <Input
-                id={`call-delay-${service.id}`}
-                type="number"
-                value={editingService === service.id ? undefined : service.call_delay_ms}
-                defaultValue={service.call_delay_ms}
-                onFocus={() => setEditingService(service.id)}
-                onBlur={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value !== service.call_delay_ms) {
-                    handleUpdateService(service.id, { call_delay_ms: value });
-                  } else {
-                    setEditingService(null);
-                  }
-                }}
-              />
-            </div>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-4">API Rate Limits</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`call-delay-${service.id}`}>
+                    Call Delay (ms)
+                  </Label>
+                  <Input
+                    id={`call-delay-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.call_delay_ms}
+                    defaultValue={service.call_delay_ms}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.call_delay_ms) {
+                        handleUpdateService(service.id, { call_delay_ms: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Minimum delay between consecutive API calls in milliseconds
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`max-retries-${service.id}`}>
-                Max Retries
-              </Label>
-              <Input
-                id={`max-retries-${service.id}`}
-                type="number"
-                value={editingService === service.id ? undefined : service.max_retries}
-                defaultValue={service.max_retries}
-                onFocus={() => setEditingService(service.id)}
-                onBlur={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value !== service.max_retries) {
-                    handleUpdateService(service.id, { max_retries: value });
-                  } else {
-                    setEditingService(null);
-                  }
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`max-retries-${service.id}`}>
+                    Max Retries
+                  </Label>
+                  <Input
+                    id={`max-retries-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.max_retries}
+                    defaultValue={service.max_retries}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.max_retries) {
+                        handleUpdateService(service.id, { max_retries: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of retry attempts when a request fails
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`retry-delay-${service.id}`}>
-                Retry Delay (sec)
-              </Label>
-              <Input
-                id={`retry-delay-${service.id}`}
-                type="number"
-                value={editingService === service.id ? undefined : service.retry_delay_sec}
-                defaultValue={service.retry_delay_sec}
-                onFocus={() => setEditingService(service.id)}
-                onBlur={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value !== service.retry_delay_sec) {
-                    handleUpdateService(service.id, { retry_delay_sec: value });
-                  } else {
-                    setEditingService(null);
-                  }
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`retry-delay-${service.id}`}>
+                    Retry Delay (sec)
+                  </Label>
+                  <Input
+                    id={`retry-delay-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.retry_delay_sec}
+                    defaultValue={service.retry_delay_sec}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.retry_delay_sec) {
+                        handleUpdateService(service.id, { retry_delay_sec: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Wait time in seconds before retrying a failed request
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`rate-limit-${service.id}`}>
-                Rate Limit (per minute)
-              </Label>
-              <Input
-                id={`rate-limit-${service.id}`}
-                type="number"
-                value={editingService === service.id ? undefined : service.rate_limit_per_minute}
-                defaultValue={service.rate_limit_per_minute}
-                onFocus={() => setEditingService(service.id)}
-                onBlur={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value !== service.rate_limit_per_minute) {
-                    handleUpdateService(service.id, { rate_limit_per_minute: value });
-                  } else {
-                    setEditingService(null);
-                  }
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`rate-limit-${service.id}`}>
+                    Calls per Minute
+                  </Label>
+                  <Input
+                    id={`rate-limit-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.rate_limit_per_minute}
+                    defaultValue={service.rate_limit_per_minute}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.rate_limit_per_minute) {
+                        handleUpdateService(service.id, { rate_limit_per_minute: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of API calls allowed per minute
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`rate-limit-hour-${service.id}`}>
-                Calls per Hour
-              </Label>
-              <Input
-                id={`rate-limit-hour-${service.id}`}
-                type="number"
-                value={editingService === service.id ? undefined : service.rate_limit_per_hour}
-                defaultValue={service.rate_limit_per_hour}
-                onFocus={() => setEditingService(service.id)}
-                onBlur={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value !== service.rate_limit_per_hour) {
-                    handleUpdateService(service.id, { rate_limit_per_hour: value });
-                  } else {
-                    setEditingService(null);
-                  }
-                }}
-              />
+                <div className="space-y-2">
+                  <Label htmlFor={`rate-limit-hour-${service.id}`}>
+                    Calls per Hour
+                  </Label>
+                  <Input
+                    id={`rate-limit-hour-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.rate_limit_per_hour}
+                    defaultValue={service.rate_limit_per_hour}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.rate_limit_per_hour) {
+                        handleUpdateService(service.id, { rate_limit_per_hour: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of API calls allowed per hour
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
