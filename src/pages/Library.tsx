@@ -360,40 +360,47 @@ const Library = () => {
                   </div>
                   <div>
                     {editingSessionId === session.id ? (
-                      <div className="relative">
-                        <Input
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          onBlur={() => !isGenerating && handleSaveTitle(session.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !isGenerating) {
-                              handleSaveTitle(session.id);
-                            } else if (e.key === 'Escape') {
-                              handleCancelEdit();
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          autoFocus
-                          disabled={isGenerating}
-                          className="font-semibold text-lg mb-2 pr-10"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleGenerateTitle(session.id, e)}
-                          disabled={isGenerating}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                          title="Generate title with AI"
-                        >
-                          {isGenerating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                        </Button>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 items-start">
+                          <Input
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onBlur={() => {
+                              // Only save if not generating
+                              if (!isGenerating) {
+                                handleSaveTitle(session.id);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !isGenerating) {
+                                handleSaveTitle(session.id);
+                              } else if (e.key === 'Escape') {
+                                handleCancelEdit();
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                            disabled={isGenerating}
+                            className="font-semibold text-lg flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => handleGenerateTitle(session.id, e)}
+                            disabled={isGenerating}
+                            className="h-10 px-3 shrink-0"
+                            title="Generate title with AI"
+                          >
+                            {isGenerating ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                         {isGenerating && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Generating title...
+                          <div className="text-xs text-muted-foreground">
+                            Generating title with AI...
                           </div>
                         )}
                       </div>
