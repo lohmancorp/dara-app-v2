@@ -50,12 +50,35 @@ const Chat = () => {
     const initSession = async () => {
       if (!user?.id) return;
 
-      // If no chatId in URL, redirect to a new chat with generated UUID
+      // If no chatId in URL, try to restore last active chat from localStorage
       if (!chatId) {
+        const lastChatId = localStorage.getItem('lastActiveChatId');
+        
+        if (lastChatId) {
+          // Verify the chat still exists and belongs to this user
+          const { data: existingSession } = await supabase
+            .from('chat_sessions')
+            .select('id')
+            .eq('id', lastChatId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (existingSession) {
+            // Restore the last active chat
+            navigate(`/chat/${lastChatId}`, { replace: true });
+            return;
+          }
+        }
+
+        // No valid last chat found, create a new one
         const newChatId = crypto.randomUUID();
+        localStorage.setItem('lastActiveChatId', newChatId);
         navigate(`/chat/${newChatId}`, { replace: true });
         return;
       }
+
+      // Store this chat as the last active one
+      localStorage.setItem('lastActiveChatId', chatId);
 
       // Try to load existing session from database
       const { data: existingSession, error } = await supabase
@@ -417,6 +440,7 @@ const Chat = () => {
   const handleClearChat = useCallback(async () => {
     // Generate new chat ID and navigate to it
     const newChatId = crypto.randomUUID();
+    localStorage.setItem('lastActiveChatId', newChatId);
     navigate(`/chat/${newChatId}`, { replace: true });
     
     // Clear local state
