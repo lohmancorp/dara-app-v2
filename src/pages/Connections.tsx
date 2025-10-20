@@ -80,6 +80,7 @@ const Connections = () => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [mcpServices, setMcpServices] = useState<Map<ConnectionType, string[]>>(new Map());
 
   useEffect(() => {
     setActionButton(
@@ -95,8 +96,29 @@ const Connections = () => {
     if (user) {
       fetchConnections();
       fetchActiveServices();
+      fetchMcpServiceTags();
     }
   }, [user]);
+
+  const fetchMcpServiceTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mcp_services')
+        .select('service_type, tags');
+
+      if (error) throw error;
+
+      const tagsMap = new Map<ConnectionType, string[]>();
+      (data || []).forEach((service: any) => {
+        if (service.tags) {
+          tagsMap.set(service.service_type, service.tags);
+        }
+      });
+      setMcpServices(tagsMap);
+    } catch (error: any) {
+      console.error("Error fetching MCP service tags:", error);
+    }
+  };
 
   const fetchActiveServices = async () => {
     try {
@@ -144,6 +166,13 @@ const Connections = () => {
     return AVAILABLE_CONNECTIONS.find(c => c.type === type);
   };
 
+  // Get all tags for a connection (admin + user)
+  const getAllTags = (connection: Connection): string[] => {
+    const adminTags = mcpServices.get(connection.connection_type) || [];
+    const userTags = connection.connection_config?.tags || [];
+    return [...adminTags, ...userTags];
+  };
+
   // Filter and sort connections
   const filteredAndSortedConnections = useMemo(() => {
     // Filter by search query
@@ -151,11 +180,12 @@ const Connections = () => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       const info = getConnectionInfo(connection.connection_type);
+      const allTags = getAllTags(connection);
       return (
         connection.name.toLowerCase().includes(query) ||
         info?.name.toLowerCase().includes(query) ||
         info?.description.toLowerCase().includes(query) ||
-        connection.connection_config?.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+        allTags.some(tag => tag.toLowerCase().includes(query))
       );
     });
 
@@ -182,13 +212,13 @@ const Connections = () => {
     });
 
     return filtered;
-  }, [connections, searchQuery, sortField, sortDirection]);
+  }, [connections, searchQuery, sortField, sortDirection, mcpServices]);
 
-  // Get top 5 tags from all connections
+  // Get top 5 tags from all connections (admin + user tags)
   const allTags = useMemo(() => {
     const tagCounts = new Map<string, number>();
     connections.forEach(connection => {
-      const tags = connection.connection_config?.tags || [];
+      const tags = getAllTags(connection);
       tags.forEach((tag: string) => {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       });
@@ -198,17 +228,17 @@ const Connections = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([tag]) => tag);
-  }, [connections]);
+  }, [connections, mcpServices]);
 
   // Filter by selected tags
   const tagFilteredConnections = useMemo(() => {
     if (selectedFilters.length === 0) return filteredAndSortedConnections;
     
     return filteredAndSortedConnections.filter(connection => {
-      const tags = connection.connection_config?.tags || [];
+      const tags = getAllTags(connection);
       return selectedFilters.every(filter => tags.includes(filter));
     });
-  }, [filteredAndSortedConnections, selectedFilters]);
+  }, [filteredAndSortedConnections, selectedFilters, mcpServices]);
 
   const toggleFilter = (filter: string) => {
     setSelectedFilters(prev => 
@@ -476,7 +506,7 @@ const Connections = () => {
               ) : (
                 tagFilteredConnections.map((connection) => {
                   const info = getConnectionInfo(connection.connection_type);
-                  const tags = connection.connection_config?.tags || [];
+                  const allConnectionTags = getAllTags(connection);
                   return (
                     <Card 
                       key={connection.id} 
@@ -512,15 +542,15 @@ const Connections = () => {
                                 ) : (
                                   <AlertCircle className="h-3 w-3" />
                                 )}
-                                <span>{connection.is_active ? "Active" : "Deactivated"}</span>
-                              </Badge>
-                            </div>
-                            {tags.length > 0 && (
-                              <Badge variant="default" className="whitespace-nowrap">
-                                {tags[0]}
-                              </Badge>
-                            )}
+                              <span>{connection.is_active ? "Active" : "Deactivated"}</span>
+                            </Badge>
                           </div>
+                          {allConnectionTags.length > 0 && (
+                            <Badge variant="default" className="whitespace-nowrap">
+                              {allConnectionTags[0]}
+                            </Badge>
+                          )}
+                        </div>
                         </div>
                         <div>
                           <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">

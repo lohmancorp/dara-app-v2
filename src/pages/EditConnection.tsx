@@ -2,6 +2,7 @@ import { Link2, ArrowLeft, Star } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 import { ConnectionConfigForm } from "@/components/ConnectionConfigForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +58,7 @@ const EditConnection = () => {
   const { toast } = useToast();
   const [connection, setConnection] = useState<Connection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminTags, setAdminTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id || !user) {
@@ -85,6 +87,17 @@ const EditConnection = () => {
         }
 
         setConnection(data as Connection);
+        
+        // Fetch admin tags for this connection type
+        const { data: mcpService } = await supabase
+          .from('mcp_services')
+          .select('tags')
+          .eq('service_type', data.connection_type)
+          .single();
+        
+        if (mcpService?.tags) {
+          setAdminTags(mcpService.tags);
+        }
       } catch (error: any) {
         toast({
           title: "Error loading connection",
@@ -121,6 +134,8 @@ const EditConnection = () => {
 
   const connectionName = CONNECTION_NAMES[connection.connection_type];
   const isLLMConnection = connection.connection_type === 'gemini' || connection.connection_type === 'openai';
+  const userTags = connection.connection_config?.tags || [];
+  const allTags = [...adminTags, ...userTags];
 
   const handleSetChatDefault = async () => {
     try {
@@ -201,6 +216,22 @@ const EditConnection = () => {
               </Button>
             )}
           </div>
+
+          {/* Tags Display */}
+          {allTags.length > 0 && (
+            <div className="mb-6 pb-6 border-b">
+              <div className="flex flex-wrap gap-2">
+                {allTags.map((tag, index) => (
+                  <Badge 
+                    key={`${tag}-${index}`} 
+                    variant={index < adminTags.length ? "secondary" : "default"}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
           <ConnectionConfigForm
             connectionType={connection.connection_type}

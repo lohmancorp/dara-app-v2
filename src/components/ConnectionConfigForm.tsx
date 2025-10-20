@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { ExtractionProfilesDialog } from "./ExtractionProfilesDialog";
+import { TagInput } from "./TagInput";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 type AuthType = 'oauth' | 'token' | 'basic_auth';
@@ -86,9 +88,36 @@ export const ConnectionConfigForm = ({
     domain: existingConnection?.connection_config?.domain || '',
     available_fields: existingConnection?.connection_config?.available_fields || [],
     extraction_profiles: existingConnection?.connection_config?.extraction_profiles || null,
+    tags: existingConnection?.connection_config?.tags || [],
   });
 
   const [showExtractionDialog, setShowExtractionDialog] = useState(false);
+  const [adminTags, setAdminTags] = useState<string[]>([]);
+
+  // Fetch admin tags from mcp_services
+  useEffect(() => {
+    const fetchAdminTags = async () => {
+      if (!connectionType) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('mcp_services')
+          .select('tags')
+          .eq('service_type', connectionType)
+          .single();
+
+        if (error) throw error;
+        
+        if (data?.tags) {
+          setAdminTags(data.tags);
+        }
+      } catch (error) {
+        console.error('Error fetching admin tags:', error);
+      }
+    };
+
+    fetchAdminTags();
+  }, [connectionType]);
 
   const isEndpointReadOnly = connectionType && ['gemini', 'openai', 'google_alerts'].includes(connectionType);
 
@@ -288,6 +317,46 @@ export const ConnectionConfigForm = ({
             </div>
           </>
         )}
+      </div>
+
+      <Separator />
+
+      {/* Tags Configuration */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Tags</h3>
+        
+        {adminTags.length > 0 && (
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              Admin Tags (Read-Only)
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {adminTags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="gap-1">
+                  <Lock className="h-3 w-3" />
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              These tags are configured by your administrator and cannot be modified
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="user-tags">Your Custom Tags</Label>
+          <TagInput
+            id="user-tags"
+            value={connectionConfig.tags}
+            onChange={(tags) => setConnectionConfig({ ...connectionConfig, tags })}
+            placeholder="Add your own tags..."
+          />
+          <p className="text-xs text-muted-foreground">
+            Add custom tags to organize and filter your connections
+          </p>
+        </div>
       </div>
 
       <Separator />
