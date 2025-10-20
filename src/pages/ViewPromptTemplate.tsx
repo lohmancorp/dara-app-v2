@@ -113,7 +113,7 @@ const ViewPromptTemplate = () => {
         description: "Failed to load template.",
         variant: "destructive",
       });
-      navigate("/templates");
+      navigate("/blueprints");
     } finally {
       setIsLoading(false);
     }
@@ -255,7 +255,7 @@ const ViewPromptTemplate = () => {
       }
 
       // Navigate to new prompt template page with cloned data (but empty name)
-      navigate('/templates/new-prompt', {
+      navigate('/blueprints/new-prompt', {
         state: {
           cloneData: {
             promptName: '', // Empty name for uniqueness
@@ -302,15 +302,15 @@ const ViewPromptTemplate = () => {
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="flex justify-between items-center mb-6">
-          <Button variant="ghost" onClick={() => navigate("/templates")}>
+          <Button variant="ghost" onClick={() => navigate("/blueprints")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Templates
+            Back to Blueprints
           </Button>
           <div className="flex gap-2">
             {isAuthor ? (
-              <Button variant="outline" onClick={() => navigate(`/templates/prompt/${id}/edit`)}>
+              <Button variant="outline" onClick={() => navigate(`/blueprints/prompt/${id}/edit`)}>
                 <Pencil className="h-4 w-4 mr-2" />
-                Edit Template
+                Edit Blueprint
               </Button>
             ) : (
               <Button variant="outline" onClick={handleClone}>

@@ -68,7 +68,7 @@ const EditPromptTemplate = () => {
             description: "You can only edit your own templates. You can clone this template instead.",
             variant: "destructive",
           });
-          navigate(`/templates/prompt/${id}/view`);
+          navigate(`/blueprints/prompt/${id}/view`);
           return;
         }
 
@@ -90,7 +90,7 @@ const EditPromptTemplate = () => {
           description: "Failed to load template.",
           variant: "destructive",
         });
-        navigate("/templates");
+        navigate("/blueprints");
       } finally {
         setIsLoading(false);
       }
@@ -249,7 +249,7 @@ const EditPromptTemplate = () => {
         title: "Template Updated",
         description: "Your template has been updated successfully.",
       });
-      navigate("/templates");
+      navigate("/blueprints");
     } catch (error) {
       console.error("Error updating template:", error);
       toast({
@@ -463,7 +463,7 @@ const EditPromptTemplate = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/templates")}
+              onClick={() => navigate("/blueprints")}
               disabled={isSubmitting}
             >
               Cancel

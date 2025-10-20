@@ -48,13 +48,13 @@ const App = () => (
               <Route path="/chat" element={<ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>} />
               <Route path="/chat/:chatId" element={<ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>} />
               <Route path="/library" element={<ProtectedRoute><AppLayout><Library /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates" element={<ProtectedRoute><AppLayout><Templates /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/new-prompt" element={<ProtectedRoute><AppLayout><NewPromptTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/new-job" element={<ProtectedRoute><AppLayout><NewJobTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/prompt/:id/view" element={<ProtectedRoute><AppLayout><ViewPromptTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/prompt/:id/edit" element={<ProtectedRoute><AppLayout><EditPromptTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/job/:id/view" element={<ProtectedRoute><AppLayout><ViewJobTemplate /></AppLayout></ProtectedRoute>} />
-              <Route path="/templates/job/:id/edit" element={<ProtectedRoute><AppLayout><EditJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints" element={<ProtectedRoute><AppLayout><Templates /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/new-prompt" element={<ProtectedRoute><AppLayout><NewPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/new-job" element={<ProtectedRoute><AppLayout><NewJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/prompt/:id/view" element={<ProtectedRoute><AppLayout><ViewPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/prompt/:id/edit" element={<ProtectedRoute><AppLayout><EditPromptTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/job/:id/view" element={<ProtectedRoute><AppLayout><ViewJobTemplate /></AppLayout></ProtectedRoute>} />
+              <Route path="/blueprints/job/:id/edit" element={<ProtectedRoute><AppLayout><EditJobTemplate /></AppLayout></ProtectedRoute>} />
               <Route path="/jobs" element={<ProtectedRoute><AppLayout><Jobs /></AppLayout></ProtectedRoute>} />
               <Route path="/connections" element={<ProtectedRoute><AppLayout><Connections /></AppLayout></ProtectedRoute>} />
               <Route path="/connections/new/:type" element={<ProtectedRoute><AppLayout><NewConnection /></AppLayout></ProtectedRoute>} />

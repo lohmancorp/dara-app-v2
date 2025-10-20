@@ -337,7 +337,7 @@ const NewJobTemplate = () => {
         title: "Job Template Created",
         description: "Your job template has been created successfully.",
       });
-      navigate("/templates");
+      navigate("/blueprints");
     } catch (error) {
       console.error("Error creating job template:", error);
       toast({
@@ -677,7 +677,7 @@ const NewJobTemplate = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/templates")}
+              onClick={() => navigate("/blueprints")}
               disabled={isSubmitting}
             >
               Cancel

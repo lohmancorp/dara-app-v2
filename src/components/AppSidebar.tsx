@@ -20,7 +20,7 @@ const navItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Research", url: "/chat", icon: MessageSquare },
   { title: "Library", url: "/library", icon: Library },
-  { title: "Templates", url: "/templates", icon: FileText },
+  { title: "Blueprints", url: "/blueprints", icon: FileText },
   { title: "Jobs", url: "/jobs", icon: Activity },
   { title: "Connections", url: "/connections", icon: Cable },
 ];

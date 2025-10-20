@@ -76,7 +76,7 @@ const EditJobTemplate = () => {
             description: "You can only edit your own templates. You can clone this template instead.",
             variant: "destructive",
           });
-          navigate(`/templates/job/${id}/view`);
+          navigate(`/blueprints/job/${id}/view`);
           return;
         }
 
@@ -111,7 +111,7 @@ const EditJobTemplate = () => {
           description: "Failed to load template.",
           variant: "destructive",
         });
-        navigate("/templates");
+        navigate("/blueprints");
       } finally {
         setIsLoading(false);
       }
@@ -304,7 +304,7 @@ const EditJobTemplate = () => {
         title: "Job Template Updated",
         description: "Your job template has been updated successfully.",
       });
-      navigate("/templates");
+      navigate("/blueprints");
     } catch (error) {
       console.error("Error updating job template:", error);
       toast({
@@ -653,7 +653,7 @@ const EditJobTemplate = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/templates")}
+              onClick={() => navigate("/blueprints")}
               disabled={isSubmitting}
             >
               Cancel

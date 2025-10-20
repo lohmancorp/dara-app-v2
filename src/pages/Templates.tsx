@@ -83,16 +83,16 @@ const Templates = () => {
   const { setActionButton } = useFloatingAction();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [showBlueprintDialog, setShowBlueprintDialog] = useState(false);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
   const [jobTemplates, setJobTemplates] = useState<JobTemplate[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [templateToDelete, setTemplateToDelete] = useState<{ id: string; type: "prompt" | "job"; name: string } | null>(null);
+  const [blueprintToDelete, setBlueprintToDelete] = useState<{ id: string; type: "prompt" | "job"; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<"job" | "prompt" | null>(null);
-  const [showMyTemplatesOnly, setShowMyTemplatesOnly] = useState(false);
+  const [showMyBlueprintsOnly, setShowMyBlueprintsOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [votes, setVotes] = useState<any[]>([]);
@@ -137,10 +137,10 @@ const Templates = () => {
         setAuthorNames(new Map(profilesData?.map(p => [p.id, p.full_name]) || []));
       }
     } catch (error) {
-      console.error("Error fetching templates:", error);
+      console.error("Error fetching blueprints:", error);
       toast({
         title: "Error",
-        description: "Failed to load templates.",
+        description: "Failed to load blueprints.",
         variant: "destructive",
       });
     } finally {
@@ -155,42 +155,42 @@ const Templates = () => {
   useEffect(() => {
     setActionButton(
       <FloatingActionButton 
-        label="New Template" 
-        onClick={() => setShowTemplateDialog(true)} 
+        label="New Blueprint" 
+        onClick={() => setShowBlueprintDialog(true)} 
       />
     );
     return () => setActionButton(null);
   }, [setActionButton]);
 
   const handleDelete = async () => {
-    if (!templateToDelete) return;
+    if (!blueprintToDelete) return;
 
     try {
-      const table = templateToDelete.type === "prompt" ? "prompt_templates" : "job_templates";
-      const { error } = await supabase.from(table).delete().eq("id", templateToDelete.id);
+      const table = blueprintToDelete.type === "prompt" ? "prompt_templates" : "job_templates";
+      const { error } = await supabase.from(table).delete().eq("id", blueprintToDelete.id);
 
       if (error) throw error;
 
       toast({
-        title: "Template Deleted",
-        description: `${templateToDelete.name} has been deleted successfully.`,
+        title: "Blueprint Deleted",
+        description: `${blueprintToDelete.name} has been deleted successfully.`,
       });
       fetchTemplates();
     } catch (error) {
-      console.error("Error deleting template:", error);
+      console.error("Error deleting blueprint:", error);
       toast({
         title: "Error",
-        description: "Failed to delete template.",
+        description: "Failed to delete blueprint.",
         variant: "destructive",
       });
     } finally {
       setDeleteDialogOpen(false);
-      setTemplateToDelete(null);
+      setBlueprintToDelete(null);
     }
   };
 
   const handleDeleteClick = (id: string, type: "prompt" | "job", name: string) => {
-    setTemplateToDelete({ id, type, name });
+    setBlueprintToDelete({ id, type, name });
     setDeleteDialogOpen(true);
   };
 
@@ -246,7 +246,7 @@ const Templates = () => {
     return unified;
   }, [promptTemplates, jobTemplates, votes, userVotes, authorNames]);
 
-  // Filter templates based on search and type
+    // Filter templates based on search and type
   const searchFilteredTemplates = useMemo(() => {
     return unifiedTemplates.filter(template => {
       // Search filter
@@ -260,12 +260,12 @@ const Templates = () => {
       // Type filter
       const matchesType = !typeFilter || template.type === typeFilter;
 
-      // My Templates filter
-      const matchesOwnership = !showMyTemplatesOnly || template.user_id === currentUserId;
+      // My Blueprints filter
+      const matchesOwnership = !showMyBlueprintsOnly || template.user_id === currentUserId;
 
       return matchesSearch && matchesType && matchesOwnership;
     });
-  }, [unifiedTemplates, searchQuery, typeFilter, showMyTemplatesOnly, currentUserId]);
+  }, [unifiedTemplates, searchQuery, typeFilter, showMyBlueprintsOnly, currentUserId]);
 
   // Get top 5 tags from filtered results
   const allTags = useMemo(() => {
@@ -340,7 +340,7 @@ const Templates = () => {
   const clearFilters = () => {
     setSelectedFilters([]);
     setTypeFilter(null);
-    setShowMyTemplatesOnly(false);
+    setShowMyBlueprintsOnly(false);
   };
 
   const getSortLabel = () => {
@@ -457,10 +457,10 @@ const Templates = () => {
     console.log('handleClonePrompt called with templateId:', templateId);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+        if (!user) {
         toast({
           title: "Authentication Required",
-          description: "Please sign in to clone templates.",
+          description: "Please sign in to clone blueprints.",
           variant: "destructive",
         });
         return;
@@ -475,7 +475,7 @@ const Templates = () => {
       if (error) throw error;
 
       console.log('Navigating to new-prompt with template:', template);
-      navigate('/templates/new-prompt', {
+      navigate('/blueprints/new-prompt', {
         state: {
           cloneData: {
             promptName: '',
@@ -503,10 +503,10 @@ const Templates = () => {
   const handleCloneJob = async (templateId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+        if (!user) {
         toast({
           title: "Authentication Required",
-          description: "Please sign in to clone templates.",
+          description: "Please sign in to clone blueprints.",
           variant: "destructive",
         });
         return;
@@ -526,7 +526,7 @@ const Templates = () => {
           _connection_id: template.job_connection 
         });
 
-      navigate('/templates/new-job', {
+      navigate('/blueprints/new-job', {
         state: {
           cloneData: {
             jobName: '',
@@ -556,24 +556,24 @@ const Templates = () => {
     <div className="min-h-screen bg-background">
       <PageHeader
         icon={FileText}
-        title="Research Templates"
+        title="Research Blueprints"
         description="Start with pre-configured research workflows"
       />
 
-      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+      <Dialog open={showBlueprintDialog} onOpenChange={setShowBlueprintDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Choose Template Type</DialogTitle>
+            <DialogTitle>Choose Blueprint Type</DialogTitle>
             <DialogDescription>
-              Select the type of template you want to create
+              Select the type of blueprint you want to create
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 pt-4">
             <Card
               className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
               onClick={() => {
-                setShowTemplateDialog(false);
-                navigate("/templates/new-job");
+                setShowBlueprintDialog(false);
+                navigate("/blueprints/new-job");
               }}
             >
               <div className="p-6 space-y-3">
@@ -582,7 +582,7 @@ const Templates = () => {
                     <Activity className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Job Template</h3>
+                    <h3 className="font-semibold text-lg">Job Blueprint</h3>
                     <p className="text-sm text-muted-foreground">
                       Create research job workflows
                     </p>
@@ -594,8 +594,8 @@ const Templates = () => {
             <Card
               className="hover:shadow-md transition-all cursor-pointer group border-2 hover:border-primary"
               onClick={() => {
-                setShowTemplateDialog(false);
-                navigate("/templates/new-prompt");
+                setShowBlueprintDialog(false);
+                navigate("/blueprints/new-prompt");
               }}
             >
               <div className="p-6 space-y-3">
@@ -604,7 +604,7 @@ const Templates = () => {
                     <Sparkles className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Prompt Template</h3>
+                    <h3 className="font-semibold text-lg">Prompt Blueprint</h3>
                     <p className="text-sm text-muted-foreground">
                       Create AI prompt configurations
                     </p>
@@ -622,7 +622,7 @@ const Templates = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search templates by name, description, type, tags, or author..."
+              placeholder="Search blueprints by name, description, type, tags, or author..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-10"
@@ -707,11 +707,11 @@ const Templates = () => {
         {/* Row 2: Filter Tags */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Badge
-            variant={showMyTemplatesOnly ? "default" : "outline"}
+            variant={showMyBlueprintsOnly ? "default" : "outline"}
             className="cursor-pointer py-[2px]"
-            onClick={() => setShowMyTemplatesOnly(prev => !prev)}
+            onClick={() => setShowMyBlueprintsOnly(prev => !prev)}
           >
-            My Templates
+            My Blueprints
           </Badge>
           <Badge
             variant={typeFilter === "job" ? "default" : "outline"}
@@ -742,7 +742,7 @@ const Templates = () => {
               ))}
             </>
           )}
-          {(selectedFilters.length > 0 || typeFilter || showMyTemplatesOnly) && (
+          {(selectedFilters.length > 0 || typeFilter || showMyBlueprintsOnly) && (
             <Button
               variant="ghost"
               size="sm"
@@ -755,14 +755,14 @@ const Templates = () => {
           )}
         </div>
 
-        {/* Templates Grid */}
+        {/* Blueprints Grid */}
         {isLoading ? (
-          <div className="text-center py-12">Loading templates...</div>
+          <div className="text-center py-12">Loading blueprints...</div>
         ) : filteredTemplates.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {unifiedTemplates.length === 0 
-              ? "No templates yet. Create your first one!"
-              : "No templates match your search or filters."}
+              ? "No blueprints yet. Create your first one!"
+              : "No blueprints match your search or filters."}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -830,8 +830,8 @@ const Templates = () => {
                           onClick={() =>
                             navigate(
                               template.type === "prompt"
-                                ? `/templates/prompt/${template.id}/view`
-                                : `/templates/job/${template.id}/view`
+                                ? `/blueprints/prompt/${template.id}/view`
+                                : `/blueprints/job/${template.id}/view`
                             )
                           }
                         >
@@ -850,8 +850,8 @@ const Templates = () => {
                             onClick={() =>
                               navigate(
                                 template.type === "prompt"
-                                  ? `/templates/prompt/${template.id}/edit`
-                                  : `/templates/job/${template.id}/edit`
+                                  ? `/blueprints/prompt/${template.id}/edit`
+                                  : `/blueprints/job/${template.id}/edit`
                               )
                             }
                           >
@@ -923,9 +923,9 @@ const Templates = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogTitle>Delete Blueprint</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{templateToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{blueprintToDelete?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -942,7 +942,7 @@ const Templates = () => {
           <DialogHeader>
             <DialogTitle>Help us improve</DialogTitle>
             <DialogDescription>
-              Please let us know why you're voting this template down. Your feedback helps others.
+              Please let us know why you're voting this blueprint down. Your feedback helps others.
             </DialogDescription>
           </DialogHeader>
           <Textarea

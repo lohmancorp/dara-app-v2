@@ -279,7 +279,7 @@ const NewTemplate = () => {
         title: "Template Created",
         description: `Template created with ${totalTokens} tokens (Cost: $${totalPromptCost.toFixed(4)})`,
       });
-      navigate("/templates");
+      navigate("/blueprints");
     } catch (error) {
       console.error("Error creating template:", error);
       toast({
@@ -496,7 +496,7 @@ const NewTemplate = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/templates")}
+              onClick={() => navigate("/blueprints")}
               disabled={isSubmitting}
             >
               Cancel

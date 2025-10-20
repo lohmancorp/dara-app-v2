@@ -185,7 +185,7 @@ Your goal is to help researchers identify valuable and feasible research opportu
         description: "Created 3 prompt templates and 3 job templates.",
       });
 
-      navigate("/templates");
+      navigate("/blueprints");
     } catch (error) {
       console.error("Error seeding templates:", error);
       toast({
@@ -230,7 +230,7 @@ Your goal is to help researchers identify valuable and feasible research opportu
             </div>
 
             <div className="flex gap-4">
-              <Button onClick={() => navigate("/templates")} variant="outline">
+              <Button onClick={() => navigate("/blueprints")} variant="outline">
                 Cancel
               </Button>
               <Button onClick={handleSeed} disabled={isSeeding} className="flex-1">

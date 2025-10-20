@@ -49,7 +49,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full" variant="default">
-                <Link to="/templates">Browse Templates</Link>
+                <Link to="/blueprints">Browse Blueprints</Link>
               </Button>
             </CardContent>
           </Card>
