@@ -88,13 +88,40 @@ function getSourceName(sourceId: number, ticketFields: any[]): string {
 
 // Helper to call LLM based on connection type
 async function callLLM(
-  connectionType: 'gemini' | 'openai',
+  connectionType: 'gemini' | 'openai' | 'lovable',
   apiKey: string,
   messages: any[],
   tools?: any[],
   stream: boolean = false
 ) {
-  if (connectionType === 'gemini') {
+  if (connectionType === 'lovable') {
+    // Use Lovable AI Gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages,
+        tools,
+        stream
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      throw new Error(`Lovable AI error: ${response.status}`);
+    }
+
+    if (stream) {
+      return response;
+    }
+
+    return await response.json();
+  } else if (connectionType === 'gemini') {
     // Gemini API call
     const geminiMessages = messages
       .filter(m => m.role !== 'system')
@@ -245,8 +272,8 @@ serve(async (req) => {
       );
     }
 
-    // Get default LLM connection
-    const { data: defaultConnection, error: connError } = await supabase
+    // Get default LLM connection (optional - falls back to Lovable AI)
+    const { data: defaultConnection } = await supabase
       .from('connections')
       .select('*')
       .eq('user_id', user.id)
@@ -255,25 +282,28 @@ serve(async (req) => {
       .in('connection_type', ['gemini', 'openai'])
       .single();
 
-    if (connError || !defaultConnection) {
-      console.error('No default LLM connection found:', connError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'No default LLM connection configured. Please set up a Gemini or OpenAI connection and mark it as default for chat.' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    
+    // Use default connection if available, otherwise fall back to Lovable AI
+    let connectionType: 'gemini' | 'openai' | 'lovable' = 'lovable';
+    let apiKey = lovableApiKey;
+    
+    if (defaultConnection?.auth_config?.api_key) {
+      connectionType = defaultConnection.connection_type as 'gemini' | 'openai';
+      apiKey = defaultConnection.auth_config.api_key;
+      console.log('Using user connection:', connectionType);
+    } else {
+      console.log('Using Lovable AI (no default connection set)');
     }
 
-    const apiKey = defaultConnection.auth_config?.api_key;
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'LLM connection is missing API key' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'No LLM API key available' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Chat request from user:', user.id, 'using', defaultConnection.connection_type);
+    console.log('Chat request from user:', user.id);
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
     // Define tools for the AI
@@ -418,8 +448,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       console.log(`AI call iteration ${iterations}`);
 
       const aiResponse = await callLLM(
-        defaultConnection.connection_type,
-        apiKey,
+        connectionType,
+        apiKey!,
         conversationMessages,
         tools,
         false
