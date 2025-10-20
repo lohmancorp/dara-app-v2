@@ -187,6 +187,8 @@ const Chat = () => {
   useEffect(() => {
     if (!chatId || !session?.access_token) return;
 
+    console.log('Setting up realtime subscription for chat:', chatId);
+
     const channel = supabase
       .channel(`chat_jobs:${chatId}`)
       .on(
@@ -202,6 +204,8 @@ const Chat = () => {
           const job = payload.new as any;
           
           if (job.status === 'completed' || job.status === 'failed') {
+            console.log('Job completed/failed, updating message:', job.id);
+            
             // Update the message with job results
             let tableContent: string | null = null;
             let failedContent: string | null = null;
@@ -222,9 +226,40 @@ const Chat = () => {
               failedContent = `Job failed: ${job.error || 'Unknown error'}`;
             }
             
+            // Update database first
+            if (tableContent) {
+              const { error: updateError } = await supabase
+                .from('chat_messages')
+                .update({ content: tableContent })
+                .eq('job_id', job.id);
+                
+              if (updateError) {
+                console.error('Error updating message in DB:', updateError);
+              } else {
+                console.log('Message updated in DB successfully');
+              }
+            } else if (failedContent) {
+              const { error: updateError } = await supabase
+                .from('chat_messages')
+                .update({ content: failedContent })
+                .eq('job_id', job.id);
+                
+              if (updateError) {
+                console.error('Error updating message in DB:', updateError);
+              }
+            }
+            
+            // Then update UI state
             setMessages((prev) => {
               const jobMessageIndex = prev.findIndex(m => m.jobId === job.id);
-              if (jobMessageIndex === -1) return prev;
+              console.log('Found job message at index:', jobMessageIndex);
+              
+              if (jobMessageIndex === -1) {
+                console.log('Job message not found in state, reloading session');
+                // If message not found, reload from database
+                loadSession(chatId!);
+                return prev;
+              }
 
               const newMessages = [...prev];
               
@@ -246,23 +281,13 @@ const Chat = () => {
               return newMessages;
             });
             
-            // Update database with results
+            // Show toast notification
             if (tableContent) {
-              await supabase
-                .from('chat_messages')
-                .update({ content: tableContent })
-                .eq('job_id', job.id);
-                
               toast({
                 title: "Job Completed",
                 description: `Successfully processed ${(job.result as any)?.total || 0} tickets`,
               });
             } else if (failedContent) {
-              await supabase
-                .from('chat_messages')
-                .update({ content: failedContent })
-                .eq('job_id', job.id);
-                
               toast({
                 title: "Job Failed",
                 description: job.error || 'Unknown error',
@@ -276,12 +301,17 @@ const Chat = () => {
               clearInterval(interval);
               pollingIntervalsRef.current.delete(job.id);
             }
+            
+            setHasActiveJob(false);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [chatId, session?.access_token, toast]);
@@ -351,6 +381,14 @@ const Chat = () => {
       }
       
       try {
+        // First check database for existing messages with this job_id
+        const { data: existingMessages } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('session_id', chatId)
+          .eq('job_id', state.jobId)
+          .order('created_at', { ascending: true });
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-chat-job-status`,
           {
@@ -366,91 +404,23 @@ const Chat = () => {
         if (response.ok) {
           const jobData = await response.json();
           
-          // Check if this job is already in messages
-          const existingJobIndex = messages.findIndex(m => m.jobId === state.jobId);
-          
-          if (existingJobIndex !== -1) {
-            // Update existing message with completed results
+          // If messages exist in DB, just reload the session to show them
+          if (existingMessages && existingMessages.length > 0) {
+            console.log('Job messages already exist in DB, reloading session');
+            await loadSession(chatId!);
+            
+            // Show toast for completed job
             if (jobData.status === 'completed' && jobData.result) {
-              const tickets = jobData.result.tickets || [];
-              const total = jobData.result.total || 0;
-              
-              // Generate markdown table
-              let tableContent = `Found ${total} tickets:\n\n`;
-              tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-              tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-              
-              tickets.forEach((ticket: any) => {
-                tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-              });
-
-              setMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[existingJobIndex] = {
-                  ...newMessages[existingJobIndex],
-                  content: tableContent,
-                  jobStatus: 'completed',
-                  jobProgress: 100
-                };
-                return newMessages;
-              });
-
               toast({
                 title: "Job Results Loaded",
-                description: `Successfully loaded ${total} tickets`,
-              });
-            } else if (jobData.status === 'failed') {
-              setMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[existingJobIndex] = {
-                  ...newMessages[existingJobIndex],
-                  content: `Job failed: ${jobData.error || 'Unknown error'}`,
-                  jobStatus: 'failed'
-                };
-                return newMessages;
+                description: `Successfully loaded ${jobData.result.total || 0} tickets`,
               });
             }
-          } else {
-            // Add new messages for this job
-            const userMessage: Message = {
-              role: 'user',
-              content: state.jobQuery || jobData.query || 'Previous query',
-            };
-
-            let assistantContent = '';
-            if (jobData.status === 'completed' && jobData.result) {
-              const tickets = jobData.result.tickets || [];
-              const total = jobData.result.total || 0;
-              
-              assistantContent = `Found ${total} tickets:\n\n`;
-              assistantContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-              assistantContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-              
-              tickets.forEach((ticket: any) => {
-                assistantContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-              });
-            } else if (jobData.status === 'failed') {
-              assistantContent = `Job failed: ${jobData.error || 'Unknown error'}`;
-            } else {
-              assistantContent = 'Job is processing in the background...';
-            }
-
-            const assistantMessage: Message = {
-              role: 'assistant',
-              content: assistantContent,
-              jobId: state.jobId,
-              jobStatus: jobData.status,
-              jobProgress: jobData.progress || 0,
-              jobProgressMessage: jobData.progress_message,
-            };
-
-            setMessages((prev) => [...prev, userMessage, assistantMessage]);
           }
 
           // Start polling if job is still running
           if (jobData.status === 'processing' || jobData.status === 'pending') {
-            const messageIndex = messages.length + (existingJobIndex === -1 ? 1 : 0);
-            pollJobStatus(state.jobId, messageIndex);
+            pollJobStatus(state.jobId, messages.length);
           }
         }
       } catch (error) {
