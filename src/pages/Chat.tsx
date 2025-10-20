@@ -44,30 +44,30 @@ const Chat = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const hasInitializedRef = useRef(false);
 
   // Load session if coming from navigation state
   useEffect(() => {
     const initSession = async () => {
       if (!user?.id) return;
 
-      // Check if we're starting a new chat explicitly
-      if (location.state?.newChat) {
-        hasInitializedRef.current = true;
+      // Check if we're in a new chat state (persisted in sessionStorage)
+      const isNewChat = sessionStorage.getItem('isNewChat') === 'true';
+      if (isNewChat || location.state?.newChat) {
+        sessionStorage.setItem('isNewChat', 'true');
         return;
       }
 
       // Check if we're loading an existing session from location state
       const stateSessionId = location.state?.sessionId;
       if (stateSessionId) {
+        sessionStorage.removeItem('isNewChat');
         setSessionId(stateSessionId);
         await loadSession(stateSessionId);
-        hasInitializedRef.current = true;
         return;
       }
 
-      // Only auto-load the most recent session on first initialization
-      if (!hasInitializedRef.current && messages.length === 0 && !sessionId) {
+      // Only auto-load the most recent session if not in new chat mode
+      if (messages.length === 0 && !sessionId) {
         const { data: recentSession, error } = await supabase
           .from('chat_sessions')
           .select('id')
@@ -80,7 +80,6 @@ const Chat = () => {
           setSessionId(recentSession.id);
           await loadSession(recentSession.id);
         }
-        hasInitializedRef.current = true;
       }
     };
 
@@ -388,7 +387,9 @@ const Chat = () => {
     setSessionId(null);
     setMessages([]);
     jobLoadedRef.current = false;
-    hasInitializedRef.current = true; // Mark as initialized to prevent auto-loading
+    
+    // Mark as new chat in sessionStorage to persist across navigation
+    sessionStorage.setItem('isNewChat', 'true');
     
     // Set newChat flag to prevent auto-loading the most recent session
     navigate('/chat', { replace: true, state: { newChat: true } });
@@ -592,6 +593,9 @@ const Chat = () => {
 
         currentSessionId = data.id;
         setSessionId(currentSessionId);
+        
+        // Clear new chat flag since we now have a saved session
+        sessionStorage.removeItem('isNewChat');
       }
 
       // Save user message to database
