@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Library, FileText, Activity, Link2, Settings } from "lucide-react";
+import { Home, MessageSquare, Library, FileText, Activity, Cable, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import daraLogo from "@/assets/dara-logo.png";
 import { useAppAdmin } from "@/hooks/useAppAdmin";
@@ -22,7 +22,7 @@ const navItems = [
   { title: "Library", url: "/library", icon: Library },
   { title: "Templates", url: "/templates", icon: FileText },
   { title: "Jobs", url: "/jobs", icon: Activity },
-  { title: "Connections", url: "/connections", icon: Link2 },
+  { title: "Connections", url: "/connections", icon: Cable },
 ];
 
 export function AppSidebar() {
