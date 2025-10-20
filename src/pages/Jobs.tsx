@@ -1,11 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle, XCircle } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle, XCircle, ArrowUp, ArrowDown, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +33,9 @@ interface Job {
   job_sequence: number | null;
 }
 
+type SortField = "query" | "created_at" | "completed_at";
+type SortDirection = "asc" | "desc";
+
 const Jobs = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +43,8 @@ const Jobs = () => {
   const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<SortField>("completed_at");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -204,9 +215,48 @@ const Jobs = () => {
     });
   };
 
-  const filteredCompletedJobs = completedJobs.filter(job =>
-    job.query.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCompletedJobs = useMemo(() => {
+    let filtered = completedJobs.filter(job =>
+      job.query.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortField) {
+        case "query":
+          aVal = a.query.toLowerCase();
+          bVal = b.query.toLowerCase();
+          break;
+        case "created_at":
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+        case "completed_at":
+          aVal = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          bVal = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [completedJobs, searchQuery, sortField, sortDirection]);
+
+  const getSortLabel = () => {
+    const labels = {
+      query: "Query",
+      created_at: "Created",
+      completed_at: "Completed",
+    };
+    return labels[sortField];
+  };
 
   const renderJob = (job: Job) => {
     // Generate display name
@@ -343,16 +393,85 @@ const Jobs = () => {
               <CheckCircle className="h-5 w-5" />
               Completed Jobs
             </h2>
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search completed jobs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-full sm:w-64"
-              />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search completed jobs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-10 w-full sm:w-64"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Sort */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    {getSortLabel()}
+                    {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background z-50">
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("query"); setSortDirection("asc"); }}
+                    className={sortField === "query" && sortDirection === "asc" ? "bg-accent text-white" : ""}
+                  >
+                    Query (A-Z)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("query"); setSortDirection("desc"); }}
+                    className={sortField === "query" && sortDirection === "desc" ? "bg-accent text-white" : ""}
+                  >
+                    Query (Z-A)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}
+                    className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Created
+                    <ArrowUp className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}
+                    className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Created
+                    <ArrowDown className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("completed_at"); setSortDirection("asc"); }}
+                    className={`justify-between ${sortField === "completed_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Completed
+                    <ArrowUp className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setSortField("completed_at"); setSortDirection("desc"); }}
+                    className={`justify-between ${sortField === "completed_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                  >
+                    Completed
+                    <ArrowDown className="h-4 w-4 ml-2" />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+          </div>
+
+          {/* Results count */}
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredCompletedJobs.length} of {completedJobs.length} completed jobs
           </div>
           {filteredCompletedJobs.length === 0 ? (
             <Card className="p-6">

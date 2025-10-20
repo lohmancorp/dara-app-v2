@@ -1,9 +1,15 @@
-import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2 } from "lucide-react";
+import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2, ArrowUp, ArrowDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useFloatingAction } from "@/components/AppLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +25,9 @@ interface ChatSession {
   last_message_at: string;
 }
 
+type SortField = "title" | "created_at" | "last_message_at";
+type SortDirection = "asc" | "desc";
+
 const Library = () => {
   const { setActionButton } = useFloatingAction();
   const { user } = useAuth();
@@ -27,6 +36,8 @@ const Library = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [sortField, setSortField] = useState<SortField>("last_message_at");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   useEffect(() => {
     setActionButton(null);
@@ -89,9 +100,48 @@ const Library = () => {
     }
   };
 
-  const filteredSessions = sessions.filter(session =>
-    session.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSessions = useMemo(() => {
+    let filtered = sessions.filter(session =>
+      session.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortField) {
+        case "title":
+          aVal = a.title.toLowerCase();
+          bVal = b.title.toLowerCase();
+          break;
+        case "created_at":
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+        case "last_message_at":
+          aVal = new Date(a.last_message_at).getTime();
+          bVal = new Date(b.last_message_at).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [sessions, searchQuery, sortField, sortDirection]);
+
+  const getSortLabel = () => {
+    const labels = {
+      title: "Title",
+      created_at: "Created",
+      last_message_at: "Last Message",
+    };
+    return labels[sortField];
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,16 +152,83 @@ const Library = () => {
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
+        <div className="mb-6 flex gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search chats..." 
-              className="pl-10"
+              className="pl-10 pr-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
+
+          {/* Sort */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                {getSortLabel()}
+                {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-background z-50">
+              <DropdownMenuItem
+                onClick={() => { setSortField("title"); setSortDirection("asc"); }}
+                className={sortField === "title" && sortDirection === "asc" ? "bg-accent text-white" : ""}
+              >
+                Title (A-Z)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("title"); setSortDirection("desc"); }}
+                className={sortField === "title" && sortDirection === "desc" ? "bg-accent text-white" : ""}
+              >
+                Title (Z-A)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}
+                className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+              >
+                Created
+                <ArrowUp className="h-4 w-4 ml-2" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}
+                className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+              >
+                Created
+                <ArrowDown className="h-4 w-4 ml-2" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("last_message_at"); setSortDirection("asc"); }}
+                className={`justify-between ${sortField === "last_message_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+              >
+                Last Message
+                <ArrowUp className="h-4 w-4 ml-2" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("last_message_at"); setSortDirection("desc"); }}
+                className={`justify-between ${sortField === "last_message_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+              >
+                Last Message
+                <ArrowDown className="h-4 w-4 ml-2" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Results count */}
+        <div className="text-sm text-muted-foreground mb-6">
+          Showing {filteredSessions.length} of {sessions.length} chats
         </div>
 
         {isLoading ? (
