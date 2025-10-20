@@ -1,269 +1,124 @@
-import { Settings } from "lucide-react";
+import { Settings, Building2, Users, ShieldCheck, Cable, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
-import jiraIcon from "@/assets/connection-icons/jira.png";
-import confluenceIcon from "@/assets/connection-icons/confluence.png";
-import geminiIcon from "@/assets/connection-icons/gemini.png";
-import openaiIcon from "@/assets/connection-icons/openai.png";
-import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
 
-type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
-
-interface MCPService {
+interface AdminArea {
   id: string;
-  service_name: string;
-  service_type: ConnectionType;
-  description: string | null;
-  uses_app_token: boolean;
-  call_delay_ms: number;
-  max_retries: number;
-  retry_delay_sec: number;
-  rate_limit_per_minute: number;
-  rate_limit_per_hour: number;
+  name: string;
+  description: string;
+  icon: any;
+  route: string;
 }
 
-const CONNECTION_ICONS: Record<ConnectionType, string> = {
-  freshservice: freshserviceIcon,
-  jira: jiraIcon,
-  confluence: confluenceIcon,
-  gemini: geminiIcon,
-  openai: openaiIcon,
-  google_alerts: googleAlertsIcon,
-};
+const adminAreas: AdminArea[] = [
+  {
+    id: "accounts",
+    name: "Accounts",
+    description: "Manage organizational accounts and settings",
+    icon: Building2,
+    route: "/admin/accounts",
+  },
+  {
+    id: "users",
+    name: "Users",
+    description: "Manage user profiles and permissions",
+    icon: Users,
+    route: "/admin/users",
+  },
+  {
+    id: "roles",
+    name: "Roles",
+    description: "Configure user roles and access levels",
+    icon: ShieldCheck,
+    route: "/admin/roles",
+  },
+  {
+    id: "connections",
+    name: "Connections",
+    description: "Configure API connections and rate limits",
+    icon: Cable,
+    route: "/admin/connections",
+  },
+];
 
 const Admin = () => {
-  const { toast } = useToast();
-  const [services, setServices] = useState<MCPService[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingService, setEditingService] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
-
-  const fetchServices = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('mcp_services')
-        .select('*')
-        .order('service_name', { ascending: true });
-
-      if (error) throw error;
-      setServices((data || []) as MCPService[]);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching services",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateService = async (serviceId: string, updates: Partial<MCPService>) => {
-    try {
-      const { error } = await supabase
-        .from('mcp_services')
-        .update(updates)
-        .eq('id', serviceId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Service updated",
-        description: "Configuration saved successfully",
-      });
-
-      await fetchServices();
-      setEditingService(null);
-    } catch (error: any) {
-      toast({
-        title: "Error updating service",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (isLoading) {
+  const filteredAreas = adminAreas.filter((area) => {
+    const query = searchQuery.toLowerCase();
     return (
-      <div className="min-h-screen bg-background">
-        <PageHeader 
-          icon={Settings}
-          title="Admin Panel"
-          description="Manage system connections and settings"
-        />
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-          <div className="text-center">Loading services...</div>
-        </div>
-      </div>
+      area.name.toLowerCase().includes(query) ||
+      area.description.toLowerCase().includes(query)
     );
-  }
+  });
+
+  const handleCardClick = (route: string) => {
+    setSearchQuery("");
+    navigate(route);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <PageHeader 
         icon={Settings}
         title="Admin Panel"
-        description="Manage system connections and settings"
+        description="Manage system settings and configurations"
       />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {services.map((service) => (
-            <Card key={service.id} className="p-6">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <img 
-                    src={CONNECTION_ICONS[service.service_type]} 
-                    alt={`${service.service_name} icon`}
-                    className="h-8 w-8 object-contain"
-                  />
+        <div className="mb-6 max-w-md relative">
+          <Input
+            placeholder="Search admin functions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pr-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+              onClick={clearSearch}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAreas.map((area) => (
+            <Card
+              key={area.id}
+              className="p-4 hover:bg-accent/50 cursor-pointer transition-colors"
+              onClick={() => handleCardClick(area.route)}
+            >
+              <div className="flex gap-4">
+                <div className="flex items-center justify-center p-3 rounded-lg bg-primary/10 h-fit">
+                  <area.icon className="h-6 w-6 text-primary" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{service.service_name}</h3>
-                  <p className="text-sm text-muted-foreground">{service.description}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={`uses-app-token-${service.id}`}>
-                    Use App-Level Token
-                  </Label>
-                  <Switch
-                    id={`uses-app-token-${service.id}`}
-                    checked={service.uses_app_token}
-                    onCheckedChange={(checked) => 
-                      handleUpdateService(service.id, { uses_app_token: checked })
-                    }
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {service.uses_app_token 
-                    ? "Users will use the app-wide token set by admin" 
-                    : "Users must provide their own credentials"}
-                </p>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <Label htmlFor={`call-delay-${service.id}`}>
-                      Call Delay (ms)
-                    </Label>
-                    <Input
-                      id={`call-delay-${service.id}`}
-                      type="number"
-                      value={editingService === service.id ? undefined : service.call_delay_ms}
-                      defaultValue={service.call_delay_ms}
-                      onFocus={() => setEditingService(service.id)}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.call_delay_ms) {
-                          handleUpdateService(service.id, { call_delay_ms: value });
-                        } else {
-                          setEditingService(null);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor={`max-retries-${service.id}`}>
-                      Max Retries
-                    </Label>
-                    <Input
-                      id={`max-retries-${service.id}`}
-                      type="number"
-                      value={editingService === service.id ? undefined : service.max_retries}
-                      defaultValue={service.max_retries}
-                      onFocus={() => setEditingService(service.id)}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.max_retries) {
-                          handleUpdateService(service.id, { max_retries: value });
-                        } else {
-                          setEditingService(null);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor={`retry-delay-${service.id}`}>
-                      Retry Delay (sec)
-                    </Label>
-                    <Input
-                      id={`retry-delay-${service.id}`}
-                      type="number"
-                      value={editingService === service.id ? undefined : service.retry_delay_sec}
-                      defaultValue={service.retry_delay_sec}
-                      onFocus={() => setEditingService(service.id)}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.retry_delay_sec) {
-                          handleUpdateService(service.id, { retry_delay_sec: value });
-                        } else {
-                          setEditingService(null);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor={`rate-limit-${service.id}`}>
-                      Rate Limit (/min)
-                    </Label>
-                    <Input
-                      id={`rate-limit-${service.id}`}
-                      type="number"
-                      value={editingService === service.id ? undefined : service.rate_limit_per_minute}
-                      defaultValue={service.rate_limit_per_minute}
-                      onFocus={() => setEditingService(service.id)}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.rate_limit_per_minute) {
-                          handleUpdateService(service.id, { rate_limit_per_minute: value });
-                        } else {
-                          setEditingService(null);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor={`rate-limit-hour-${service.id}`}>
-                      Rate Limit (/hour)
-                    </Label>
-                    <Input
-                      id={`rate-limit-hour-${service.id}`}
-                      type="number"
-                      value={editingService === service.id ? undefined : service.rate_limit_per_hour}
-                      defaultValue={service.rate_limit_per_hour}
-                      onFocus={() => setEditingService(service.id)}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value !== service.rate_limit_per_hour) {
-                          handleUpdateService(service.id, { rate_limit_per_hour: value });
-                        } else {
-                          setEditingService(null);
-                        }
-                      }}
-                    />
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base mb-1">{area.name}</h3>
+                  <p className="text-sm text-muted-foreground">{area.description}</p>
                 </div>
               </div>
             </Card>
           ))}
         </div>
+
+        {filteredAreas.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No admin functions found matching "{searchQuery}"
+          </div>
+        )}
       </div>
     </div>
   );
