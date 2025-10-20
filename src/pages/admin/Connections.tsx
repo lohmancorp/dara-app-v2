@@ -109,26 +109,11 @@ const AdminConnections = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-      <PageHeader 
-        icon={Cable}
-        title="Connection Management"
-        description="Configure connection settings and API rate limits"
-      />
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-          <div className="text-center">Loading services...</div>
-        </div>
-      </div>
-    );
-  }
-
   const getServiceByType = (type: ConnectionType) => {
     return services.find(s => s.service_type === type);
   };
 
-  // Filter and sort services
+  // Filter and sort services - Must be before early return to follow Rules of Hooks
   const filteredAndSortedServices = useMemo(() => {
     // First, map services to include config info
     const servicesWithConfig = Object.entries(CONNECTION_CONFIGS).map(([type, config]) => {
@@ -179,6 +164,21 @@ const AdminConnections = () => {
     };
     return labels[sortField];
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <PageHeader 
+          icon={Cable}
+          title="Connection Management"
+          description="Configure connection settings and API rate limits"
+        />
+        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          <div className="text-center">Loading services...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
