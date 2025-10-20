@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Library, FileText, Activity, Cable, Settings } from "lucide-react";
+import { Home, MessageSquare, Library, FileText, Activity, Cable, Settings, Workflow } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import daraLogo from "@/assets/dara-logo.png";
 import { useAppAdmin } from "@/hooks/useAppAdmin";
@@ -20,7 +20,7 @@ const navItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Research", url: "/chat", icon: MessageSquare },
   { title: "Library", url: "/library", icon: Library },
-  { title: "Blueprints", url: "/blueprints", icon: FileText },
+  { title: "Blueprints", url: "/blueprints", icon: Workflow },
   { title: "Jobs", url: "/jobs", icon: Activity },
   { title: "Connections", url: "/connections", icon: Cable },
 ];

@@ -1,4 +1,4 @@
-import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ArrowUp, ArrowDown, Copy } from "lucide-react";
+import { FileText, Briefcase, Eye, Pencil, Trash2, Play, Search, X, Sparkles, Activity, ArrowUpDown, ThumbsUp, ThumbsDown, ArrowUp, ArrowDown, Copy, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -555,7 +555,7 @@ const Templates = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        icon={FileText}
+        icon={Workflow}
         title="Research Blueprints"
         description="Start with pre-configured research workflows"
       />
