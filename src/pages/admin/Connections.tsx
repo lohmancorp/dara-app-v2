@@ -235,30 +235,6 @@ const AdminConnections = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`max-retries-${service.id}`}>
-                    Max Retries
-                  </Label>
-                  <Input
-                    id={`max-retries-${service.id}`}
-                    type="number"
-                    value={editingService === service.id ? undefined : service.max_retries}
-                    defaultValue={service.max_retries}
-                    onFocus={() => setEditingService(service.id)}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value) && value !== service.max_retries) {
-                        handleUpdateService(service.id, { max_retries: value });
-                      } else {
-                        setEditingService(null);
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Number of retry attempts when a request fails
-                  </p>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor={`retry-delay-${service.id}`}>
                     Retry Delay (sec)
                   </Label>
@@ -279,6 +255,30 @@ const AdminConnections = () => {
                   />
                   <p className="text-xs text-muted-foreground">
                     Wait time in seconds before retrying a failed request
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`max-retries-${service.id}`}>
+                    Max Retries
+                  </Label>
+                  <Input
+                    id={`max-retries-${service.id}`}
+                    type="number"
+                    value={editingService === service.id ? undefined : service.max_retries}
+                    defaultValue={service.max_retries}
+                    onFocus={() => setEditingService(service.id)}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value) && value !== service.max_retries) {
+                        handleUpdateService(service.id, { max_retries: value });
+                      } else {
+                        setEditingService(null);
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of retry attempts when a request fails
                   </p>
                 </div>
 
