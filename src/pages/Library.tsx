@@ -1,4 +1,4 @@
-import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2, ArrowUp, ArrowDown, X, Pencil } from "lucide-react";
+import { Library as LibraryIcon, Search, MessageSquare, Clock, Trash2, ArrowUp, ArrowDown, X, Pencil, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ const Library = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     setActionButton(null);
@@ -145,6 +146,45 @@ const Library = () => {
   const handleCancelEdit = () => {
     setEditingSessionId(null);
     setEditingTitle('');
+  };
+
+  const handleGenerateTitle = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    setIsGenerating(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-chat-title', {
+        body: { sessionId }
+      });
+
+      if (error) {
+        console.error('Error generating title:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to generate title",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.title) {
+        setEditingTitle(data.title);
+        toast({
+          title: "Title Generated",
+          description: "AI has generated a new title for your chat",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating title:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate title. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const filteredSessions = useMemo(() => {
@@ -318,21 +358,43 @@ const Library = () => {
                   </div>
                   <div>
                     {editingSessionId === session.id ? (
-                      <Input
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onBlur={() => handleSaveTitle(session.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveTitle(session.id);
-                          } else if (e.key === 'Escape') {
-                            handleCancelEdit();
-                          }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                        className="font-semibold text-lg mb-2"
-                      />
+                      <div className="relative">
+                        <Input
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onBlur={() => !isGenerating && handleSaveTitle(session.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !isGenerating) {
+                              handleSaveTitle(session.id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEdit();
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                          disabled={isGenerating}
+                          className="font-semibold text-lg mb-2 pr-10"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleGenerateTitle(session.id, e)}
+                          disabled={isGenerating}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                          title="Generate title with AI"
+                        >
+                          {isGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                        </Button>
+                        {isGenerating && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Generating title...
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div 
                         className="relative group/title cursor-text"
