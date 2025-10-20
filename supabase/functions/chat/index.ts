@@ -163,7 +163,63 @@ async function callLLM(
     }
 
     if (stream) {
-      return response;
+      // Transform Gemini's streaming format to OpenAI's SSE format
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
+      const encoder = new TextEncoder();
+      
+      (async () => {
+        try {
+          const reader = response.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              await writer.write(encoder.encode('data: [DONE]\n\n'));
+              break;
+            }
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+              if (!line.trim() || !line.startsWith('data: ')) continue;
+              
+              try {
+                const jsonStr = line.substring(6);
+                const geminiData = JSON.parse(jsonStr);
+                
+                // Extract text from Gemini response
+                const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                  // Convert to OpenAI SSE format
+                  const openaiFormat = {
+                    choices: [{
+                      delta: {
+                        content: text
+                      }
+                    }]
+                  };
+                  await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                }
+              } catch (e) {
+                console.error('Error parsing Gemini stream chunk:', e);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error transforming Gemini stream:', error);
+        } finally {
+          writer.close();
+        }
+      })();
+      
+      return new Response(readable, {
+        headers: { 'Content-Type': 'text/event-stream' }
+      });
     }
 
     const data = await response.json();
