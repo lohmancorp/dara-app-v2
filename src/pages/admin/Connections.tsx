@@ -293,7 +293,7 @@ const AdminConnections = () => {
 
             <div className="space-y-2">
               <Label htmlFor={`rate-limit-hour-${service.id}`}>
-                Rate Limit (per hour)
+                Calls per Hour
               </Label>
               <Input
                 id={`rate-limit-hour-${service.id}`}
