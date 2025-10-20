@@ -441,9 +441,24 @@ const Chat = () => {
     return () => setAdvancedControls(null);
   }, [showAdvanced, setAdvancedControls, messages.length, handleClearChat]);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Scroll to bottom when typing/thinking indicators appear
+  useEffect(() => {
+    if (isTyping || isThinking) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isTyping, isThinking]);
+
+  // Scroll to bottom when input changes (textarea expands)
+  useEffect(() => {
+    if (input && isFocused) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [input, isFocused]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -900,7 +915,7 @@ const Chat = () => {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col min-h-0">
             <div className="flex-1 border-l border-r border-border flex flex-col min-h-0">
-              <ScrollArea className="flex-1 h-full">
+              <ScrollArea className="flex-1 h-full pb-4">
                 {messages.length === 0 ? (
                   <div className="p-4 sm:p-6 h-full flex items-center justify-center">
                     <div className="text-center space-y-4 max-w-md">
