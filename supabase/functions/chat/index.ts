@@ -456,12 +456,17 @@ When a user asks for tickets:
 - 17 = Waiting for 3rd Party
 
 **How to handle requests:**
+- "CDW tickets" or "CDW UK tickets" → use department: "CDW UK"
+- "SVA tickets" → use department: "SVA Systemvertrieb Alexander GmbH"
+- Any company/department name mentioned → use department: "<exact company name>"
 - "not closed" or "not resolved" → use exclude_status: ['4', '5']
 - "unresolved" → use status: ['2', '3', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17']
 - "waiting for RnD" → use status: ['8']
 - "last month" → use created_after with date 1 month ago
 - "last N days" → use created_after with date N days ago
 - If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
+
+**CRITICAL: When user mentions a company/department name (like "CDW", "SVA", "Mindware"), you MUST add it as a department filter. Don't ignore company names in queries!**
 
 **Important: Query Limits**
 - For queries expected to return >200 tickets, automatically use async job processing
