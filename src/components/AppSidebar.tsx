@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Library, FileText, Activity, Cable, Settings } from "lucide-react";
+import { Home, MessageSquare, Library, FileText, Activity, Link2, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import daraLogo from "@/assets/dara-logo.png";
 import { useAppAdmin } from "@/hooks/useAppAdmin";
@@ -22,7 +22,7 @@ const navItems = [
   { title: "Library", url: "/library", icon: Library },
   { title: "Templates", url: "/templates", icon: FileText },
   { title: "Jobs", url: "/jobs", icon: Activity },
-  { title: "Connections", url: "/connections", icon: Cable },
+  { title: "Connections", url: "/connections", icon: Link2 },
 ];
 
 export function AppSidebar() {
@@ -36,11 +36,7 @@ export function AppSidebar() {
       >
         {open && (
           <div className="flex items-center gap-2">
-            <img 
-              src={daraLogo} 
-              alt="D.A.R.A. Logo" 
-              className="h-[55px] w-[55px] rounded-lg object-cover"
-            />
+            <img src={daraLogo} alt="D.A.R.A. Logo" className="h-[55px] w-[55px] rounded-lg object-cover" />
             <h2 className="text-lg font-semibold text-foreground">D.A.R.A.</h2>
           </div>
         )}
@@ -77,7 +73,6 @@ export function AppSidebar() {
 
         {!loading && isAppAdmin && (
           <SidebarGroup className="mt-auto border-t border-sidebar-border pt-4">
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
