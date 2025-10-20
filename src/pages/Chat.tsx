@@ -44,6 +44,7 @@ const Chat = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Load session if coming from navigation state
   useEffect(() => {
@@ -52,6 +53,7 @@ const Chat = () => {
 
       // Check if we're starting a new chat explicitly
       if (location.state?.newChat) {
+        hasInitializedRef.current = true;
         return;
       }
 
@@ -60,11 +62,12 @@ const Chat = () => {
       if (stateSessionId) {
         setSessionId(stateSessionId);
         await loadSession(stateSessionId);
+        hasInitializedRef.current = true;
         return;
       }
 
-      // Only load the most recent session if we have no messages and no explicit session
-      if (messages.length === 0 && !sessionId) {
+      // Only auto-load the most recent session on first initialization
+      if (!hasInitializedRef.current && messages.length === 0 && !sessionId) {
         const { data: recentSession, error } = await supabase
           .from('chat_sessions')
           .select('id')
@@ -77,6 +80,7 @@ const Chat = () => {
           setSessionId(recentSession.id);
           await loadSession(recentSession.id);
         }
+        hasInitializedRef.current = true;
       }
     };
 
@@ -384,6 +388,7 @@ const Chat = () => {
     setSessionId(null);
     setMessages([]);
     jobLoadedRef.current = false;
+    hasInitializedRef.current = true; // Mark as initialized to prevent auto-loading
     
     // Set newChat flag to prevent auto-loading the most recent session
     navigate('/chat', { replace: true, state: { newChat: true } });
