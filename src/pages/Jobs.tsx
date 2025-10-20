@@ -133,6 +133,7 @@ const Jobs = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching all jobs for user:', user.id);
       const { data, error } = await supabase
         .from('chat_jobs')
         .select('*')
@@ -140,6 +141,8 @@ const Jobs = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log('Fetched jobs:', data?.length || 0);
 
       const active = data?.filter(job => 
         job.status === 'pending' || job.status === 'processing' || job.status === 'running'
@@ -149,6 +152,7 @@ const Jobs = () => {
         job.status === 'completed' || job.status === 'failed'
       ) || [];
 
+      console.log('Active:', active.length, 'Completed:', completed.length);
       setActiveJobs(active);
       setCompletedJobs(completed);
     } catch (error) {

@@ -519,12 +519,15 @@ When a user asks for tickets:
 **CRITICAL: When you receive an async_job response from the tool:**
 When the search_freshservice_tickets tool returns a response with "async_job": true, it means your query is being processed in the background. You MUST:
 1. Acknowledge that the job is running in the background
-2. Tell the user the job_id and estimated_time from the response
-3. Explain that they can check the Jobs page to see progress and results
-4. DO NOT generate code or Python snippets - just respond naturally
-5. DO NOT try to show results yet - the job is still processing
+2. Use EXACTLY the job_id provided in the tool response - DO NOT invent or modify job IDs
+3. Tell the user: "Job ID: [exact job_id from response]" - copy it exactly as provided
+4. Mention the estimated_time from the response
+5. Explain they can check the Jobs page for progress
+6. DO NOT generate code or Python snippets
+7. DO NOT show results - the job is still processing
+8. CRITICAL: The job_id in the response is a UUID format like "a7406aac-580b-4dae-ae43-c9b03aa9b3ee" - use it exactly
 
-Example response: "I've started a background job to fetch your tickets. The job ID is [job_id] and it should complete in [estimated_time]. You can check the Jobs page to monitor progress and see the results when it's done."
+Example response: "I've started a background job to process your query. Job ID: a7406aac-580b-4dae-ae43-c9b03aa9b3ee. This should complete in 1-20 minutes. Check the Jobs page to monitor progress and see results when done."
 
 Always format results as a clear, readable markdown table. 
 
@@ -662,6 +665,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     chat_session_id: sessionId,
                     job_sequence: jobSequence,
                     query: userQuery,
+                    status: 'pending',
+                    progress: 0,
                     filters: {
                       mcp_service_id,
                       department,
@@ -673,6 +678,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                   })
                   .select()
                   .single();
+                
+                console.log('Created job:', job?.id, 'Sequence:', jobSequence);
 
                 if (jobError || !job) {
                   console.error('Failed to create job:', jobError);
@@ -722,7 +729,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
                 const jobName = `${sessionId.substring(0, 8)}-${String(jobSequence).padStart(3, '0')}`;
 
-                const initialMessage = `Processing large query in background...\n\nJob: ${jobName}\n\nThis may take 1-20 minutes depending on the dataset size.`;
+                const initialMessage = `Processing large query in background...\n\nJob ID: ${job.id}\nJob Name: ${jobName}\n\nThis may take 1-20 minutes depending on the dataset size.`;
                 
                 const { error: msgError } = await supabase
                   .from('chat_messages')
@@ -750,8 +757,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     async_job: true,
                     job_id: job.id,
                     job_name: jobName,
-                    message: `Large query detected. Processing in background. Job: ${jobName}`,
-                    estimated_time: 'This may take 1-20 minutes depending on the dataset size.'
+                    message: `Job created successfully. Job ID: ${job.id}. Processing in background.`,
+                    estimated_time: '1-20 minutes depending on dataset size'
                   })
                 };
               }
