@@ -163,7 +163,63 @@ async function callLLM(
     }
 
     if (stream) {
-      return response;
+      // Transform Gemini's streaming format to OpenAI SSE format
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
+      const encoder = new TextEncoder();
+      
+      (async () => {
+        try {
+          const reader = response.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              await writer.write(encoder.encode('data: [DONE]\n\n'));
+              break;
+            }
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              
+              try {
+                // Gemini returns raw JSON chunks
+                const geminiData = JSON.parse(line);
+                
+                // Extract text from Gemini response
+                const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                  // Convert to OpenAI SSE format
+                  const openaiFormat = {
+                    choices: [{
+                      delta: {
+                        content: text
+                      }
+                    }]
+                  };
+                  await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                }
+              } catch (e) {
+                console.error('Error parsing Gemini stream chunk:', e, 'Line:', line);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error transforming Gemini stream:', error);
+        } finally {
+          writer.close();
+        }
+      })();
+      
+      return new Response(readable, {
+        headers: { 'Content-Type': 'text/event-stream' }
+      });
     }
 
     const data = await response.json();
@@ -470,8 +526,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       // Check if AI wants to call tools
       if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
         const toolCalls = choice.message.tool_calls;
-        console.log('AI requested tool calls:', toolCalls.length);
-        console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
+      console.log('AI requested tool calls:', toolCalls.length);
+      console.log('Tool calls:', JSON.stringify(toolCalls, null, 2));
 
         // Add assistant message with tool calls to conversation
         conversationMessages.push(choice.message);
@@ -788,6 +844,8 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
       // No more tool calls - stream final response
       console.log('No more tool calls, streaming final response');
+      console.log('Connection type:', defaultConnection.connection_type);
+      console.log('Conversation has', conversationMessages.length, 'messages');
       
       const finalResponse = await callLLM(
         defaultConnection.connection_type,
@@ -838,69 +896,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       }
 
       console.log('Streaming final response to client');
-      
-      // For Gemini, transform the stream format to OpenAI SSE format
-      if (defaultConnection.connection_type === 'gemini') {
-        const { readable, writable } = new TransformStream();
-        const writer = writable.getWriter();
-        const encoder = new TextEncoder();
-        
-        (async () => {
-          try {
-            const reader = finalResponse.body!.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                await writer.write(encoder.encode('data: [DONE]\n\n'));
-                break;
-              }
-              
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              
-              for (const line of lines) {
-                if (!line.trim()) continue;
-                
-                try {
-                  // Gemini returns raw JSON chunks, not SSE format
-                  const geminiData = JSON.parse(line);
-                  
-                  // Extract text from Gemini response
-                  const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (text) {
-                    // Convert to OpenAI SSE format
-                    const openaiFormat = {
-                      choices: [{
-                        delta: {
-                          content: text
-                        }
-                      }]
-                    };
-                    await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
-                  }
-                } catch (e) {
-                  // Not valid JSON, might be partial chunk
-                  buffer = line + buffer;
-                  break;
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error transforming Gemini stream:', error);
-          } finally {
-            writer.close();
-          }
-        })();
-        
-        return new Response(readable, {
-          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-        });
-      }
-      
       return new Response(finalResponse.body, {
         headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
       });
