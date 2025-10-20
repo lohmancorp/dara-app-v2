@@ -45,7 +45,7 @@ const Chat = () => {
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Create or load session on mount
+  // Load session if coming from navigation state
   useEffect(() => {
     const initSession = async () => {
       if (!user?.id) return;
@@ -58,27 +58,7 @@ const Chat = () => {
         return;
       }
 
-      // Create new session
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .insert({
-          user_id: user.id,
-          title: 'New Chat'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating session:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create chat session",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setSessionId(data.id);
+      // Don't create session on mount - wait until user sends first message
     };
 
     initSession();
@@ -363,32 +343,16 @@ const Chat = () => {
   };
 
   const handleClearChat = useCallback(async () => {
-    if (!sessionId || !user?.id) return;
-
-    // Create new session
-    const { data, error } = await supabase
-      .from('chat_sessions')
-      .insert({
-        user_id: user.id,
-        title: 'New Chat'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating new session:', error);
-      return;
-    }
-
-    setSessionId(data.id);
+    // Just clear the UI state - new session will be created on next send
+    setSessionId(null);
     setMessages([]);
     jobLoadedRef.current = false;
     
     toast({
       title: "Chat cleared",
-      description: "Started a new chat session",
+      description: "Started a new chat",
     });
-  }, [sessionId, user?.id, toast]);
+  }, [toast]);
 
   useEffect(() => {
     setAdvancedControls({
@@ -522,7 +486,7 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || hasActiveJob || !sessionId) return;
+    if (!input.trim() || isLoading || hasActiveJob) return;
 
     const userMessage: Message = { role: 'user', content: input };
     const messageContent = input;
@@ -535,15 +499,36 @@ const Chat = () => {
 
     try {
       // Check if user is authenticated
-      if (!session?.access_token) {
+      if (!session?.access_token || !user?.id) {
         throw new Error('Please log in to use the chat');
       }
 
-      // Save user message to database first
+      // Create session if this is the first message
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        const { data, error } = await supabase
+          .from('chat_sessions')
+          .insert({
+            user_id: user.id,
+            title: 'New Chat' // Temporary title, will be updated after assistant responds
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating session:', error);
+          throw new Error('Failed to create chat session');
+        }
+
+        currentSessionId = data.id;
+        setSessionId(currentSessionId);
+      }
+
+      // Save user message to database
       const { error: userMsgError } = await supabase
         .from('chat_messages')
         .insert({
-          session_id: sessionId,
+          session_id: currentSessionId,
           role: 'user',
           content: messageContent
         });
@@ -552,26 +537,11 @@ const Chat = () => {
         console.error('Error saving user message:', userMsgError);
       }
 
-      // Update session title if this is the first message
-      if (messages.length === 0) {
-        const title = messageContent.length > 50 
-          ? messageContent.substring(0, 50) + '...' 
-          : messageContent;
-        
-        await supabase
-          .from('chat_sessions')
-          .update({ 
-            title,
-            last_message_at: new Date().toISOString()
-          })
-          .eq('id', sessionId);
-      } else {
-        // Update last_message_at
-        await supabase
-          .from('chat_sessions')
-          .update({ last_message_at: new Date().toISOString() })
-          .eq('id', sessionId);
-      }
+      // Update last_message_at
+      await supabase
+        .from('chat_sessions')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', currentSessionId);
 
       setMessages((prev) => [...prev, userMessage]);
 
@@ -593,7 +563,7 @@ const Chat = () => {
               Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              sessionId,
+              sessionId: currentSessionId,
               messages: [...messages, userMessage].map(m => ({
                 role: m.role,
                 content: m.content
@@ -678,7 +648,7 @@ const Chat = () => {
               await supabase
                 .from('chat_messages')
                 .insert({
-                  session_id: sessionId,
+                  session_id: currentSessionId,
                   role: 'assistant',
                   content: assistantContent
                 });
@@ -697,10 +667,23 @@ const Chat = () => {
         await supabase
           .from('chat_messages')
           .insert({
-            session_id: sessionId,
+            session_id: currentSessionId,
             role: 'assistant',
             content: assistantContent
           });
+
+        // Generate a meaningful title from the first exchange
+        if (messages.length === 0) {
+          // Use the first 60 characters of the user's message as title
+          const title = messageContent.length > 60 
+            ? messageContent.substring(0, 60).trim() + '...' 
+            : messageContent.trim();
+          
+          await supabase
+            .from('chat_sessions')
+            .update({ title })
+            .eq('id', currentSessionId);
+        }
       }
 
       } catch (fetchError: any) {
