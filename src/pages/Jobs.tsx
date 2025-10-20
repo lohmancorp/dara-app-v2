@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle, XCircle, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Activity, Clock, CheckCircle, AlertCircle, Search, PlayCircle, XCircle, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -45,6 +52,8 @@ const Jobs = () => {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>("completed_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -249,6 +258,18 @@ const Jobs = () => {
     return filtered;
   }, [completedJobs, searchQuery, sortField, sortDirection]);
 
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(filteredCompletedJobs.length / itemsPerPage);
+  
+  const paginatedJobs = useMemo(() => {
+    if (itemsPerPage === -1) return filteredCompletedJobs;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCompletedJobs.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCompletedJobs, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage, sortField, sortDirection, searchQuery]);
+
   const getSortLabel = () => {
     const labels = {
       query: "Query",
@@ -256,6 +277,41 @@ const Jobs = () => {
       completed_at: "Completed",
     };
     return labels[sortField];
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(value === 'all' ? -1 : parseInt(value));
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
   };
 
   const renderJob = (job: Job) => {
@@ -388,20 +444,22 @@ const Jobs = () => {
 
         {/* Completed Jobs Section */}
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
               Completed Jobs
             </h2>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
+            
+            {/* Search and Sort on a new line */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="relative flex-1 w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search completed jobs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-10 w-full sm:w-64"
+                  className="pl-9 pr-10 w-full"
                 />
                 {searchQuery && (
                   <Button
@@ -415,64 +473,81 @@ const Jobs = () => {
                 )}
               </div>
 
-              {/* Sort */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    {getSortLabel()}
-                    {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-background z-50">
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("query"); setSortDirection("asc"); }}
-                    className={sortField === "query" && sortDirection === "asc" ? "bg-accent text-white" : ""}
-                  >
-                    Query (A-Z)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("query"); setSortDirection("desc"); }}
-                    className={sortField === "query" && sortDirection === "desc" ? "bg-accent text-white" : ""}
-                  >
-                    Query (Z-A)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}
-                    className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
-                  >
-                    Created
-                    <ArrowUp className="h-4 w-4 ml-2" />
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}
-                    className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
-                  >
-                    Created
-                    <ArrowDown className="h-4 w-4 ml-2" />
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("completed_at"); setSortDirection("asc"); }}
-                    className={`justify-between ${sortField === "completed_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
-                  >
-                    Completed
-                    <ArrowUp className="h-4 w-4 ml-2" />
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => { setSortField("completed_at"); setSortDirection("desc"); }}
-                    className={`justify-between ${sortField === "completed_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
-                  >
-                    Completed
-                    <ArrowDown className="h-4 w-4 ml-2" />
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                {/* Sort */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      {getSortLabel()}
+                      {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-background z-50">
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("query"); setSortDirection("asc"); }}
+                      className={sortField === "query" && sortDirection === "asc" ? "bg-accent text-white" : ""}
+                    >
+                      Query (A-Z)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("query"); setSortDirection("desc"); }}
+                      className={sortField === "query" && sortDirection === "desc" ? "bg-accent text-white" : ""}
+                    >
+                      Query (Z-A)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("created_at"); setSortDirection("asc"); }}
+                      className={`justify-between ${sortField === "created_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                    >
+                      Created
+                      <ArrowUp className="h-4 w-4 ml-2" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("created_at"); setSortDirection("desc"); }}
+                      className={`justify-between ${sortField === "created_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                    >
+                      Created
+                      <ArrowDown className="h-4 w-4 ml-2" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("completed_at"); setSortDirection("asc"); }}
+                      className={`justify-between ${sortField === "completed_at" && sortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                    >
+                      Completed
+                      <ArrowUp className="h-4 w-4 ml-2" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setSortField("completed_at"); setSortDirection("desc"); }}
+                      className={`justify-between ${sortField === "completed_at" && sortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                    >
+                      Completed
+                      <ArrowDown className="h-4 w-4 ml-2" />
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Rows per page */}
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
+                <Select value={itemsPerPage === -1 ? 'all' : itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {/* Results count */}
           <div className="text-sm text-muted-foreground">
-            Showing {filteredCompletedJobs.length} of {completedJobs.length} completed jobs
+            Showing {itemsPerPage === -1 ? filteredCompletedJobs.length : Math.min((currentPage - 1) * itemsPerPage + 1, filteredCompletedJobs.length)} to {itemsPerPage === -1 ? filteredCompletedJobs.length : Math.min(currentPage * itemsPerPage, filteredCompletedJobs.length)} of {filteredCompletedJobs.length} results
           </div>
+          
           {filteredCompletedJobs.length === 0 ? (
             <Card className="p-6">
               <p className="text-center text-muted-foreground">
@@ -480,9 +555,56 @@ const Jobs = () => {
               </p>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {filteredCompletedJobs.map(renderJob)}
-            </div>
+            <>
+              <div className="space-y-4">
+                {paginatedJobs.map(renderJob)}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Previous</span>
+                  </Button>
+                  
+                  <div className="flex items-center gap-1 flex-wrap justify-center">
+                    {getPageNumbers().map((page, idx) => (
+                      typeof page === 'number' ? (
+                        <Button
+                          key={idx}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className="min-w-[40px]"
+                        >
+                          {page}
+                        </Button>
+                      ) : (
+                        <span key={idx} className="px-2 text-muted-foreground">
+                          {page}
+                        </span>
+                      )
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden sm:inline mr-1">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
