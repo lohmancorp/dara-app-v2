@@ -795,13 +795,14 @@ const Chat = () => {
               const jobId = parsed.job_id;
               const messageIndex = messages.length + 1;
               
-              assistantContent = parsed.message || `Processing large query in background...\n\nJob: ${parsed.job_name || jobId}\n\n${parsed.estimated_time || ''}`;
+              // No text message - only show progress bar
+              assistantContent = '';
               
               setMessages((prev) => {
                 const newMessages = [...prev];
                 newMessages[newMessages.length - 1] = {
                   role: 'assistant',
-                  content: assistantContent,
+                  content: '',
                   jobId,
                   jobStatus: 'pending',
                   jobProgress: 0
@@ -815,7 +816,7 @@ const Chat = () => {
                 .insert({
                   session_id: currentSessionId,
                   role: 'assistant',
-                  content: assistantContent,
+                  content: '',
                   job_id: jobId
                 });
 
