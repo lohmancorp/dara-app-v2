@@ -721,17 +721,43 @@ const Chat = () => {
             content: assistantContent
           });
 
-        // Generate a meaningful title from the first exchange
+        // Generate a meaningful title from the first exchange using AI
         if (messages.length === 0) {
-          // Use the first 60 characters of the user's message as title
-          const title = messageContent.length > 60 
-            ? messageContent.substring(0, 60).trim() + '...' 
-            : messageContent.trim();
-          
-          await supabase
-            .from('chat_sessions')
-            .update({ title })
-            .eq('id', currentSessionId);
+          try {
+            const titleResponse = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-chat-title`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  userMessage: messageContent,
+                  assistantMessage: assistantContent
+                }),
+              }
+            );
+
+            if (titleResponse.ok) {
+              const { title } = await titleResponse.json();
+              await supabase
+                .from('chat_sessions')
+                .update({ title })
+                .eq('id', currentSessionId);
+            }
+          } catch (titleError) {
+            console.error('Error generating chat title:', titleError);
+            // Fallback to truncated message
+            const fallbackTitle = messageContent.length > 50 
+              ? messageContent.substring(0, 50).trim() + '...' 
+              : messageContent.trim();
+            
+            await supabase
+              .from('chat_sessions')
+              .update({ title: fallbackTitle })
+              .eq('id', currentSessionId);
+          }
         }
       }
 
