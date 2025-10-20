@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { TagInput } from "@/components/TagInput";
 import freshserviceIcon from "@/assets/connection-icons/freshservice.svg";
 import jiraIcon from "@/assets/connection-icons/jira.png";
 import confluenceIcon from "@/assets/connection-icons/confluence.png";
@@ -28,6 +29,7 @@ interface MCPService {
   retry_delay_sec: number;
   rate_limit_per_minute: number;
   rate_limit_per_hour: number;
+  tags: string[];
 }
 
 const CONNECTION_CONFIGS: Record<ConnectionType, { name: string; description: string; icon: string }> = {
@@ -68,6 +70,7 @@ const AdminConnections = () => {
   const [services, setServices] = useState<MCPService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingService, setEditingService] = useState<string | null>(null);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
 
   useEffect(() => {
     fetchServices();
@@ -82,6 +85,15 @@ const AdminConnections = () => {
 
       if (error) throw error;
       setServices((data || []) as MCPService[]);
+      
+      // Collect all unique tags from all services
+      if (data && data.length > 0) {
+        const tags = new Set<string>();
+        data.forEach((service: any) => {
+          service.tags?.forEach((tag: string) => tags.add(tag));
+        });
+        setExistingTags(Array.from(tags));
+      }
     } catch (error: any) {
       toast({
         title: "Error fetching services",
@@ -201,6 +213,19 @@ const AdminConnections = () => {
               onCheckedChange={(checked) => 
                 handleUpdateService(service.id, { uses_app_token: checked })
               }
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label htmlFor={`tags-${service.id}`}>Connection Tags</Label>
+            <TagInput
+              id={`tags-${service.id}`}
+              value={service.tags || []}
+              onChange={(tags) => handleUpdateService(service.id, { tags })}
+              placeholder="Type to search or create tags..."
+              suggestions={existingTags}
             />
           </div>
 

@@ -445,6 +445,7 @@ export type Database = {
           retry_delay_sec: number | null
           service_name: string
           service_type: string
+          tags: string[] | null
           tools_config: Json | null
           updated_at: string
           uses_app_token: boolean
@@ -462,6 +463,7 @@ export type Database = {
           retry_delay_sec?: number | null
           service_name: string
           service_type: string
+          tags?: string[] | null
           tools_config?: Json | null
           updated_at?: string
           uses_app_token?: boolean
@@ -479,6 +481,7 @@ export type Database = {
           retry_delay_sec?: number | null
           service_name?: string
           service_type?: string
+          tags?: string[] | null
           tools_config?: Json | null
           updated_at?: string
           uses_app_token?: boolean
