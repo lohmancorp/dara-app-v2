@@ -24,6 +24,7 @@ interface MCPService {
   service_type: ConnectionType;
   description: string | null;
   uses_app_token: boolean;
+  is_active: boolean;
   call_delay_ms: number;
   max_retries: number;
   retry_delay_sec: number;
@@ -196,6 +197,28 @@ const AdminConnections = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor={`is-active-${service.id}`}>
+                Enable Connection Globally
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {service.is_active 
+                  ? "This connection is available to all users" 
+                  : "This connection is disabled and unavailable to users"}
+              </p>
+            </div>
+            <Switch
+              id={`is-active-${service.id}`}
+              checked={service.is_active}
+              onCheckedChange={(checked) => 
+                handleUpdateService(service.id, { is_active: checked })
+              }
+            />
+          </div>
+
+          <Separator />
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor={`uses-app-token-${service.id}`}>

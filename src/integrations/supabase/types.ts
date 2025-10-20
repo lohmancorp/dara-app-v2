@@ -438,6 +438,7 @@ export type Database = {
           description: string | null
           endpoint_template: string | null
           id: string
+          is_active: boolean
           max_retries: number | null
           rate_limit_per_hour: number | null
           rate_limit_per_minute: number | null
@@ -456,6 +457,7 @@ export type Database = {
           description?: string | null
           endpoint_template?: string | null
           id?: string
+          is_active?: boolean
           max_retries?: number | null
           rate_limit_per_hour?: number | null
           rate_limit_per_minute?: number | null
@@ -474,6 +476,7 @@ export type Database = {
           description?: string | null
           endpoint_template?: string | null
           id?: string
+          is_active?: boolean
           max_retries?: number | null
           rate_limit_per_hour?: number | null
           rate_limit_per_minute?: number | null
