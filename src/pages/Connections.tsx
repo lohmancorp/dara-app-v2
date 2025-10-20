@@ -64,6 +64,7 @@ const Connections = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
+  const [activeConnectionTypes, setActiveConnectionTypes] = useState<Set<ConnectionType>>(new Set());
 
   useEffect(() => {
     setActionButton(
@@ -78,8 +79,27 @@ const Connections = () => {
   useEffect(() => {
     if (user) {
       fetchConnections();
+      fetchActiveServices();
     }
   }, [user]);
+
+  const fetchActiveServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mcp_services')
+        .select('service_type, is_active')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const activeTypes = new Set<ConnectionType>(
+        (data || []).map((service: any) => service.service_type as ConnectionType)
+      );
+      setActiveConnectionTypes(activeTypes);
+    } catch (error: any) {
+      console.error("Error fetching active services:", error);
+    }
+  };
 
   const fetchConnections = async () => {
     try {
@@ -374,7 +394,7 @@ const Connections = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
-            {AVAILABLE_CONNECTIONS.map((conn) => (
+            {AVAILABLE_CONNECTIONS.filter(conn => activeConnectionTypes.has(conn.type)).map((conn) => (
               <Card 
                 key={conn.type}
                 className="p-4 cursor-pointer hover:shadow-md transition-all group border-l-4 border-l-transparent hover:border-l-primary"
@@ -396,6 +416,12 @@ const Connections = () => {
                 </div>
               </Card>
             ))}
+            {AVAILABLE_CONNECTIONS.filter(conn => activeConnectionTypes.has(conn.type)).length === 0 && (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                <p>No connection types are currently enabled.</p>
+                <p className="text-sm mt-2">Contact your administrator to enable connections.</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
