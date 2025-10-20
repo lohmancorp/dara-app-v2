@@ -196,6 +196,25 @@ const AdminEditConnection = () => {
           Back to Connections
         </Button>
 
+        {/* Connection Header Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <img 
+                  src={config.icon} 
+                  alt={`${config.name} icon`}
+                  className="h-8 w-8 object-contain"
+                />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">{config.name}</h2>
+                <p className="text-muted-foreground mt-1">{config.description}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* General Settings Section */}
         <Card>
           <CardHeader>
