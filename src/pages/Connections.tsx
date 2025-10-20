@@ -1,4 +1,4 @@
-import { Link2, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff, Star } from "lucide-react";
+import { Cable, CheckCircle, AlertCircle, Plus, Settings, Wifi, Power, PowerOff, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -218,7 +218,7 @@ const Connections = () => {
     return (
       <div className="min-h-screen bg-background">
         <PageHeader 
-          icon={Link2}
+          icon={Cable}
           title="Data Connections"
           description="Connect to research databases and sources"
         />
@@ -232,7 +232,7 @@ const Connections = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader 
-        icon={Link2}
+        icon={Cable}
         title="Data Connections"
         description="Connect to research databases and sources"
       />
@@ -240,7 +240,7 @@ const Connections = () => {
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {connections.length === 0 ? (
           <Card className="p-12 text-center">
-            <Link2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <Cable className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Connections Yet</h3>
             <p className="text-muted-foreground mb-6">
               Get started by adding your first connection to external services
@@ -368,7 +368,7 @@ const Connections = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Link2 className="h-5 w-5 text-primary" />
+                <Cable className="h-5 w-5 text-primary" />
               </div>
               <span>Select Connection Type</span>
             </DialogTitle>
