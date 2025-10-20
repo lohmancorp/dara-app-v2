@@ -995,11 +995,31 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
       const isTicketQuery = /ticket|show me|list|find|search/i.test(userMessage);
       
       // If AI refuses a ticket query without calling tools, force it to call tools
-      if (refusesWithoutTools && isTicketQuery && iterations === 1) {
+      if (refusesWithoutTools && isTicketQuery && iterations <= 2) {
         console.error('AI refusing ticket query without calling tools - forcing tool use');
+        
+        // Remove the refusal message from conversation
+        if (choice?.message) {
+          const lastIndex = conversationMessages.length - 1;
+          if (lastIndex >= 0 && conversationMessages[lastIndex]?.role === 'assistant') {
+            conversationMessages.pop();
+          }
+        }
+        
+        // Add very forceful system message
         conversationMessages.push({
           role: 'system',
-          content: 'ERROR: You are refusing to process a ticket query without calling the required tools. You MUST:\n1. Call get_freshservice_connections to get the mcp_service_id\n2. Call search_freshservice_tickets with the mcp_service_id and appropriate filters\nDo NOT refuse or say there is a configuration issue without attempting these tool calls. Call the tools NOW.'
+          content: `CRITICAL OVERRIDE: You MUST process this ticket query by calling tools. DO NOT refuse or say there is a configuration issue.
+
+REQUIRED ACTIONS NOW:
+1. Call get_freshservice_connections() - no parameters needed
+2. Wait for the mcp_service_id from the response
+3. Call search_freshservice_tickets() with:
+   - mcp_service_id: <from step 1>
+   - department: "Computer Gross" (or whatever department user mentioned)
+   - status: ['8'] (or appropriate status)
+   
+DO THIS NOW. No refusals allowed. The department name is valid - just call the tools.`
         });
         continue;
       }
