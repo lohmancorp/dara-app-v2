@@ -397,57 +397,30 @@ serve(async (req) => {
     console.log('Chat request from user:', user.id, 'using', connectionType);
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
-    // Get all active MCP services and dynamically build tools
+    // Get MCP service IDs for reference
     const { data: mcpServices, error: mcpError } = await supabase
       .from('mcp_services')
-      .select('id, service_type, tools_config, service_name')
+      .select('id, service_type, service_name')
       .eq('is_active', true);
 
     if (mcpError) {
       console.error('Error loading MCP services:', mcpError);
     }
 
-    // Build dynamic tools from MCP configuration
-    const tools: any[] = [];
     const serviceTypeToId: Record<string, string> = {};
-    const toolNameToService: Record<string, { serviceId: string, serviceType: string, toolName: string }> = {};
-
     if (mcpServices) {
       for (const service of mcpServices) {
         serviceTypeToId[service.service_type] = service.id;
-        
-        if (service.tools_config && Array.isArray(service.tools_config)) {
-          for (const tool of service.tools_config) {
-            const fullToolName = `${service.service_type}_${tool.name}`;
-            toolNameToService[fullToolName] = {
-              serviceId: service.id,
-              serviceType: service.service_type,
-              toolName: tool.name
-            };
-            
-            tools.push({
-              type: "function",
-              function: {
-                name: fullToolName,
-                description: `[${service.service_type.toUpperCase()}] ${tool.description || tool.name}`,
-                parameters: tool.inputSchema || { type: "object", properties: {}, required: [] }
-              }
-            });
-          }
-        }
       }
     }
 
-    console.log(`Loaded ${tools.length} tools from ${mcpServices?.length || 0} MCP services`);
-    console.log('Available tools:', tools.map(t => t.function.name).join(', '));
-
-    // Add legacy compatibility tool for complex searches
-    tools.push(
+    // Define tools manually with proper schemas (TODO: add schema validation for dynamic MCP tools)
+    const tools = [
       {
         type: "function",
         function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets using flexible filters. Use this for complex queries. For single ticket by ID, use freshservice_get_ticket instead.",
+          description: "Search FreshService tickets using flexible filters. Use this for complex queries with multiple filters.",
           parameters: {
             type: "object",
             properties: {
@@ -463,8 +436,25 @@ serve(async (req) => {
             }
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_freshservice_ticket",
+          description: "Get a SINGLE FreshService ticket by its ID number. Use this when user specifies a ticket number like '250989'.",
+          parameters: {
+            type: "object",
+            properties: {
+              ticketId: { 
+                type: "number", 
+                description: "The ticket ID number (e.g., 250989)" 
+              }
+            },
+            required: ["ticketId"]
+          }
+        }
       }
-    );
+    ];
     
     const rateLimitConfig = mcpServices?.find(s => s.service_type === connectionType) ? {
       call_delay_ms: 600,
@@ -705,6 +695,78 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
               };
               console.log('Returning MCP service result:', result);
               return result;
+            }
+
+            case 'get_freshservice_ticket': {
+              const { ticketId } = args;
+              
+              if (!ticketId) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'ticketId is required' })
+                };
+              }
+              
+              console.log('Getting single ticket:', ticketId);
+              
+              // Get FreshService MCP service
+              const fsServiceId = serviceTypeToId['freshservice'];
+              if (!fsServiceId) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'FreshService not configured' })
+                };
+              }
+              
+              // Use custom_fields filter to search by ticket_id
+              const filters: any = {
+                customFields: { ticket_id: [String(ticketId)] },
+                limit: 1
+              };
+              
+              const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': req.headers.get('Authorization') || '',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  serviceId: fsServiceId,
+                  filters,
+                  ownerType: 'user',
+                  ownerId: user.id
+                })
+              });
+              
+              if (!mcpResponse.ok) {
+                const errorText = await mcpResponse.text();
+                console.error('MCP get ticket error:', mcpResponse.status, errorText);
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'Failed to retrieve ticket', details: errorText })
+                };
+              }
+              
+              const mcpResult = await mcpResponse.json();
+              const ticket = mcpResult.tickets?.[0];
+              
+              if (!ticket) {
+                return {
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ 
+                    error: `Ticket ${ticketId} not found`,
+                    message: `No ticket with ID ${ticketId} was found in FreshService` 
+                  })
+                };
+              }
+              
+              return {
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  ticket: ticket,
+                  message: `Found ticket ${ticketId}`
+                })
+              };
             }
 
             case 'search_freshservice_tickets': {
