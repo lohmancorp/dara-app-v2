@@ -419,11 +419,23 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "get_freshservice_connections",
+          description: "MUST be called FIRST before any FreshService operations. Returns the MCP service configuration including the mcp_service_id required for all other FreshService tools.",
+          parameters: {
+            type: "object",
+            properties: {}
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets using flexible filters. Use this for complex queries with multiple filters.",
+          description: "Search FreshService tickets using flexible filters. REQUIRES mcp_service_id from get_freshservice_connections. Use this for complex queries with multiple filters.",
           parameters: {
             type: "object",
             properties: {
+              mcp_service_id: { type: "string", description: "REQUIRED: MCP service ID from get_freshservice_connections" },
               department: { type: "string", description: "Department/company name" },
               status: { type: "array", items: { type: "string" }, description: "Status IDs to include" },
               exclude_status: { type: "array", items: { type: "string" }, description: "Status IDs to exclude" },
@@ -433,7 +445,8 @@ serve(async (req) => {
               custom_fields: { type: "object", description: "Custom field filters" },
               exclude_custom_fields: { type: "object", description: "Custom fields to exclude" },
               limit: { type: "number", description: "Max tickets (default/max: 200)" }
-            }
+            },
+            required: ["mcp_service_id"]
           }
         }
       },
