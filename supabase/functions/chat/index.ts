@@ -397,99 +397,118 @@ serve(async (req) => {
     console.log('Chat request from user:', user.id, 'using', connectionType);
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
-    // Load MCP service rate limiting settings for the connection type
-    const { data: mcpService } = await supabase
+    // Get all active MCP services and dynamically build tools
+    const { data: mcpServices, error: mcpError } = await supabase
       .from('mcp_services')
-      .select('call_delay_ms, max_retries, retry_delay_sec, rate_limit_per_minute')
-      .eq('service_type', connectionType)
-      .single();
+      .select('id, service_type, tools_config, service_name')
+      .eq('is_active', true);
+
+    if (mcpError) {
+      console.error('Error loading MCP services:', mcpError);
+    }
+
+    // Build dynamic tools from MCP configuration
+    const tools: any[] = [];
+    const serviceTypeToId: Record<string, string> = {};
+    const toolNameToService: Record<string, { serviceId: string, serviceType: string, toolName: string }> = {};
+
+    if (mcpServices) {
+      for (const service of mcpServices) {
+        serviceTypeToId[service.service_type] = service.id;
+        
+        if (service.tools_config && Array.isArray(service.tools_config)) {
+          for (const tool of service.tools_config) {
+            const fullToolName = `${service.service_type}_${tool.name}`;
+            toolNameToService[fullToolName] = {
+              serviceId: service.id,
+              serviceType: service.service_type,
+              toolName: tool.name
+            };
+            
+            tools.push({
+              type: "function",
+              function: {
+                name: fullToolName,
+                description: `[${service.service_type.toUpperCase()}] ${tool.description || tool.name}`,
+                parameters: tool.inputSchema || { type: "object", properties: {}, required: [] }
+              }
+            });
+          }
+        }
+      }
+    }
+
+    console.log(`Loaded ${tools.length} tools from ${mcpServices?.length || 0} MCP services`);
+    console.log('Available tools:', tools.map(t => t.function.name).join(', '));
+
+    // Add legacy compatibility tool for complex searches
+    tools.push(
+      {
+        type: "function",
+        function: {
+          name: "search_freshservice_tickets",
+          description: "Search FreshService tickets using flexible filters. Use this for complex queries. For single ticket by ID, use freshservice_get_ticket instead.",
+          parameters: {
+            type: "object",
+            properties: {
+              department: { type: "string", description: "Department/company name" },
+              status: { type: "array", items: { type: "string" }, description: "Status IDs to include" },
+              exclude_status: { type: "array", items: { type: "string" }, description: "Status IDs to exclude" },
+              created_after: { type: "string", description: "ISO date filter" },
+              priority: { type: "array", items: { type: "string" }, description: "Priority IDs" },
+              exclude_priority: { type: "array", items: { type: "string" }, description: "Priority IDs to exclude" },
+              custom_fields: { type: "object", description: "Custom field filters" },
+              exclude_custom_fields: { type: "object", description: "Custom fields to exclude" },
+              limit: { type: "number", description: "Max tickets (default/max: 200)" }
+            }
+          }
+        }
+      }
+    );
     
-    const rateLimitConfig = mcpService ? {
-      call_delay_ms: mcpService.call_delay_ms || 600,
-      max_retries: mcpService.max_retries || 5,
-      retry_delay_sec: mcpService.retry_delay_sec || 60
+    const rateLimitConfig = mcpServices?.find(s => s.service_type === connectionType) ? {
+      call_delay_ms: 600,
+      max_retries: 5,
+      retry_delay_sec: 60
     } : undefined;
     
     if (rateLimitConfig) {
       console.log('Using MCP rate limit config:', rateLimitConfig);
     }
 
-    // Define tools for the AI
-    const tools = [
-      {
-        type: "function",
-        function: {
-          name: "get_freshservice_connections",
-          description: "Get the user's FreshService connections to access ticket data",
-          parameters: {
-            type: "object",
-            properties: {},
-            required: []
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "search_freshservice_tickets",
-          description: "Search FreshService tickets using flexible filters. Returns up to 200 tickets max to prevent timeouts. Common status IDs: 2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=Waiting on Customer, 7=Waiting on Third Party, 8=In Progress. Returns ticket ID, subject, description, priority, and status.",
-          parameters: {
-            type: "object",
-            properties: {
-              mcp_service_id: {
-                type: "string",
-                description: "The MCP service ID for FreshService"
-              },
-              department: {
-                type: "string",
-                description: "Department name or ID to filter by (optional)"
-              },
-              status: {
-                type: "array",
-                items: { type: "string" },
-                description: "Array of status IDs to INCLUDE (e.g., ['2', '3', '8'] for Open, Pending, In Progress). Uses OR logic."
-              },
-              exclude_status: {
-                type: "array",
-                items: { type: "string" },
-                description: "Array of status IDs to EXCLUDE (e.g., ['4', '5'] to exclude Resolved and Closed)"
-              },
-              created_after: {
-                type: "string",
-                description: "ISO date string to filter tickets created after this date (e.g., '2024-01-01T00:00:00Z')"
-              },
-              priority: {
-                type: "array",
-                items: { type: "string" },
-                description: "Array of priority IDs (1=Low, 2=Medium, 3=High, 4=Urgent)"
-              },
-              exclude_priority: {
-                type: "array",
-                items: { type: "string" },
-                description: "Array of priority IDs to EXCLUDE (e.g., ['1'] to exclude Low priority)"
-              },
-              custom_fields: {
-                type: "object",
-                description: "Custom field filters - map of field names to values (e.g., {'ticket_type': 'Incident', 'module': 'Connect'})"
-              },
-              exclude_custom_fields: {
-                type: "object",
-                description: "Custom fields to exclude - map of field names to arrays of values (e.g., {'ticket_type': ['TAM Request', 'Change'], 'escalated': ['true']})"
-              },
-              limit: {
-                type: "number",
-                description: "Maximum number of tickets to return (default: 200, max: 200)"
-              }
-            },
-            required: ["mcp_service_id"]
-          }
-        }
-      }
-    ];
+    const systemPrompt = `You are a helpful AI assistant with access to service integrations through MCP tools.
 
-    const systemPrompt = `You are a helpful AI assistant that can search FreshService tickets.
+**Available Services:**
+${mcpServices?.map(s => `- ${s.service_type.toUpperCase()}: ${s.service_name || s.service_type}`).join('\n') || 'None'}
 
-**CRITICAL: ALWAYS follow this exact sequence:**
+**How to use MCP tools:**
+- Tool names follow pattern: {service_type}_{tool_name}
+- Examples: freshservice_get_ticket, freshservice_list_tickets, freshservice_filter_tickets  
+- For single item lookups (like ticket ID 12345), use the specific get tool (e.g., freshservice_get_ticket)
+- For searches/lists, use filter or list tools
+
+**FreshService Tools:**
+- **freshservice_get_ticket(ticketId)**: Retrieve a SINGLE ticket by its ID number. Use when user provides a specific ticket number.
+- **freshservice_list_tickets()**: List tickets with simple pagination
+- **freshservice_filter_tickets(query)**: Advanced filtering with FreshService query language
+- **search_freshservice_tickets(filters)**: Complex search with multiple filters
+
+**When to use which tool:**
+- User says "show me ticket 250989" → use freshservice_get_ticket with ticketId: 250989
+- User says "list tickets" → use freshservice_list_tickets  
+- User says "find tickets for Company X" → use search_freshservice_tickets
+
+When a user asks about a specific ticket by number:
+- Just call freshservice_get_ticket(ticketId) directly with the ticket number
+- No need to search first
+
+**CRITICAL RULES for ticket searches:**
+- Tool names follow pattern: {service_type}_{tool_name}
+- Examples: freshservice_get_ticket, freshservice_list_tickets, freshservice_filter_tickets
+- For single item lookups (like ticket ID 12345), use the specific get tool (e.g., freshservice_get_ticket)
+- For searches/lists, use filter or list tools
+
+**FreshService Tools:**
 1. FIRST: Call get_freshservice_connections to get their MCP service ID
 2. SECOND: Call search_freshservice_tickets using the mcp_service_id from step 1
 3. NEVER skip step 1 - the mcp_service_id is REQUIRED
