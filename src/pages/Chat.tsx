@@ -207,6 +207,8 @@ const Chat = () => {
   };
 
   // Subscribe to real-time job updates
+  const processedJobsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!chatId || !session?.access_token) return;
 
@@ -226,7 +228,8 @@ const Chat = () => {
           console.log('Job update received:', payload);
           const job = payload.new as any;
           
-          if (job.status === 'completed' || job.status === 'failed') {
+          if ((job.status === 'completed' || job.status === 'failed') && !processedJobsRef.current.has(job.id)) {
+            processedJobsRef.current.add(job.id);
             console.log('Job completed/failed, updating message:', job.id);
             
             // Update the message with job results
@@ -250,33 +253,26 @@ const Chat = () => {
             }
             
             // Update database first
-            if (tableContent) {
+            const contentToUpdate = tableContent || failedContent;
+            if (contentToUpdate) {
               const { error: updateError } = await supabase
                 .from('chat_messages')
-                .update({ content: tableContent })
+                .update({ content: contentToUpdate })
                 .eq('job_id', job.id);
                 
               if (updateError) {
                 console.error('Error updating message in DB:', updateError);
               } else {
                 console.log('Message updated in DB successfully');
-              }
-            } else if (failedContent) {
-              const { error: updateError } = await supabase
-                .from('chat_messages')
-                .update({ content: failedContent })
-                .eq('job_id', job.id);
                 
-              if (updateError) {
-                console.error('Error updating message in DB:', updateError);
+                // Update local state instead of reloading entire session
+                setMessages(prev => prev.map(msg => 
+                  msg.jobId === job.id 
+                    ? { ...msg, content: contentToUpdate, jobStatus: job.status }
+                    : msg
+                ));
               }
             }
-            
-            // Then update UI state - always reload to ensure consistency
-            console.log('Reloading session to show job results');
-            await loadSession(chatId!);
-            
-            setHasActiveJob(false);
             
             // Show toast notification
             if (tableContent) {
