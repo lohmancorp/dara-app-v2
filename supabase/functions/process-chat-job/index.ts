@@ -187,10 +187,16 @@ serve(async (req) => {
 
       const ticketResult = await mcpResponse.json();
       
+      console.log('Raw MCP response for ticket:', JSON.stringify(ticketResult, null, 2));
+      
       if (ticketResult.error) {
         throw new Error(`Error retrieving ticket ${singleTicketId}: ${ticketResult.error}`);
       }
 
+      // Extract the actual ticket data from the MCP response
+      const ticketData = ticketResult.content?.[0]?.text ? JSON.parse(ticketResult.content[0].text) : ticketResult;
+      console.log('Extracted ticket data:', JSON.stringify(ticketData, null, 2));
+      
       console.log('Fetched ticket', singleTicketId, 'for job', jobId);
 
       // Update progress
@@ -240,7 +246,7 @@ serve(async (req) => {
         return String(val).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
       };
 
-      const t = ticketResult;
+      const t = ticketData;
       const formattedTicket = {
         id: t.id,
         company: safeString(typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : t.department_id),
