@@ -94,14 +94,6 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
   const renderContentWithSortableTables = (markdown: string) => {
     const tables = parseMarkdownTable(markdown);
     
-    if (tables.length > 0) {
-      console.log('Parsed tables:', tables.map(t => ({
-        headers: t.headers,
-        rowCount: t.rows.length,
-        firstRow: t.rows[0]
-      })));
-    }
-    
     if (tables.length === 0) {
       return (
         <ReactMarkdown
@@ -231,7 +223,7 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
         "flex-1 space-y-2 overflow-hidden rounded-lg p-4",
         isUser ? "bg-muted/50 text-left" : ""
       )}>
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+        <div className="prose prose-sm dark:prose-invert w-full max-w-full break-words">
           {isStreaming && !content ? (
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm text-muted-foreground">Thinking</span>

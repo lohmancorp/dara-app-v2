@@ -23,8 +23,6 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
-  const [columnWidths, setColumnWidths] = useState<number[]>(headers.map(() => 150));
-  const [resizingColumn, setResizingColumn] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   
   // Download dialog state
@@ -71,15 +69,11 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     const newVisible = headers.map((header) => 
       !hiddenByDefaultColumns.some(hidden => header.toLowerCase().includes(hidden.toLowerCase()))
     );
-    console.log('Table headers:', headers);
-    console.log('Visible columns:', newVisible);
-    console.log('Visible headers:', headers.filter((_, i) => newVisible[i]));
     setVisibleColumns(newVisible);
   }, [headers.join(',')]); // Depend on headers changing
   
-  // Filter headers and adjust column widths based on visible columns
+  // Filter headers based on visible columns
   const visibleHeaders = headers.filter((_, index) => visibleColumns[index]);
-  const visibleColumnWidths = columnWidths.filter((_, index) => visibleColumns[index]);
 
   const sortedRows = useMemo(() => {
     if (sortColumn === null || sortDirection === null) {
@@ -149,37 +143,6 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     setCurrentPage(1);
   }, [itemsPerPage, sortColumn, sortDirection]);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (resizingColumn === null) return;
-      
-      const newWidths = [...columnWidths];
-      const mouseX = e.clientX;
-      const tableRect = tableRef.current?.getBoundingClientRect();
-      
-      if (tableRect) {
-        const relativeX = mouseX - tableRect.left;
-        const sumPreviousWidths = columnWidths.slice(0, resizingColumn).reduce((sum, w) => sum + w, 0);
-        const newWidth = Math.max(80, relativeX - sumPreviousWidths);
-        newWidths[resizingColumn] = newWidth;
-        setColumnWidths(newWidths);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setResizingColumn(null);
-    };
-
-    if (resizingColumn !== null) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [resizingColumn, columnWidths]);
-
   const handleSort = (columnIndex: number) => {
     if (sortColumn === columnIndex) {
       if (sortDirection === 'asc') {
@@ -205,11 +168,6 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(value === 'all' ? -1 : parseInt(value));
-  };
-
-  const handleStartResize = (columnIndex: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setResizingColumn(columnIndex);
   };
 
   const getPageNumbers = () => {
@@ -263,7 +221,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
 
   return (
     <TooltipProvider>
-      <div className="my-4 w-full space-y-3">
+      <div className="my-4 w-full max-w-full space-y-3">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
           <div className="text-sm text-muted-foreground">
             Showing {itemsPerPage === -1 ? totalResults : Math.min((currentPage - 1) * itemsPerPage + 1, totalResults)} to {itemsPerPage === -1 ? totalResults : Math.min(currentPage * itemsPerPage, totalResults)} of {totalResults} results
@@ -302,7 +260,7 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
         </div>
         
         <div ref={tableRef} className="w-full overflow-x-auto rounded-md border">
-          <Table className="w-full min-w-[600px]">
+          <Table className="w-full" style={{ tableLayout: 'auto' }}>
             <TableHeader className="bg-[#EEEEEE]">
               <TableRow className="border-b-[3px] border-[#9E9E9E] hover:bg-[#EEEEEE]">
                 {visibleHeaders.map((header, displayIndex) => {
@@ -312,17 +270,13 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
                     <TableHead 
                       key={displayIndex}
                       className="font-semibold whitespace-nowrap cursor-pointer select-none relative group text-xs sm:text-sm px-2 sm:px-4"
-                      style={{ width: visibleColumnWidths[displayIndex], minWidth: visibleColumnWidths[displayIndex] }}
+                      style={{ minWidth: '120px', width: 'auto' }}
                       onClick={() => handleSort(originalIndex)}
                     >
                       <div className="flex items-center">
                         {header}
                         {getSortIcon(originalIndex)}
                       </div>
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-primary/30"
-                        onMouseDown={(e) => handleStartResize(displayIndex, e)}
-                      />
                     </TableHead>
                   );
                 })}
