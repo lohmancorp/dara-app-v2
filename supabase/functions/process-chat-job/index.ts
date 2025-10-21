@@ -279,19 +279,59 @@ serve(async (req) => {
         available_fields: Object.keys(formattedTicket)
       };
 
-      // Create detailed view for single ticket
-      const detailedView = `**Ticket #${formattedTicket.id}**\n\n` +
-        `**Summary:** ${formattedTicket.subject}\n\n` +
-        `**Status:** ${formattedTicket.status}\n` +
-        `**Priority:** ${formattedTicket.priority}\n` +
-        `**Company:** ${formattedTicket.company}\n` +
-        `**Module:** ${formattedTicket.module}\n` +
-        `**Type:** ${formattedTicket.type}\n` +
-        `**Created:** ${formattedTicket.created_at}\n` +
-        `**Updated:** ${formattedTicket.updated_at}\n` +
-        `**Group:** ${formattedTicket.group}\n` +
-        `**Source:** ${formattedTicket.source}\n\n` +
-        `**Description:**\n${formattedTicket.description_text}`;
+      // Calculate ticket age
+      let ageInDays = 'N/A';
+      if (t.created_at) {
+        try {
+          const createdDate = parseISO(t.created_at);
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          ageInDays = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+        } catch (error) {
+          console.error('Error calculating age:', error);
+        }
+      }
+
+      // Determine who we're waiting on based on status
+      const status = formattedTicket.status.toLowerCase();
+      let waitingOn = 'N/A';
+      if (status.includes('waiting for rnd') || status.includes('rnd')) {
+        waitingOn = 'R&D Team';
+      } else if (status.includes('waiting for 3rd party') || status.includes('3rd party')) {
+        waitingOn = '3rd Party Vendor';
+      } else if (status.includes('waiting for maintenance')) {
+        waitingOn = 'Maintenance Window';
+      } else if (status.includes('waiting for bugfix')) {
+        waitingOn = 'Bug Fix Release';
+      } else if (status.includes('pending access')) {
+        waitingOn = 'Access Provisioning';
+      } else if (status.includes('awaiting validation')) {
+        waitingOn = 'Customer Validation';
+      } else if (status.includes('pending other ticket')) {
+        waitingOn = 'Another Ticket Resolution';
+      } else if (status.includes('pending')) {
+        waitingOn = 'Customer Response';
+      } else if (status.includes('open') || status.includes('new')) {
+        waitingOn = 'Initial Triage';
+      } else if (status.includes('resolved') || status.includes('closed')) {
+        waitingOn = 'None - Ticket Closed';
+      }
+
+      // Create report-style view for single ticket
+      const detailedView = `# Ticket #${formattedTicket.id}\n\n` +
+        `## SUMMARY\n${formattedTicket.subject}\n\n` +
+        `## WAITING ON\n${waitingOn}\n\n` +
+        `## NEXT STEPS\n${formattedTicket.description_text.substring(0, 300)}${formattedTicket.description_text.length > 300 ? '...' : ''}\n\n` +
+        `## DETAILS\n` +
+        `• **Age:** ${ageInDays}\n` +
+        `• **Status:** ${formattedTicket.status}\n` +
+        `• **Priority:** ${formattedTicket.priority}\n` +
+        `• **Module:** ${formattedTicket.module}\n` +
+        `• **Company:** ${formattedTicket.company}\n` +
+        `• **Type:** ${formattedTicket.type}\n` +
+        `• **Group:** ${formattedTicket.group}\n` +
+        `• **Last Updated:** ${formattedTicket.updated_at}`;
 
       // Update the chat message with detailed view
       const { error: msgUpdateError } = await supabase
