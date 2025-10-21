@@ -158,6 +158,9 @@ serve(async (req) => {
         throw new Error('User token not found in job record');
       }
 
+      console.log('Single ticket lookup - using stored user token for MCP call');
+      console.log('Token length:', userToken.length, 'First 20 chars:', userToken.substring(0, 20));
+
       const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-server`, {
         method: 'POST',
         headers: {
@@ -178,6 +181,7 @@ serve(async (req) => {
 
       if (!mcpResponse.ok) {
         const errorText = await mcpResponse.text();
+        console.error('MCP server error response:', mcpResponse.status, errorText);
         throw new Error(`Failed to fetch ticket ${singleTicketId}: ${errorText}`);
       }
 

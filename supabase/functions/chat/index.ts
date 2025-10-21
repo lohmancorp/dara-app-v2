@@ -629,6 +629,7 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
                 .single();
               
               console.log('Created single ticket job:', job?.id, 'Sequence:', jobSequence);
+              console.log('Stored user token in job - length:', token.length);
 
               if (jobError || !job) {
                 console.error('Failed to create job:', jobError);
