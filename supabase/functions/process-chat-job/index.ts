@@ -136,8 +136,160 @@ serve(async (req) => {
 
     const mcpService = mcpServices[0];
     const filters = job.filters || {};
+    
+    // Check if this is a single ticket lookup
+    const singleTicketId = filters.single_ticket_id;
 
-    // Update progress
+    if (singleTicketId) {
+      console.log('Processing single ticket lookup for ticket ID:', singleTicketId);
+      
+      // Update progress
+      await supabase
+        .from('chat_jobs')
+        .update({ 
+          progress: 30,
+          progress_message: `Fetching ticket ${singleTicketId} from FreshService...`
+        })
+        .eq('id', jobId);
+
+      // Call MCP server to get single ticket
+      const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-server`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'tools/call',
+          serviceType: 'freshservice',
+          params: {
+            toolName: 'get_ticket',
+            arguments: {
+              ticketId: Number(singleTicketId)
+            }
+          }
+        })
+      });
+
+      if (!mcpResponse.ok) {
+        const errorText = await mcpResponse.text();
+        throw new Error(`Failed to fetch ticket ${singleTicketId}: ${errorText}`);
+      }
+
+      const ticketResult = await mcpResponse.json();
+      
+      if (ticketResult.error) {
+        throw new Error(`Error retrieving ticket ${singleTicketId}: ${ticketResult.error}`);
+      }
+
+      console.log('Fetched ticket', singleTicketId, 'for job', jobId);
+
+      // Update progress
+      await supabase
+        .from('chat_jobs')
+        .update({ 
+          progress: 60,
+          progress_message: `Processing ticket ${singleTicketId}...`
+        })
+        .eq('id', jobId);
+
+      // Get ticket fields for formatting
+      const { data: connection } = await supabase
+        .from('connections')
+        .select('endpoint')
+        .eq('user_id', job.user_id)
+        .eq('connection_type', 'freshservice')
+        .eq('is_active', true)
+        .single();
+
+      if (!connection?.endpoint) {
+        throw new Error('FreshService connection not found');
+      }
+
+      // Fetch ticket fields for proper formatting
+      const fieldsResponse = await fetch(`${supabaseUrl}/functions/v1/fetch-freshservice-fields`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          endpoint: connection.endpoint,
+          userId: job.user_id
+        })
+      });
+
+      let ticketFields: any[] = [];
+      if (fieldsResponse.ok) {
+        const fieldsResult = await fieldsResponse.json();
+        ticketFields = fieldsResult.fields || [];
+      }
+
+      // Format single ticket
+      const safeString = (val: any, fallback = 'N/A'): string => {
+        if (val === null || val === undefined || val === '') return fallback;
+        return String(val).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+      };
+
+      const t = ticketResult;
+      const formattedTicket = {
+        id: t.id,
+        company: safeString(typeof t.department_id === 'number' ? getCompanyName(t.department_id, ticketFields) : t.department_id),
+        subject: safeString(t.subject, 'No Subject'),
+        description_text: safeString(t.description_text?.substring(0, 500), 'No Description Available'),
+        priority: safeString(typeof t.priority === 'number' ? getPriorityName(t.priority, ticketFields) : t.priority),
+        priority_value: typeof t.priority === 'number' ? t.priority : 0,
+        status: safeString(typeof t.status === 'number' ? getStatusName(t.status, ticketFields) : t.status),
+        department: safeString(typeof t.department_id === 'number' ? getDepartmentName(t.department_id, ticketFields) : t.department_id),
+        group: safeString(typeof t.group_id === 'number' ? getGroupName(t.group_id, ticketFields) : t.group_id),
+        source: safeString(typeof t.source === 'number' ? getSourceName(t.source, ticketFields) : t.source),
+        type: safeString(t.type),
+        created_at: safeString(formatDate(t.created_at)),
+        updated_at: safeString(formatDate(t.updated_at)),
+        due_by: t.due_by,
+        fr_due_by: t.fr_due_by,
+        requester_id: t.requester_id,
+        responder_id: t.responder_id,
+        workspace_id: t.workspace_id,
+        category: t.category,
+        sub_category: t.sub_category,
+        item_category: t.item_category,
+        is_escalated: t.is_escalated,
+        fr_escalated: t.fr_escalated,
+        escalated: safeString(t.custom_fields?.escalated),
+        module: safeString(t.custom_fields?.module),
+        score: safeString(t.score, '0'),
+        ticket_type: safeString(t.custom_fields?.ticket_type)
+      };
+
+      // Store single ticket result
+      const result = {
+        total: 1,
+        total_matching: 1,
+        tickets: [formattedTicket],
+        available_fields: Object.keys(formattedTicket)
+      };
+
+      // Mark as completed
+      await supabase
+        .from('chat_jobs')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          result,
+          total_tickets: 1,
+          progress: 100,
+          progress_message: 'Completed'
+        })
+        .eq('id', jobId);
+
+      return new Response(
+        JSON.stringify({ success: true, total_tickets: 1 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update progress for multi-ticket search
     await supabase
       .from('chat_jobs')
       .update({ 

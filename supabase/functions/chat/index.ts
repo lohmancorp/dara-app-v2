@@ -587,7 +587,7 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
                 };
               }
               
-              console.log('Getting single ticket via MCP server:', ticketId);
+              console.log('Getting single ticket via async job:', ticketId);
               
               // Get FreshService MCP service ID
               const fsServiceId = serviceTypeToId['freshservice'];
@@ -601,70 +601,100 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
               
               console.log('Using FreshService MCP service ID:', fsServiceId);
               
-              // Call MCP server to get ticket
-              try {
-                const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-server`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': req.headers.get('Authorization') || '',
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    method: 'tools/call',
-                    serviceType: 'freshservice',
-                    params: {
-                      toolName: 'get_ticket',
-                      arguments: {
-                        ticketId: Number(ticketId)
-                      }
-                    }
-                  })
-                });
-                
-                if (!mcpResponse.ok) {
-                  const errorText = await mcpResponse.text();
-                  console.error('MCP server error:', mcpResponse.status, errorText);
-                  return {
-                    tool_call_id: toolCall.id,
-                    content: JSON.stringify({ 
-                      error: 'Failed to retrieve ticket from MCP server', 
-                      details: errorText,
-                      status: mcpResponse.status
-                    })
-                  };
-                }
-                
-                const result = await mcpResponse.json();
-                console.log('MCP server result:', JSON.stringify(result).substring(0, 200));
-                
-                if (result.error) {
-                  return {
-                    tool_call_id: toolCall.id,
-                    content: JSON.stringify({ 
-                      error: `Error retrieving ticket ${ticketId}`,
-                      details: result.error
-                    })
-                  };
-                }
-                
-                // MCP server returns the ticket data directly
+              // ALWAYS use async jobs for single ticket lookups to prevent timeouts
+              // Even simple single ticket queries can timeout due to rate limiting and API delays
+              const userQuery = `Get ticket ${ticketId}`;
+              
+              const { data: seqData } = await supabase.rpc('get_next_job_sequence', {
+                p_session_id: sessionId
+              });
+              const jobSequence = seqData || 1;
+              
+              const { data: job, error: jobError } = await supabase
+                .from('chat_jobs')
+                .insert({
+                  user_id: user.id,
+                  chat_session_id: sessionId,
+                  job_sequence: jobSequence,
+                  query: userQuery,
+                  status: 'pending',
+                  progress: 0,
+                  filters: {
+                    mcp_service_id: fsServiceId,
+                    single_ticket_id: Number(ticketId)
+                  }
+                })
+                .select()
+                .single();
+              
+              console.log('Created single ticket job:', job?.id, 'Sequence:', jobSequence);
+
+              if (jobError || !job) {
+                console.error('Failed to create job:', jobError);
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({
-                    ticket: result,
-                    message: `Successfully retrieved ticket ${ticketId}`
-                  })
-                };
-              } catch (error) {
-                console.error('Exception calling MCP server:', error);
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ 
-                    error: 'Exception calling MCP server',
-                    details: error instanceof Error ? error.message : String(error)
-                  })
+                  content: JSON.stringify({ error: 'Failed to create async job' })
                 };
               }
+
+              const backgroundJobPromise = fetch(`${supabaseUrl}/functions/v1/process-chat-job`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ jobId: job.id })
+              });
+
+              backgroundJobPromise.catch(async (err) => {
+                console.error('Failed to trigger background job:', err);
+                await supabase
+                  .from('chat_jobs')
+                  .update({ 
+                    status: 'failed',
+                    error: 'Failed to start background processing: ' + (err instanceof Error ? err.message : String(err)),
+                    completed_at: new Date().toISOString()
+                  })
+                  .eq('id', job.id);
+              });
+
+              backgroundJobPromise.then(async (response) => {
+                if (!response.ok) {
+                  console.error('Background job trigger failed with status:', response.status);
+                  const errorText = await response.text().catch(() => 'Unknown error');
+                  await supabase
+                    .from('chat_jobs')
+                    .update({ 
+                      status: 'failed',
+                      error: `Background processing failed to start: ${response.status} - ${errorText}`,
+                      completed_at: new Date().toISOString()
+                    })
+                    .eq('id', job.id);
+                } else {
+                  console.log('Background job triggered successfully for job:', job.id);
+                }
+              }).catch(err => console.error('Error checking background job response:', err));
+
+              const jobName = `${sessionId.substring(0, 8)}-${String(jobSequence).padStart(3, '0')}`;
+
+              asyncJobInfo = {
+                async_job: true,
+                job_id: job.id,
+                job_name: jobName
+              };
+
+              console.log(`Single ticket job created. Job ID: ${job.id}. Processing in background.`);
+
+              return {
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  async_job: true,
+                  job_id: job.id,
+                  job_name: jobName,
+                  message: '', // Empty message - progress bar will show via realtime
+                  estimated_time: 'A few seconds'
+                })
+              };
             }
 
             case 'search_freshservice_tickets': {
