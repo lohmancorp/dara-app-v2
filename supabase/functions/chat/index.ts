@@ -165,122 +165,152 @@ async function callLLM(
     // Add ?alt=sse for streaming to get SSE format
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}${stream ? '&alt=sse' : ''}`;
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: geminiMessages,
-        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-        tools: tools ? [{
-          functionDeclarations: tools.map(t => ({
-            name: t.function.name,
-            description: t.function.description,
-            parameters: t.function.parameters
-          }))
-        }] : undefined
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    if (stream) {
-      // With ?alt=sse, Gemini now returns SSE format directly
-      const { readable, writable } = new TransformStream();
-      const writer = writable.getWriter();
-      const encoder = new TextEncoder();
-      
-      (async () => {
-        try {
-          const reader = response.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              await writer.write(encoder.encode('data: [DONE]\n\n'));
-              break;
-            }
-            
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || trimmed.startsWith(':')) continue;
-              if (!trimmed.startsWith('data: ')) continue;
-              
-              const data = trimmed.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const geminiChunk = JSON.parse(data);
-                const text = geminiChunk.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (text) {
-                  const openaiFormat = {
-                    choices: [{ delta: { content: text } }]
-                  };
-                  await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
-                }
-              } catch (e) {
-                console.error('Error parsing Gemini SSE:', e, 'Data:', data.substring(0, 100));
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error transforming Gemini stream:', error);
-        } finally {
-          writer.close();
-        }
-      })();
-      
-      return new Response(readable, {
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'text/event-stream' 
-        }
-      });
-    }
-
-    const data = await response.json();
+    // Retry logic for rate limits
+    const maxRetries = rateLimitConfig?.max_retries || 3;
+    let lastError: Error | null = null;
     
-    // Convert Gemini response to OpenAI format
-    const candidate = data.candidates?.[0];
-    if (!candidate) {
-      throw new Error('No response from Gemini');
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: geminiMessages,
+            systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+            tools: tools ? [{
+              functionDeclarations: tools.map(t => ({
+                name: t.function.name,
+                description: t.function.description,
+                parameters: t.function.parameters
+              }))
+            }] : undefined
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          
+          // Handle 429 rate limit errors with retry
+          if (response.status === 429 && attempt < maxRetries) {
+            const retryDelay = rateLimitConfig?.retry_delay_sec || 60;
+            const waitTime = retryDelay * 1000 * Math.pow(2, attempt); // Exponential backoff
+            console.log(`Rate limited (429) - attempt ${attempt + 1}/${maxRetries + 1}, waiting ${waitTime}ms before retry`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            lastError = new Error(`Gemini API error: ${response.status}`);
+            continue; // Retry
+          }
+          
+          console.error('Gemini API error:', response.status, errorText);
+          throw new Error(`Gemini API error: ${response.status}`);
+        }
+
+        // Success - process response
+        if (stream) {
+          // With ?alt=sse, Gemini now returns SSE format directly
+          const { readable, writable } = new TransformStream();
+          const writer = writable.getWriter();
+          const encoder = new TextEncoder();
+          
+          (async () => {
+            try {
+              const reader = response.body!.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+              
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  await writer.write(encoder.encode('data: [DONE]\n\n'));
+                  break;
+                }
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed || trimmed.startsWith(':')) continue;
+                  if (!trimmed.startsWith('data: ')) continue;
+                  
+                  const data = trimmed.slice(6);
+                  if (data === '[DONE]') continue;
+                  
+                  try {
+                    const geminiChunk = JSON.parse(data);
+                    const text = geminiChunk.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (text) {
+                      const openaiFormat = {
+                        choices: [{ delta: { content: text } }]
+                      };
+                      await writer.write(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                    }
+                  } catch (e) {
+                    console.error('Error parsing Gemini SSE:', e, 'Data:', data.substring(0, 100));
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error transforming Gemini stream:', error);
+            } finally {
+              writer.close();
+            }
+          })();
+          
+          return new Response(readable, {
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/event-stream' 
+            }
+          });
+        }
+
+        const data = await response.json();
+        
+        // Convert Gemini response to OpenAI format
+        const candidate = data.candidates?.[0];
+        if (!candidate) {
+          throw new Error('No response from Gemini');
+        }
+
+        const functionCalls = candidate.content?.parts
+          ?.filter((p: any) => p.functionCall)
+          .map((p: any) => ({
+            id: `call_${Date.now()}`,
+            type: 'function',
+            function: {
+              name: p.functionCall.name,
+              arguments: JSON.stringify(p.functionCall.args || {})
+            }
+          }));
+
+        const textContent = candidate.content?.parts
+          ?.filter((p: any) => p.text)
+          .map((p: any) => p.text)
+          .join('');
+
+        return {
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: textContent || null,
+              tool_calls: functionCalls && functionCalls.length > 0 ? functionCalls : undefined
+            }
+          }]
+        };
+      } catch (error) {
+        // If this isn't a 429 or we're out of retries, throw
+        if (attempt >= maxRetries) {
+          throw lastError || error;
+        }
+        // Otherwise continue to next retry
+        lastError = error as Error;
+      }
     }
-
-    const functionCalls = candidate.content?.parts
-      ?.filter((p: any) => p.functionCall)
-      .map((p: any) => ({
-        id: `call_${Date.now()}`,
-        type: 'function',
-        function: {
-          name: p.functionCall.name,
-          arguments: JSON.stringify(p.functionCall.args || {})
-        }
-      }));
-
-    const textContent = candidate.content?.parts
-      ?.filter((p: any) => p.text)
-      .map((p: any) => p.text)
-      .join('');
-
-    return {
-      choices: [{
-        message: {
-          role: 'assistant',
-          content: textContent || null,
-          tool_calls: functionCalls && functionCalls.length > 0 ? functionCalls : undefined
-        }
-      }]
-    };
+    
+    // All retries exhausted
+    throw lastError || new Error('Failed to call Gemini API after retries');
   } else {
     // OpenAI API call
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
