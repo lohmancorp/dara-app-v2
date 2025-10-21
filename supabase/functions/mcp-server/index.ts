@@ -375,8 +375,11 @@ function buildAuthHeaders(authType: string, token: string, authConfig: any): Rec
       break;
     
     case 'basic':
-      const username = authConfig?.username || '';
-      const credentials = btoa(`${username}:${token}`);
+      // FreshService uses API key as username with 'X' as password
+      // If username is provided in authConfig, use it; otherwise use token as username with 'X' as password
+      const username = authConfig?.username || token;
+      const password = authConfig?.username ? token : 'X';
+      const credentials = btoa(`${username}:${password}`);
       headers['Authorization'] = `Basic ${credentials}`;
       break;
     
