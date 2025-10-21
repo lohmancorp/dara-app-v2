@@ -707,7 +707,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     params: {
                       toolName: 'get_ticket',
                       arguments: {
-                        ticket_id: Number(ticketId)
+                        ticketId: Number(ticketId)
                       }
                     }
                   })
