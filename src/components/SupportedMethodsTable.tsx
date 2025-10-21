@@ -5,6 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddMethodWizard } from "./AddMethodWizard";
+import { EditMethodModal } from "./EditMethodModal";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Method {
   name: string;
@@ -33,6 +36,9 @@ export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingMethod, setEditingMethod] = useState<Method | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { toast } = useToast();
 
   // Filter methods by search query
   const filteredMethods = useMemo(() => {
@@ -144,8 +150,6 @@ export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded 
     if (!serviceId) return;
 
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      
       // Get current config
       const { data: service, error: fetchError } = await supabase
         .from('mcp_services')
@@ -176,19 +180,122 @@ export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded 
         onMethodAdded();
       }
 
-      const { toast } = await import("@/hooks/use-toast");
       toast({
         title: `${type === 'tools' ? 'Tool' : 'Resource'} added successfully`,
         description: `${method.name} has been added to the configuration.`,
       });
     } catch (error: any) {
-      const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error adding method",
         description: error.message,
         variant: "destructive",
       });
     }
+  };
+
+  const handleUpdateMethod = async (updatedMethod: any) => {
+    if (!serviceId) return;
+
+    try {
+      // Get current config
+      const { data: service, error: fetchError } = await supabase
+        .from('mcp_services')
+        .select(type === 'tools' ? 'tools_config' : 'resources_config')
+        .eq('id', serviceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentConfig = type === 'tools' 
+        ? ((service as any).tools_config || []) 
+        : ((service as any).resources_config || []);
+      
+      // Find and replace the method
+      const updatedConfig = currentConfig.map((m: any) => 
+        m.name === editingMethod?.name ? updatedMethod : m
+      );
+
+      // Update service
+      const { error: updateError } = await supabase
+        .from('mcp_services')
+        .update({
+          [type === 'tools' ? 'tools_config' : 'resources_config']: updatedConfig,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', serviceId);
+
+      if (updateError) throw updateError;
+
+      // Notify parent to refresh
+      if (onMethodAdded) {
+        onMethodAdded();
+      }
+
+      toast({
+        title: `${type === 'tools' ? 'Tool' : 'Resource'} updated successfully`,
+        description: `${updatedMethod.name} has been updated.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating method",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMethod = async () => {
+    if (!serviceId || !editingMethod) return;
+
+    try {
+      // Get current config
+      const { data: service, error: fetchError } = await supabase
+        .from('mcp_services')
+        .select(type === 'tools' ? 'tools_config' : 'resources_config')
+        .eq('id', serviceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentConfig = type === 'tools' 
+        ? ((service as any).tools_config || []) 
+        : ((service as any).resources_config || []);
+      
+      // Remove the method
+      const updatedConfig = currentConfig.filter((m: any) => m.name !== editingMethod.name);
+
+      // Update service
+      const { error: updateError } = await supabase
+        .from('mcp_services')
+        .update({
+          [type === 'tools' ? 'tools_config' : 'resources_config']: updatedConfig,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', serviceId);
+
+      if (updateError) throw updateError;
+
+      // Notify parent to refresh
+      if (onMethodAdded) {
+        onMethodAdded();
+      }
+
+      toast({
+        title: `${type === 'tools' ? 'Tool' : 'Resource'} deleted successfully`,
+        description: `${editingMethod.name} has been removed from the configuration.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting method",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRowDoubleClick = (method: Method) => {
+    setEditingMethod(method);
+    setIsEditModalOpen(true);
   };
 
   if (methods.length === 0) {
@@ -293,7 +400,12 @@ export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded 
               </TableRow>
             ) : (
               paginatedMethods.map((method, index) => (
-                <TableRow key={index} className="hover:bg-muted/50">
+                <TableRow 
+                  key={index} 
+                  className="hover:bg-muted/50 cursor-pointer transition-colors"
+                  onDoubleClick={() => handleRowDoubleClick(method)}
+                  title="Double-click to edit"
+                >
                   <TableCell className="font-medium">
                     {method.name || 'N/A'}
                   </TableCell>
@@ -358,6 +470,18 @@ export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded 
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+      )}
+
+      {/* Edit Method Modal */}
+      {editingMethod && (
+        <EditMethodModal
+          method={editingMethod}
+          type={type}
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          onSave={handleUpdateMethod}
+          onDelete={handleDeleteMethod}
+        />
       )}
     </div>
   );
