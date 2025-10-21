@@ -187,15 +187,19 @@ serve(async (req) => {
 
       const ticketResult = await mcpResponse.json();
       
-      console.log('Raw MCP response for ticket:', JSON.stringify(ticketResult, null, 2));
-      
       if (ticketResult.error) {
         throw new Error(`Error retrieving ticket ${singleTicketId}: ${ticketResult.error}`);
       }
 
       // Extract the actual ticket data from the MCP response
-      const ticketData = ticketResult.content?.[0]?.text ? JSON.parse(ticketResult.content[0].text) : ticketResult;
-      console.log('Extracted ticket data:', JSON.stringify(ticketData, null, 2));
+      // MCP returns: { content: [{ type: "text", text: "{ ticket: {...} }" }] }
+      let ticketData;
+      if (ticketResult.content?.[0]?.text) {
+        const parsedContent = JSON.parse(ticketResult.content[0].text);
+        ticketData = parsedContent.ticket || parsedContent;
+      } else {
+        ticketData = ticketResult.ticket || ticketResult;
+      }
       
       console.log('Fetched ticket', singleTicketId, 'for job', jobId);
 
