@@ -279,6 +279,30 @@ serve(async (req) => {
         available_fields: Object.keys(formattedTicket)
       };
 
+      // Create detailed view for single ticket
+      const detailedView = `**Ticket #${formattedTicket.id}**\n\n` +
+        `**Summary:** ${formattedTicket.subject}\n\n` +
+        `**Status:** ${formattedTicket.status}\n` +
+        `**Priority:** ${formattedTicket.priority}\n` +
+        `**Company:** ${formattedTicket.company}\n` +
+        `**Module:** ${formattedTicket.module}\n` +
+        `**Type:** ${formattedTicket.type}\n` +
+        `**Created:** ${formattedTicket.created_at}\n` +
+        `**Updated:** ${formattedTicket.updated_at}\n` +
+        `**Group:** ${formattedTicket.group}\n` +
+        `**Source:** ${formattedTicket.source}\n\n` +
+        `**Description:**\n${formattedTicket.description_text}`;
+
+      // Update the chat message with detailed view
+      const { error: msgUpdateError } = await supabase
+        .from('chat_messages')
+        .update({ content: detailedView })
+        .eq('job_id', jobId);
+        
+      if (msgUpdateError) {
+        console.error('Failed to update chat message:', msgUpdateError);
+      }
+
       // Mark as completed
       await supabase
         .from('chat_jobs')
@@ -420,12 +444,12 @@ serve(async (req) => {
 
     console.log('Job completed:', jobId);
     
-    // Update the chat message with the results
+    // Update the chat message with the results - simplified table
     const tableContent = `Found ${formattedTickets.length} tickets:\n\n` +
-      '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n' +
-      '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n' +
+      '| Ticket ID | Company | Subject | Priority | Status |\n' +
+      '|-----------|---------|---------|----------|--------|\n' +
       formattedTickets.map((t: any) => 
-        `| ${t.id} | ${t.company} | ${t.subject} | ${t.priority} | ${t.status} | ${t.created_at} | ${t.updated_at} | ${t.type} | ${t.escalated} | ${t.module} | ${t.score} | ${t.ticket_type} |`
+        `| ${t.id} | ${t.company} | ${t.subject} | ${t.priority} | ${t.status} |`
       ).join('\n');
     
     const { error: msgUpdateError } = await supabase
