@@ -152,11 +152,16 @@ serve(async (req) => {
         })
         .eq('id', jobId);
 
-      // Call MCP server to get single ticket
+      // Call MCP server to get single ticket - use user's JWT token
+      const userToken = job.user_token;
+      if (!userToken) {
+        throw new Error('User token not found in job record');
+      }
+
       const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-server`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
+          'Authorization': `Bearer ${userToken}`,  // Use user's JWT token
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -298,11 +303,17 @@ serve(async (req) => {
       })
       .eq('id', jobId);
 
+    // Use user's JWT token for MCP filter tickets call
+    const userToken = job.user_token;
+    if (!userToken) {
+      throw new Error('User token not found in job record');
+    }
+
     // Fetch tickets with high limit (no limit for async jobs)
     const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
+        'Authorization': `Bearer ${userToken}`,  // Use user's JWT token
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

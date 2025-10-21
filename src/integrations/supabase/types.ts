@@ -85,6 +85,7 @@ export type Database = {
           total_tickets: number | null
           updated_at: string
           user_id: string
+          user_token: string | null
         }
         Insert: {
           chat_session_id?: string | null
@@ -103,6 +104,7 @@ export type Database = {
           total_tickets?: number | null
           updated_at?: string
           user_id: string
+          user_token?: string | null
         }
         Update: {
           chat_session_id?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           total_tickets?: number | null
           updated_at?: string
           user_id?: string
+          user_token?: string | null
         }
         Relationships: [
           {

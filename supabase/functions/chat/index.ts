@@ -619,6 +619,7 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
                   query: userQuery,
                   status: 'pending',
                   progress: 0,
+                  user_token: token,  // Store user JWT for MCP server calls
                   filters: {
                     mcp_service_id: fsServiceId,
                     single_ticket_id: Number(ticketId)
@@ -743,6 +744,7 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
                     query: userQuery,
                     status: 'pending',
                     progress: 0,
+                    user_token: token,  // Store user JWT for MCP server calls
                     filters: {
                       mcp_service_id,
                       department,
