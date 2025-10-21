@@ -690,11 +690,11 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
               const userQuery = messages[messages.length - 1]?.content || 'Ticket search query';
 
               const requestedLimit = limit || 200;
-              const hasMultipleStatuses = (status && status.length > 5) || (exclude_status && exclude_status.length > 0);
-              const hasExcludeCustomFields = exclude_custom_fields && Object.keys(exclude_custom_fields).length > 0;
-              const hasExcludePriority = exclude_priority && exclude_priority.length > 0;
-              const hasNoFilters = !department && !created_after && !priority && !status && !exclude_status && !custom_fields && !exclude_custom_fields;
-              const shouldUseAsyncJob = requestedLimit > 200 || hasMultipleStatuses || hasNoFilters || hasExcludeCustomFields || hasExcludePriority;
+              
+              // ALWAYS use async jobs for ticket searches to prevent timeouts
+              // Even simple queries can take longer than the frontend's 3-minute timeout
+              // due to rate limiting, retries, and API processing time
+              const shouldUseAsyncJob = true;
               
               if (shouldUseAsyncJob) {
                 console.log('Creating async job for large query');
