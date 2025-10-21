@@ -466,31 +466,21 @@ serve(async (req) => {
       console.log('Using MCP rate limit config:', rateLimitConfig);
     }
 
-    const systemPrompt = `You are a helpful AI assistant with access to service integrations through MCP tools.
+    const systemPrompt = `You are a helpful AI assistant with access to FreshService ticket management.
 
-**Available Services:**
-${mcpServices?.map(s => `- ${s.service_type.toUpperCase()}: ${s.service_name || s.service_type}`).join('\n') || 'None'}
+**Available Tools:**
+1. **get_freshservice_ticket(ticketId)** - Get a SINGLE ticket by ID number
+   - Use when user asks for a specific ticket like "show me ticket 250989"
+   - Parameter: ticketId (number) - the ticket ID
+   
+2. **search_freshservice_tickets(filters)** - Search tickets with complex filters
+   - Use for searching multiple tickets
+   - Supports: department, status, priority, date filters, custom fields
 
-**How to use MCP tools:**
-- Tool names follow pattern: {service_type}_{tool_name}
-- Examples: freshservice_get_ticket, freshservice_list_tickets, freshservice_filter_tickets  
-- For single item lookups (like ticket ID 12345), use the specific get tool (e.g., freshservice_get_ticket)
-- For searches/lists, use filter or list tools
-
-**FreshService Tools:**
-- **freshservice_get_ticket(ticketId)**: Retrieve a SINGLE ticket by its ID number. Use when user provides a specific ticket number.
-- **freshservice_list_tickets()**: List tickets with simple pagination
-- **freshservice_filter_tickets(query)**: Advanced filtering with FreshService query language
-- **search_freshservice_tickets(filters)**: Complex search with multiple filters
-
-**When to use which tool:**
-- User says "show me ticket 250989" → use freshservice_get_ticket with ticketId: 250989
-- User says "list tickets" → use freshservice_list_tickets  
-- User says "find tickets for Company X" → use search_freshservice_tickets
-
-When a user asks about a specific ticket by number:
-- Just call freshservice_get_ticket(ticketId) directly with the ticket number
-- No need to search first
+**When to use each tool:**
+- User says "show me ticket 250989" → use get_freshservice_ticket(ticketId: 250989)
+- User says "find open tickets" → use search_freshservice_tickets
+- User says "list tickets for Company X" → use search_freshservice_tickets with department filter
 
 **CRITICAL RULES for ticket searches:**
 - Tool names follow pattern: {service_type}_{tool_name}
@@ -707,66 +697,84 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                 };
               }
               
-              console.log('Getting single ticket:', ticketId);
+              console.log('Getting single ticket via MCP server:', ticketId);
               
-              // Get FreshService MCP service
+              // Get FreshService MCP service ID
               const fsServiceId = serviceTypeToId['freshservice'];
               if (!fsServiceId) {
+                console.error('FreshService MCP service not found in serviceTypeToId');
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ error: 'FreshService not configured' })
                 };
               }
               
-              // Use custom_fields filter to search by ticket_id
-              const filters: any = {
-                customFields: { ticket_id: [String(ticketId)] },
-                limit: 1
-              };
+              console.log('Using FreshService MCP service ID:', fsServiceId);
               
-              const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-freshservice-filter-tickets`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': req.headers.get('Authorization') || '',
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  serviceId: fsServiceId,
-                  filters,
-                  ownerType: 'user',
-                  ownerId: user.id
-                })
-              });
-              
-              if (!mcpResponse.ok) {
-                const errorText = await mcpResponse.text();
-                console.error('MCP get ticket error:', mcpResponse.status, errorText);
+              // Call MCP server to get ticket
+              try {
+                const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-server`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': req.headers.get('Authorization') || '',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    method: 'tools/call',
+                    serviceType: 'freshservice',
+                    params: {
+                      name: 'get_ticket',
+                      arguments: {
+                        ticketId: Number(ticketId)
+                      }
+                    }
+                  })
+                });
+                
+                if (!mcpResponse.ok) {
+                  const errorText = await mcpResponse.text();
+                  console.error('MCP server error:', mcpResponse.status, errorText);
+                  return {
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify({ 
+                      error: 'Failed to retrieve ticket from MCP server', 
+                      details: errorText,
+                      status: mcpResponse.status
+                    })
+                  };
+                }
+                
+                const result = await mcpResponse.json();
+                console.log('MCP server result:', JSON.stringify(result).substring(0, 200));
+                
+                if (result.error) {
+                  return {
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify({ 
+                      error: `Error retrieving ticket ${ticketId}`,
+                      details: result.error
+                    })
+                  };
+                }
+                
+                // MCP server returns the ticket data directly
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'Failed to retrieve ticket', details: errorText })
+                  content: JSON.stringify({
+                    ticket: result,
+                    message: `Successfully retrieved ticket ${ticketId}`
+                  })
                 };
-              }
-              
-              const mcpResult = await mcpResponse.json();
-              const ticket = mcpResult.tickets?.[0];
-              
-              if (!ticket) {
+              } catch (error) {
+                console.error('Exception calling MCP server:', error);
                 return {
                   tool_call_id: toolCall.id,
                   content: JSON.stringify({ 
-                    error: `Ticket ${ticketId} not found`,
-                    message: `No ticket with ID ${ticketId} was found in FreshService` 
+                    error: 'Exception calling MCP server',
+                    details: error instanceof Error ? error.message : String(error)
                   })
                 };
               }
-              
-              return {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({
-                  ticket: ticket,
-                  message: `Found ticket ${ticketId}`
-                })
-              };
             }
 
             case 'search_freshservice_tickets': {
