@@ -94,6 +94,14 @@ export const ChatMessage = ({ role, content, isStreaming, userAvatarUrl, ticketB
   const renderContentWithSortableTables = (markdown: string) => {
     const tables = parseMarkdownTable(markdown);
     
+    if (tables.length > 0) {
+      console.log('Parsed tables:', tables.map(t => ({
+        headers: t.headers,
+        rowCount: t.rows.length,
+        firstRow: t.rows[0]
+      })));
+    }
+    
     if (tables.length === 0) {
       return (
         <ReactMarkdown

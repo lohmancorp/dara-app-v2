@@ -71,6 +71,9 @@ export const SortableMarkdownTable = ({ headers, rows, ticketBaseUrl }: Sortable
     const newVisible = headers.map((header) => 
       !hiddenByDefaultColumns.some(hidden => header.toLowerCase().includes(hidden.toLowerCase()))
     );
+    console.log('Table headers:', headers);
+    console.log('Visible columns:', newVisible);
+    console.log('Visible headers:', headers.filter((_, i) => newVisible[i]));
     setVisibleColumns(newVisible);
   }, [headers.join(',')]); // Depend on headers changing
   
