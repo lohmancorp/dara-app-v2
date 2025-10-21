@@ -232,55 +232,47 @@ const Chat = () => {
             processedJobsRef.current.add(job.id);
             console.log('Job completed/failed, updating message:', job.id);
             
-            // Update the message with job results
-            let tableContent: string | null = null;
-            let failedContent: string | null = null;
+            // Fetch the message content from database (edge function already set it)
+            let updatedContent: string | null = null;
             
-            if (job.status === 'completed' && job.result) {
-              const result = job.result as { tickets?: any[]; total?: number };
-              const tickets = result.tickets || [];
-              const total = result.total || 0;
+            if (job.status === 'completed') {
+              const { data: messageData } = await supabase
+                .from('chat_messages')
+                .select('content')
+                .eq('job_id', job.id)
+                .single();
               
-              tableContent = `Found ${total} tickets:\n\n`;
-              tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-              tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-              
-              tickets.forEach((ticket: any) => {
-                tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-              });
+              if (messageData) {
+                updatedContent = messageData.content;
+              }
             } else if (job.status === 'failed') {
-              failedContent = `Job failed: ${job.error || 'Unknown error'}`;
+              updatedContent = `Job failed: ${job.error || 'Unknown error'}`;
+              
+              // Update database with failed content
+              await supabase
+                .from('chat_messages')
+                .update({ content: updatedContent })
+                .eq('job_id', job.id);
             }
             
-            // Update database first
-            const contentToUpdate = tableContent || failedContent;
-            if (contentToUpdate) {
-              const { error: updateError } = await supabase
-                .from('chat_messages')
-                .update({ content: contentToUpdate })
-                .eq('job_id', job.id);
-                
-              if (updateError) {
-                console.error('Error updating message in DB:', updateError);
-              } else {
-                console.log('Message updated in DB successfully');
-                
-                // Update local state instead of reloading entire session
-                setMessages(prev => prev.map(msg => 
-                  msg.jobId === job.id 
-                    ? { ...msg, content: contentToUpdate, jobStatus: job.status }
-                    : msg
-                ));
-              }
+            // Update local state with content from database
+            if (updatedContent) {
+              console.log('Message updated from DB successfully');
+              
+              setMessages(prev => prev.map(msg => 
+                msg.jobId === job.id 
+                  ? { ...msg, content: updatedContent, jobStatus: job.status }
+                  : msg
+              ));
             }
             
             // Show toast notification
-            if (tableContent) {
+            if (job.status === 'completed') {
               toast({
                 title: "Job Completed",
                 description: `Successfully processed ${(job.result as any)?.total || 0} tickets`,
               });
-            } else if (failedContent) {
+            } else if (job.status === 'failed') {
               toast({
                 title: "Job Failed",
                 description: job.error || 'Unknown error',
