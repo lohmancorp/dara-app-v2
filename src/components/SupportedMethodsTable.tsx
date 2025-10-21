@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddMethodWizard } from "./AddMethodWizard";
 
 interface Method {
   name: string;
@@ -20,11 +21,13 @@ interface Method {
 interface SupportedMethodsTableProps {
   methods: Method[];
   type: 'tools' | 'resources';
+  serviceId?: string;
+  onMethodAdded?: () => void;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
 
-export const SupportedMethodsTable = ({ methods, type }: SupportedMethodsTableProps) => {
+export const SupportedMethodsTable = ({ methods, type, serviceId, onMethodAdded }: SupportedMethodsTableProps) => {
   const [sortColumn, setSortColumn] = useState<'name' | 'endpoint' | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,10 +140,66 @@ export const SupportedMethodsTable = ({ methods, type }: SupportedMethodsTablePr
     return method.inputSchema.required.length;
   };
 
+  const handleSaveMethod = async (method: any) => {
+    if (!serviceId) return;
+
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      // Get current config
+      const { data: service, error: fetchError } = await supabase
+        .from('mcp_services')
+        .select(type === 'tools' ? 'tools_config' : 'resources_config')
+        .eq('id', serviceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentConfig = type === 'tools' 
+        ? ((service as any).tools_config || []) 
+        : ((service as any).resources_config || []);
+      const updatedConfig = [...currentConfig, method];
+
+      // Update service
+      const { error: updateError } = await supabase
+        .from('mcp_services')
+        .update({
+          [type === 'tools' ? 'tools_config' : 'resources_config']: updatedConfig,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', serviceId);
+
+      if (updateError) throw updateError;
+
+      // Notify parent to refresh
+      if (onMethodAdded) {
+        onMethodAdded();
+      }
+
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: `${type === 'tools' ? 'Tool' : 'Resource'} added successfully`,
+        description: `${method.name} has been added to the configuration.`,
+      });
+    } catch (error: any) {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error adding method",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (methods.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No {type} configured for this connection.
+      <div className="text-center py-8 space-y-4">
+        <p className="text-muted-foreground">
+          No {type} configured for this connection.
+        </p>
+        {serviceId && (
+          <AddMethodWizard type={type} onSave={handleSaveMethod} />
+        )}
       </div>
     );
   }
@@ -149,6 +208,9 @@ export const SupportedMethodsTable = ({ methods, type }: SupportedMethodsTablePr
     <div className="w-full space-y-3">
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        {serviceId && (
+          <AddMethodWizard type={type} onSave={handleSaveMethod} />
+        )}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

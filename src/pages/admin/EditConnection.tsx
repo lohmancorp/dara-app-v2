@@ -479,14 +479,18 @@ const AdminEditConnection = () => {
               <TabsContent value="tools" className="mt-6">
                 <SupportedMethodsTable 
                   methods={service.tools_config || []} 
-                  type="tools" 
+                  type="tools"
+                  serviceId={service.id}
+                  onMethodAdded={fetchService}
                 />
               </TabsContent>
               
               <TabsContent value="resources" className="mt-6">
                 <SupportedMethodsTable 
                   methods={service.resources_config || []} 
-                  type="resources" 
+                  type="resources"
+                  serviceId={service.id}
+                  onMethodAdded={fetchService}
                 />
               </TabsContent>
             </Tabs>
