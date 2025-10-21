@@ -183,7 +183,12 @@ async function callLLM(
                 description: t.function.description,
                 parameters: t.function.parameters
               }))
-            }] : undefined
+            }] : undefined,
+            toolConfig: tools ? {
+              functionCallingConfig: {
+                mode: 'ANY'  // Force Gemini to call tools when appropriate
+              }
+            } : undefined
           })
         });
 
@@ -497,128 +502,23 @@ serve(async (req) => {
               console.log('Using MCP rate limit config:', rateLimitConfig);
     }
 
-    const systemPrompt = `You are a helpful AI assistant with access to FreshService ticket management.
+    const systemPrompt = `You are a helpful AI assistant with access to FreshService ticket management tools.
 
-**Available Tools:**
-1. **get_freshservice_ticket(ticketId)** - Get a SINGLE ticket by ID number
-   - Use when user asks for a specific ticket like "show me ticket 250989"
-   - Parameter: ticketId (number) - the ticket ID
-   
-2. **search_freshservice_tickets(filters)** - Search tickets with complex filters
-   - Use for searching multiple tickets
-   - Supports: department, status, priority, date filters, custom fields
-   - NO need to call get_freshservice_connections first - service resolution is automatic
+You have access to function calling tools that let you retrieve and search tickets. When users ask about tickets, you MUST call the appropriate tool - do not describe what you would do, actually call the tool.
 
-**When to use each tool:**
-- User says "show me ticket 250989" → use get_freshservice_ticket(ticketId: 250989)
-- User says "find open tickets" → use search_freshservice_tickets
-- User says "list tickets for Company X" → use search_freshservice_tickets with department filter
+Tools available:
+- get_freshservice_ticket: Get a single ticket by ID
+- search_freshservice_tickets: Search tickets with filters (department, status, priority, etc.)
 
-When a user asks for tickets, simply call search_freshservice_tickets with appropriate filters - service resolution is automatic.
+Service resolution is automatic - no need to get service IDs first.
 
-**Important Status IDs:**
-- 2 = Open
-- 3 = Pending
-- 4 = Resolved
-- 5 = Closed
-- 6 = New
-- 7 = Pending access
-- 8 = Waiting for RnD
-- 9 = Pending other ticket
-- 10 = Waiting for maintenance
-- 11 = Waiting for bugfix
-- 12 = Service request triage
-- 15 = Awaiting validation
-- 16 = Conditional Hold
-- 17 = Waiting for 3rd Party
+**Status IDs Reference:**
+2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=New, 7=Pending access, 8=Waiting for RnD, 9=Pending other ticket, 10=Waiting for maintenance, 11=Waiting for bugfix, 12=Service request triage, 15=Awaiting validation, 16=Conditional Hold, 17=Waiting for 3rd Party
 
-**CRITICAL INSTRUCTIONS FOR ASYNC JOBS:**
-When you need to search tickets with filters that will return many results or use exclusion filters:
-1. You MUST call the search_freshservice_tickets tool with the appropriate parameters
-2. The tool will automatically create an async job and return job information if needed
-3. DO NOT fabricate or make up job IDs - they come from the tool response only
-4. DO NOT tell the user about a job unless the tool returned async_job: true
-5. If you mention a job ID without calling the tool first, you will receive an error and must retry
+**Priority IDs:** 1=Low, 2=Medium, 3=High, 4=Urgent
 
-**How to handle requests:**
-- "CDW tickets" or "CDW UK tickets" → use department: "CDW UK"
-- "SVA tickets" → use department: "SVA Systemvertrieb Alexander GmbH"
-- Any company/department name mentioned → use department: "<exact company name>"
-- "not closed" or "not resolved" → use exclude_status: ['4', '5']
-- "unresolved" → use status: ['2', '3', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17']
-- "waiting for RnD" → use status: ['8']
-- "exclude TAM Request" or "not TAM Request" → use exclude_custom_fields: {'ticket_type': ['TAM Request']}
-- "exclude low priority" → use exclude_priority: ['1']
-- "except escalated tickets" → use exclude_custom_fields: {'escalated': ['true']}
-- "last month" → use created_after with date 1 month ago
-- "last N days" → use created_after with date N days ago
-- If no filters specified → use exclude_status: ['4', '5'] to show all non-closed
+When formatting results, always include these columns: Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type`;
 
-**Using AND Logic (Combining Multiple Filters):**
-You can combine ANY filters together to narrow results - they all work with AND logic:
-- Department AND Status: department: "Computer Gross" + status: ['8']
-- Department AND Priority: department: "CDW UK" + priority: ['3', '4']  
-- Status AND Created Date: status: ['2', '3'] + created_after: "2024-01-01T00:00:00Z"
-- Multiple filters: department + status + priority + created_after all work together
-- Example: "Computer Gross tickets waiting for RnD" = department: "Computer Gross" + status: ['8']
-- Example: "High priority SVA open tickets" = department: "SVA Systemvertrieb Alexander GmbH" + priority: ['3'] + status: ['2']
-
-**Using Exclusions:**
-- For Status: use exclude_status instead of status when user says "not X" or "except X" or "exclude X"
-- For Priority: use exclude_priority when user says "not low priority" or "except urgent"
-- For Custom Fields (ticket_type, escalated, module, etc.): use exclude_custom_fields: {'field_name': ['value1', 'value2']}
-- Examples of custom field exclusions:
-  - "not TAM Request" → exclude_custom_fields: {'ticket_type': ['TAM Request']}
-  - "except Connect module" → exclude_custom_fields: {'module': ['Connect']}
-  - "not escalated" → exclude_custom_fields: {'escalated': ['true']}
-
-**CRITICAL: When user mentions a company/department name (like "CDW", "SVA", "Mindware", "Computer Gross"), you MUST add it as a department filter. Don't ignore company names in queries!**
-
-**Important: Query Limits**
-- For queries expected to return >200 tickets, automatically use async job processing
-- Async jobs can handle up to 1000+ tickets and run for up to 20 minutes
-- For smaller queries (<200 tickets), use synchronous processing for immediate results
-- If the result is limited in sync mode, inform the user and suggest more specific filters
-
-**CRITICAL: When you receive an async_job response from the tool:**
-When the search_freshservice_tickets tool returns a response with "async_job": true, it means your query is being processed in the background. You MUST:
-1. Acknowledge that the job is running in the background
-2. Use EXACTLY the job_id provided in the tool response - DO NOT invent or modify job IDs
-3. Tell the user: "Job ID: [exact job_id from response]" - copy it exactly as provided
-4. Mention the estimated_time from the response
-5. Explain they can check the Jobs page for progress
-6. DO NOT generate code or Python snippets
-7. DO NOT show results - the job is still processing
-8. CRITICAL: The job_id in the response is a UUID format like "a7406aac-580b-4dae-ae43-c9b03aa9b3ee" - use it exactly
-
-Example response: "I've started a background job to process your query. Job ID: a7406aac-580b-4dae-ae43-c9b03aa9b3ee. This should complete in 1-20 minutes. Check the Jobs page to monitor progress and see results when done."
-
-Always format results as a clear, readable markdown table. 
-
-**CRITICAL TABLE FORMATTING RULES:**
-1. ALWAYS escape pipe characters in cell values by replacing "|" with "\\|"
-2. ALWAYS escape backslashes in cell values by replacing "\\" with "\\\\"
-3. Keep cell values on a single line - replace newlines with spaces
-4. Ensure proper column alignment by checking your data before generating the table
-
-**REQUIRED: Include ALL of these columns in every ticket table:**
-| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |
-
-- Ticket ID: The ticket number
-- Company: The department/company name
-- Subject: The ticket subject line
-- Priority: Mapped name (Low, Medium, High, Urgent)
-- Status: Mapped status name
-- created_at: ISO date when ticket was created
-- updated_at: ISO date when ticket was last updated
-- type: Ticket type (e.g., "Service Request", "Incident")
-- escalated: Custom field for escalation status (or "N/A" if null)
-- module: Custom field for module name (or "N/A" if null)
-- score: Custom field for score value (or "0" if null)
-- ticket_type: Custom field for ticket type classification (or "N/A" if null)
-
-The UI table component will handle column visibility settings, but you MUST include all columns in the markdown.
-Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
 
     // Build conversation with tool call loop
     let conversationMessages: any[] = [
