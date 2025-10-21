@@ -495,7 +495,7 @@ serve(async (req) => {
     const rateLimitConfig = mcpServices?.find(s => s.service_type === connectionType) ? {
       call_delay_ms: 600,
       max_retries: 5,
-      retry_delay_sec: 60
+      retry_delay_sec: 3  // 3 seconds base delay with exponential backoff (3s, 6s, 12s, 24s, 48s)
     } : undefined;
     
     if (rateLimitConfig) {
