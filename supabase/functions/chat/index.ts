@@ -449,23 +449,11 @@ serve(async (req) => {
       {
         type: "function",
         function: {
-          name: "get_freshservice_connections",
-          description: "MUST be called FIRST before any FreshService operations. Returns the MCP service configuration including the mcp_service_id required for all other FreshService tools.",
-          parameters: {
-            type: "object",
-            properties: {}
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
           name: "search_freshservice_tickets",
-          description: "Search FreshService tickets using flexible filters. REQUIRES mcp_service_id from get_freshservice_connections. Use this for complex queries with multiple filters.",
+          description: "Search FreshService tickets using flexible filters. Service resolution is automatic. Use this for complex queries with multiple filters.",
           parameters: {
             type: "object",
             properties: {
-              mcp_service_id: { type: "string", description: "REQUIRED: MCP service ID from get_freshservice_connections" },
               department: { type: "string", description: "Department/company name" },
               status: { type: "array", items: { type: "string" }, description: "Status IDs to include" },
               exclude_status: { type: "array", items: { type: "string" }, description: "Status IDs to exclude" },
@@ -476,7 +464,7 @@ serve(async (req) => {
               exclude_custom_fields: { type: "object", description: "Custom fields to exclude" },
               limit: { type: "number", description: "Max tickets (default/max: 200)" }
             },
-            required: ["mcp_service_id"]
+            required: []
           }
         }
       },
@@ -506,7 +494,7 @@ serve(async (req) => {
     } : undefined;
     
     if (rateLimitConfig) {
-      console.log('Using MCP rate limit config:', rateLimitConfig);
+              console.log('Using MCP rate limit config:', rateLimitConfig);
     }
 
     const systemPrompt = `You are a helpful AI assistant with access to FreshService ticket management.
@@ -519,27 +507,14 @@ serve(async (req) => {
 2. **search_freshservice_tickets(filters)** - Search tickets with complex filters
    - Use for searching multiple tickets
    - Supports: department, status, priority, date filters, custom fields
+   - NO need to call get_freshservice_connections first - service resolution is automatic
 
 **When to use each tool:**
 - User says "show me ticket 250989" → use get_freshservice_ticket(ticketId: 250989)
 - User says "find open tickets" → use search_freshservice_tickets
 - User says "list tickets for Company X" → use search_freshservice_tickets with department filter
 
-**CRITICAL RULES for ticket searches:**
-- Tool names follow pattern: {service_type}_{tool_name}
-- Examples: freshservice_get_ticket, freshservice_list_tickets, freshservice_filter_tickets
-- For single item lookups (like ticket ID 12345), use the specific get tool (e.g., freshservice_get_ticket)
-- For searches/lists, use filter or list tools
-
-**FreshService Tools:**
-1. FIRST: Call get_freshservice_connections to get their MCP service ID
-2. SECOND: Call search_freshservice_tickets using the mcp_service_id from step 1
-3. NEVER skip step 1 - the mcp_service_id is REQUIRED
-
-When a user asks for tickets:
-1. First call get_freshservice_connections to get their MCP service configuration
-2. Use the mcp_service_id (NOT connection_id) from the response
-3. Call search_freshservice_tickets with appropriate filters
+When a user asks for tickets, simply call search_freshservice_tickets with appropriate filters - service resolution is automatic.
 
 **Important Status IDs:**
 - 2 = Open
@@ -694,42 +669,6 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
           console.log('Executing tool:', name, args);
 
           switch (name) {
-            case 'get_freshservice_connections': {
-              console.log('Fetching FreshService MCP service for user:', user.id);
-              
-              const { data: mcpServices, error: mcpError } = await supabase
-                .from('mcp_services')
-                .select('*')
-                .eq('service_type', 'freshservice');
-
-              if (mcpError) {
-                console.error('Error fetching MCP service:', mcpError);
-                throw mcpError;
-              }
-
-              if (!mcpServices || mcpServices.length === 0) {
-                console.error('No FreshService MCP service configured');
-                return {
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({ error: 'No FreshService service configured' })
-                };
-              }
-
-              const mcpService = mcpServices[0];
-              console.log('Found MCP service:', mcpService.id);
-              
-              const result = {
-                tool_call_id: toolCall.id,
-                content: JSON.stringify([{ 
-                  mcp_service_id: mcpService.id,
-                  service_name: mcpService.service_name,
-                  service_type: mcpService.service_type
-                }])
-              };
-              console.log('Returning MCP service result:', result);
-              return result;
-            }
-
             case 'get_freshservice_ticket': {
               const { ticketId } = args;
               
@@ -768,7 +707,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     params: {
                       toolName: 'get_ticket',
                       arguments: {
-                        ticketId: Number(ticketId)
+                        ticket_id: Number(ticketId)
                       }
                     }
                   })
@@ -821,18 +760,19 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
             }
 
             case 'search_freshservice_tickets': {
-              const { mcp_service_id, department, status, exclude_status, created_after, priority, exclude_priority, custom_fields, exclude_custom_fields, limit } = args;
+              const { department, status, exclude_status, created_after, priority, exclude_priority, custom_fields, exclude_custom_fields, limit } = args;
               
-              // Validate mcp_service_id is provided
-              if (!mcp_service_id) {
-                console.error('Missing mcp_service_id in search_freshservice_tickets call');
+              // Auto-resolve FreshService MCP service ID
+              const fsServiceId = serviceTypeToId['freshservice'];
+              if (!fsServiceId) {
+                console.error('FreshService MCP service not configured');
                 return {
                   tool_call_id: toolCall.id,
-                  content: JSON.stringify({ 
-                    error: 'CRITICAL: mcp_service_id is required. You must call get_freshservice_connections FIRST to get the mcp_service_id, then use it in this call.' 
-                  })
+                  content: JSON.stringify({ error: 'FreshService not configured in system' })
                 };
               }
+              
+              const mcp_service_id = fsServiceId;
               
               console.log('Searching tickets via MCP - Service:', mcp_service_id, 'Filters:', { 
                 department, status, exclude_status, created_after, priority, exclude_priority, 
