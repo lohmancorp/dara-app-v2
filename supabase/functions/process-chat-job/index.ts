@@ -329,11 +329,11 @@ serve(async (req) => {
       }
 
       // Create report-style view for single ticket
-      const detailedView = `# Ticket #${formattedTicket.id}\n\n` +
-        `## SUMMARY\n${formattedTicket.subject}\n\n` +
-        `## WAITING ON\n${waitingOn}\n\n` +
-        `## NEXT STEPS\n${formattedTicket.description_text.substring(0, 300)}${formattedTicket.description_text.length > 300 ? '...' : ''}\n\n` +
-        `## DETAILS\n` +
+      const detailedView = `**Ticket #${formattedTicket.id}**\n\n` +
+        `**SUMMARY**\n${formattedTicket.subject}\n\n` +
+        `**WAITING ON**\n${waitingOn}\n\n` +
+        `**NEXT STEPS**\n${formattedTicket.description_text.substring(0, 300)}${formattedTicket.description_text.length > 300 ? '...' : ''}\n\n` +
+        `**DETAILS**\n` +
         `• **Age:** ${ageInDays}\n` +
         `• **Status:** ${formattedTicket.status}\n` +
         `• **Priority:** ${formattedTicket.priority}\n` +
