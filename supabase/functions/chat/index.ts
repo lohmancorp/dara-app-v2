@@ -512,10 +512,18 @@ Tools available:
 
 Service resolution is automatic - no need to get service IDs first.
 
-**Status IDs Reference:**
-2=Open, 3=Pending, 4=Resolved, 5=Closed, 6=New, 7=Pending access, 8=Waiting for RnD, 9=Pending other ticket, 10=Waiting for maintenance, 11=Waiting for bugfix, 12=Service request triage, 15=Awaiting validation, 16=Conditional Hold, 17=Waiting for 3rd Party
+**Status Name Matching:**
+When users mention status names, use the exact status name as it appears in FreshService:
+- "Waiting on RnD" or "Waiting for RnD" → use status: ["Waiting for RnD"]
+- "Open" → use status: ["Open"]
+- "Pending" → use status: ["Pending"]
+- "Resolved" → use status: ["Resolved"]
+- "Closed" → use status: ["Closed"]
+- "unresolved" or "open tickets" → exclude status: ["Resolved", "Closed"]
 
-**Priority IDs:** 1=Low, 2=Medium, 3=High, 4=Urgent
+Use the actual status NAME in the status filter, not status codes. FreshService API accepts status names directly.
+
+**Priority Names:** Low, Medium, High, Urgent
 
 When formatting results, always include these columns: Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type`;
 
