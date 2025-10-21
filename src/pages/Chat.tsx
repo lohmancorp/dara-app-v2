@@ -530,21 +530,20 @@ const Chat = () => {
           const jobData = await response.json();
           
           // Prepare update data outside of setMessages
-          let tableContent: string | null = null;
+          let updatedContent: string | null = null;
           let failedContent: string | null = null;
           
-          if (jobData.status === 'completed' && jobData.result) {
-            const tickets = jobData.result.tickets || [];
-            const total = jobData.result.total || 0;
+          if (jobData.status === 'completed') {
+            // Fetch the message content from the database (edge function already set it)
+            const { data: messageData } = await supabase
+              .from('chat_messages')
+              .select('content')
+              .eq('job_id', jobId)
+              .single();
             
-            // Generate markdown table
-            tableContent = `Found ${total} tickets:\n\n`;
-            tableContent += '| Ticket ID | Company | Subject | Priority | Status | created_at | updated_at | type | escalated | module | score | ticket_type |\n';
-            tableContent += '|-----------|---------|---------|----------|--------|------------|------------|------|-----------|--------|-------|-------------|\n';
-            
-            tickets.forEach((ticket: any) => {
-              tableContent += `| ${ticket.id} | ${ticket.company} | ${ticket.subject} | ${ticket.priority} | ${ticket.status} | ${ticket.created_at} | ${ticket.updated_at} | ${ticket.type} | ${ticket.escalated} | ${ticket.module} | ${ticket.score} | ${ticket.ticket_type} |\n`;
-            });
+            if (messageData) {
+              updatedContent = messageData.content;
+            }
           } else if (jobData.status === 'failed') {
             failedContent = `Job failed: ${jobData.error || 'Unknown error'}`;
           }
@@ -563,8 +562,8 @@ const Chat = () => {
               };
 
               // Update content if job is complete or failed
-              if (tableContent) {
-                newMessages[jobMessageIndex].content = tableContent;
+              if (updatedContent) {
+                newMessages[jobMessageIndex].content = updatedContent;
               } else if (failedContent) {
                 newMessages[jobMessageIndex].content = failedContent;
               }
@@ -572,13 +571,8 @@ const Chat = () => {
             return newMessages;
           });
           
-          // Update database outside of setMessages
-          if (tableContent) {
-            await supabase
-              .from('chat_messages')
-              .update({ content: tableContent })
-              .eq('job_id', jobId);
-          } else if (failedContent) {
+          // Update database with failed content only (completed content is already set by edge function)
+          if (failedContent) {
             await supabase
               .from('chat_messages')
               .update({ content: failedContent })
