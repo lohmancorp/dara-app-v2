@@ -723,7 +723,7 @@ Priority values: 1=Low, 2=Medium, 3=High, 4=Urgent`;
                     method: 'tools/call',
                     serviceType: 'freshservice',
                     params: {
-                      name: 'get_ticket',
+                      toolName: 'get_ticket',
                       arguments: {
                         ticketId: Number(ticketId)
                       }
