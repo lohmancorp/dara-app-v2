@@ -19,6 +19,7 @@ import openaiIcon from "@/assets/connection-icons/openai.png";
 import googleAlertsIcon from "@/assets/connection-icons/google-alerts.ico";
 import { SupportedMethodsTable } from "@/components/SupportedMethodsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ServiceTokenManager } from "@/components/ServiceTokenManager";
 
 type ConnectionType = 'freshservice' | 'jira' | 'confluence' | 'gemini' | 'openai' | 'google_alerts';
 
@@ -496,6 +497,15 @@ const AdminEditConnection = () => {
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Service Token Management Section */}
+        <div className="mt-6">
+          <ServiceTokenManager 
+            serviceId={service.id}
+            serviceName={config.name}
+            usesAppToken={service.uses_app_token}
+          />
+        </div>
       </div>
     </div>
   );
