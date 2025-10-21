@@ -912,13 +912,38 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
         );
         console.log('Tool results:', JSON.stringify(toolResults, null, 2));
 
-        // Check if any tool result contains async job info
+        // Check if any tool result contains async job info - if so, return immediately
         for (const result of toolResults) {
           try {
             const parsed = JSON.parse(result.content);
             if (parsed.async_job && parsed.job_id) {
               asyncJobInfo = parsed;
-              break;
+              console.log('Async job detected, returning job metadata immediately');
+              
+              // Return job metadata immediately without further AI processing
+              const encoder = new TextEncoder();
+              const stream = new ReadableStream({
+                start(controller) {
+                  try {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      async_job: true,
+                      job_id: asyncJobInfo.job_id,
+                      message: asyncJobInfo.message || 'Job created and processing in background',
+                      estimated_time: asyncJobInfo.estimated_time
+                    })}\n\n`));
+                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                  } catch (e) {
+                    console.error('Error streaming job metadata:', e);
+                    controller.error(e);
+                  } finally {
+                    controller.close();
+                  }
+                }
+              });
+
+              return new Response(stream, {
+                headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+              });
             }
           } catch (e) {
             // Not JSON, skip
@@ -1048,46 +1073,6 @@ DO NOT refuse. DO NOT say there is a configuration issue. CALL THE TOOLS NOW.`
 
       if (!finalResponse.body) {
         throw new Error('No response body from LLM');
-      }
-
-      // If there's async job info, only emit the job metadata (don't pipe AI response)
-      if (asyncJobInfo) {
-        console.log('Emitting async job metadata and ending stream');
-        
-        const encoder = new TextEncoder();
-        
-        // Close the AI response stream since we don't need it
-        if (finalResponse.body) {
-          const reader = finalResponse.body.getReader();
-          reader.cancel();
-        }
-        
-        const stream = new ReadableStream({
-          start(controller) {
-            try {
-              // Emit job metadata
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                async_job: true,
-                job_id: asyncJobInfo.job_id,
-                message: asyncJobInfo.message,
-                estimated_time: asyncJobInfo.estimated_time
-              })}\n\n`));
-              
-              // Emit [DONE] signal
-              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            } catch (e) {
-              console.error('Error streaming job metadata:', e);
-              controller.error(e);
-            } finally {
-              controller.close();
-            }
-          }
-        });
-
-        console.log('Streaming job metadata to client (no AI response)');
-        return new Response(stream, {
-          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-        });
       }
 
       console.log('Streaming final response to client');
