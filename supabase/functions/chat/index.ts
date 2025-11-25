@@ -107,13 +107,46 @@ const rateLimiter = {
 
 // Helper to call LLM based on connection type with rate limiting
 async function callLLM(
-  connectionType: 'gemini' | 'openai',
+  connectionType: 'gemini' | 'openai' | 'lovable',
   apiKey: string,
   messages: any[],
   tools?: any[],
   stream: boolean = false,
   rateLimitConfig?: { call_delay_ms: number; max_retries: number; retry_delay_sec: number }
 ) {
+  // Use Lovable AI gateway
+  if (connectionType === 'lovable') {
+    const requestBody: any = {
+      model: 'google/gemini-2.5-flash',
+      messages: messages,
+      stream: stream
+    };
+
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+    }
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      throw new Error(`Lovable AI request failed: ${response.status}`);
+    }
+
+    if (stream) {
+      return response;
+    }
+
+    return await response.json();
+  }
   if (connectionType === 'gemini') {
     // Apply rate limiting
     if (rateLimitConfig) {
@@ -394,42 +427,19 @@ serve(async (req) => {
       );
     }
 
-    // Get default LLM connection
-    const { data: defaultConnection, error: connError } = await supabase
-      .from('connections')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_chat_default', true)
-      .eq('is_active', true)
-      .in('connection_type', ['gemini', 'openai'])
-      .single();
-
-    if (connError || !defaultConnection) {
-      console.error('No default LLM connection found:', connError);
+    // Use Lovable AI
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ 
-          error: 'No default LLM connection configured. Please go to Connections and mark a Gemini or OpenAI connection as your chat default.',
-          requiresSetup: true,
-          setupUrl: '/connections'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const apiKey = defaultConnection.auth_config?.api_key;
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'LLM connection is missing API key. Please update your connection configuration.',
-          requiresSetup: true,
-          setupUrl: '/connections'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const connectionType = defaultConnection.connection_type as 'gemini' | 'openai';
-    console.log('Chat request from user:', user.id, 'using', connectionType);
+    const apiKey = lovableApiKey;
+    const connectionType = 'lovable' as const;
+    console.log('Chat request from user:', user.id, 'using Lovable AI');
     console.log('User messages:', JSON.stringify(messages, null, 2));
 
     // Get MCP service IDs for reference
@@ -1007,7 +1017,7 @@ When formatting results, always include these columns: Ticket ID | Company | Sub
 
       // No more tool calls - validate response before streaming
       console.log('No more tool calls, streaming final response');
-      console.log('Connection type:', defaultConnection.connection_type);
+      console.log('Connection type:', connectionType);
       console.log('Conversation has', conversationMessages.length, 'messages');
 
       // Check if AI is refusing to process without calling tools
@@ -1104,7 +1114,7 @@ DO NOT refuse. DO NOT say there is a configuration issue. CALL THE TOOLS NOW.`
       }
       
       const finalResponse = await callLLM(
-        defaultConnection.connection_type,
+        connectionType,
         apiKey,
         conversationMessages,
         undefined,

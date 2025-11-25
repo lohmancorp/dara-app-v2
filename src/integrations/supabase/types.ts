@@ -768,10 +768,7 @@ export type Database = {
         Args: { _connection_id: string }
         Returns: string
       }
-      get_next_job_sequence: {
-        Args: { p_session_id: string }
-        Returns: number
-      }
+      get_next_job_sequence: { Args: { p_session_id: string }; Returns: number }
       has_account_role: {
         Args: {
           _account_id: string
